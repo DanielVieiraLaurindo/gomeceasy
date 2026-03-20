@@ -1,0 +1,95 @@
+import {
+  LayoutDashboard, Package, AlertTriangle, ShoppingCart, DollarSign, Search as SearchIcon,
+  Building2, Warehouse, Users, Ticket, FileText, Shield, CreditCard, Receipt,
+  Camera, RefreshCw, Briefcase, PenTool, Monitor, Settings, Megaphone,
+  TrendingUp, FolderOpen, BookOpen, UserCheck, Columns3, Archive, Scale
+} from 'lucide-react';
+import type { AppRole } from '@/types';
+import type { LucideIcon } from 'lucide-react';
+
+export interface SidebarItem {
+  path: string;
+  label: string;
+  icon: LucideIcon;
+  badge?: number;
+}
+
+export const SIDEBAR_ITEMS: Record<AppRole, SidebarItem[]> = {
+  admin: [
+    { path: '/backoffice', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/backoffice/fulfillment', label: 'Fulfillment', icon: Package },
+    { path: '/backoffice/rupturas', label: 'Rupturas', icon: AlertTriangle },
+    { path: '/backoffice/pedidos-site', label: 'Pedidos do Site', icon: ShoppingCart },
+    { path: '/backoffice/precificacao', label: 'Precificação', icon: DollarSign },
+    { path: '/backoffice/cnpjs', label: 'Análise CNPJs', icon: SearchIcon },
+    { path: '/backoffice/marcas', label: 'Marcas', icon: Building2 },
+    { path: '/backoffice/cds', label: 'Centros Distrib.', icon: Warehouse },
+    { path: '/pos-vendas', label: 'Pós-Vendas', icon: RefreshCw },
+    { path: '/garantia', label: 'Garantia', icon: Shield },
+    { path: '/financeiro', label: 'Financeiro', icon: CreditCard },
+    { path: '/compras', label: 'Compras', icon: Briefcase },
+    { path: '/pre-vendas', label: 'Pré-Vendas', icon: Megaphone },
+    { path: '/criacao', label: 'Criação', icon: PenTool },
+    { path: '/ti', label: 'TI', icon: Monitor },
+    { path: '/configuracoes', label: 'Configurações', icon: Settings },
+  ],
+  backoffice: [
+    { path: '/backoffice', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/backoffice/fulfillment', label: 'Fulfillment', icon: Package },
+    { path: '/backoffice/rupturas', label: 'Rupturas', icon: AlertTriangle },
+    { path: '/backoffice/pedidos-site', label: 'Pedidos do Site', icon: ShoppingCart },
+    { path: '/backoffice/precificacao', label: 'Precificação', icon: DollarSign },
+    { path: '/backoffice/cnpjs', label: 'Análise CNPJs', icon: SearchIcon },
+    { path: '/backoffice/marcas', label: 'Marcas', icon: Building2 },
+    { path: '/backoffice/cds', label: 'Centros Distrib.', icon: Warehouse },
+  ],
+  pos_vendas: [
+    { path: '/pos-vendas', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/pos-vendas/casos', label: 'Casos', icon: FolderOpen },
+    { path: '/pos-vendas/devolucoes', label: 'Devoluções', icon: RefreshCw },
+    { path: '/pos-vendas/garantia', label: 'Garantias', icon: Shield },
+    { path: '/pos-vendas/reembolsos', label: 'Reembolsos', icon: Receipt },
+    { path: '/pos-vendas/ressarcimento-mo', label: 'Ressarcimento MO', icon: Scale },
+    { path: '/pos-vendas/galeria', label: 'Galeria de Fotos', icon: Camera },
+  ],
+  garantia: [
+    { path: '/garantia', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/garantia/casos', label: 'Todos os Casos', icon: FolderOpen },
+    { path: '/garantia/devolucoes-recebidas', label: 'Devoluções Recebidas', icon: RefreshCw },
+    { path: '/garantia/fornecedor', label: 'Garantias Fornecedor', icon: Building2 },
+    { path: '/garantia/descartes', label: 'Descartes', icon: Archive },
+    { path: '/garantia/creditos', label: 'Créditos', icon: CreditCard },
+  ],
+  financeiro_fiscal: [
+    { path: '/financeiro', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/financeiro/reembolsos', label: 'Validação Reembolsos', icon: Receipt },
+    { path: '/financeiro/pagamentos', label: 'Pagamentos', icon: CreditCard },
+    { path: '/financeiro/ressarcimentos', label: 'Ressarcimentos', icon: Scale },
+    { path: '/financeiro/cnpjs', label: 'Análise CNPJs', icon: SearchIcon },
+  ],
+  compras: [
+    { path: '/compras', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/compras/solicitacoes', label: 'Solicitações', icon: ShoppingCart },
+    { path: '/compras/pedidos', label: 'Pedidos de Compra', icon: FileText },
+    { path: '/compras/marcas', label: 'Marcas', icon: Building2 },
+    { path: '/compras/minhas-marcas', label: 'Minhas Marcas', icon: UserCheck },
+  ],
+  pre_vendas: [
+    { path: '/pre-vendas', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/pre-vendas/pipeline', label: 'Pipeline', icon: Columns3 },
+    { path: '/pre-vendas/leads', label: 'Leads', icon: Users },
+    { path: '/pre-vendas/clientes', label: 'Clientes', icon: UserCheck },
+    { path: '/pre-vendas/historico', label: 'Histórico', icon: BookOpen },
+  ],
+  criacao: [
+    { path: '/criacao', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/criacao/demandas', label: 'Demandas', icon: PenTool },
+    { path: '/criacao/arquivo', label: 'Arquivo', icon: FolderOpen },
+  ],
+  ti: [
+    { path: '/ti', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/ti/chamados', label: 'Chamados', icon: Ticket },
+    { path: '/ti/usuarios', label: 'Usuários', icon: Users },
+    { path: '/ti/logs', label: 'Logs', icon: FileText },
+  ],
+};
