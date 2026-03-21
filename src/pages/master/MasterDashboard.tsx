@@ -5,20 +5,37 @@ import { useNavigate } from 'react-router-dom';
 import {
   Package, AlertTriangle, FolderOpen, Shield, CreditCard, Truck,
   MapPin, ShoppingCart, Megaphone, PenTool, Monitor, TrendingUp,
-  Clock, DollarSign, Users, Boxes
+  Clock, DollarSign, Users, Boxes, Globe
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const MODULE_CARDS = [
+interface ModuleKpi {
+  label: string;
+  val: string | number;
+}
+
+interface ModuleCard {
+  label: string;
+  path: string;
+  icon: typeof Package;
+  kpis: ModuleKpi[];
+  status: 'critical' | 'warning' | 'ok';
+}
+
+// E-commerce module contains BackOffice, Pós-Vendas, Pré-Vendas, Criação
+const ECOMMERCE_SUBMODULES: ModuleCard[] = [
   { label: 'BackOffice', path: '/backoffice', icon: Package, kpis: [{ label: 'Rupturas', val: 23 }, { label: 'Envios Pendentes', val: 12 }], status: 'warning' },
+  { label: 'Pós-Vendas', path: '/pos-vendas', icon: FolderOpen, kpis: [{ label: 'Casos Abertos', val: 47 }, { label: 'Atrasados', val: 5 }], status: 'critical' },
+  { label: 'Pré-Vendas', path: '/pre-vendas', icon: Megaphone, kpis: [{ label: 'Pipeline', val: 12 }, { label: 'Leads', val: 28 }], status: 'ok' },
+  { label: 'Criação', path: '/criacao', icon: PenTool, kpis: [{ label: 'Demandas', val: 5 }, { label: 'Em Produção', val: 2 }], status: 'ok' },
+];
+
+const OTHER_MODULES: ModuleCard[] = [
   { label: 'Expedição', path: '/expedicao', icon: Boxes, kpis: [{ label: 'Em Separação', val: 8 }, { label: 'Saiu Onda', val: 15 }], status: 'ok' },
   { label: 'Logística', path: '/logistica', icon: MapPin, kpis: [{ label: 'Em Trânsito', val: 45 }, { label: 'Ocorrências', val: 3 }], status: 'ok' },
-  { label: 'Pós-Vendas', path: '/pos-vendas', icon: FolderOpen, kpis: [{ label: 'Casos Abertos', val: 47 }, { label: 'Atrasados', val: 5 }], status: 'critical' },
   { label: 'Garantia', path: '/garantia', icon: Shield, kpis: [{ label: 'Casos Ativos', val: 18 }, { label: 'Descartes', val: 3 }], status: 'warning' },
   { label: 'Financeiro', path: '/financeiro', icon: CreditCard, kpis: [{ label: 'Pendente', val: 'R$ 8.4k' }, { label: 'Pago Mês', val: 'R$ 34k' }], status: 'ok' },
   { label: 'Compras', path: '/compras', icon: ShoppingCart, kpis: [{ label: 'Solicitações', val: 7 }, { label: 'Pedidos', val: 3 }], status: 'ok' },
-  { label: 'Pré-Vendas', path: '/pre-vendas', icon: Megaphone, kpis: [{ label: 'Pipeline', val: 12 }, { label: 'Leads', val: 28 }], status: 'ok' },
-  { label: 'Criação', path: '/criacao', icon: PenTool, kpis: [{ label: 'Demandas', val: 5 }, { label: 'Em Produção', val: 2 }], status: 'ok' },
   { label: 'TI', path: '/ti', icon: Monitor, kpis: [{ label: 'Chamados', val: 4 }, { label: 'Usuários', val: 18 }], status: 'ok' },
 ];
 
@@ -27,6 +44,32 @@ const statusBorder: Record<string, string> = {
   warning: 'border-l-4 border-l-warning',
   ok: 'border-l-4 border-l-success',
 };
+
+const ModuleCardComponent = ({ mod, i, navigate }: { mod: ModuleCard; i: number; navigate: (path: string) => void }) => (
+  <motion.div
+    key={mod.path}
+    initial={{ opacity: 0, y: 16 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay: 0.3 + i * 0.05 }}
+    onClick={() => navigate(mod.path)}
+    className={cn('card-base p-4 cursor-pointer hover:shadow-md transition-all', statusBorder[mod.status])}
+  >
+    <div className="flex items-center gap-3 mb-3">
+      <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+        <mod.icon className="w-4 h-4 text-primary" />
+      </div>
+      <span className="font-barlow font-bold">{mod.label}</span>
+    </div>
+    <div className="grid grid-cols-2 gap-2">
+      {mod.kpis.map(kpi => (
+        <div key={kpi.label}>
+          <p className="text-xs text-muted-foreground">{kpi.label}</p>
+          <p className="font-barlow font-bold text-lg">{kpi.val}</p>
+        </div>
+      ))}
+    </div>
+  </motion.div>
+);
 
 export default function MasterDashboard() {
   const navigate = useNavigate();
@@ -62,33 +105,30 @@ export default function MasterDashboard() {
         <MetricCard title="SLA Geral" value="94%" icon={TrendingUp} variant="success" delay={0.24} trend={{ value: 2.1, label: 'vs semana ant.' }} />
       </div>
 
-      {/* Module grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {MODULE_CARDS.map((mod, i) => (
-          <motion.div
-            key={mod.path}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 + i * 0.05 }}
-            onClick={() => navigate(mod.path)}
-            className={cn('card-base p-4 cursor-pointer hover:shadow-md transition-all', statusBorder[mod.status])}
-          >
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                <mod.icon className="w-4 h-4 text-primary" />
-              </div>
-              <span className="font-barlow font-bold">{mod.label}</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {mod.kpis.map(kpi => (
-                <div key={kpi.label}>
-                  <p className="text-xs text-muted-foreground">{kpi.label}</p>
-                  <p className="font-barlow font-bold text-lg">{kpi.val}</p>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        ))}
+      {/* E-commerce Module */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Globe className="w-4 h-4 text-primary" />
+          </div>
+          <h2 className="font-barlow font-bold text-lg">E-commerce</h2>
+          <span className="text-xs text-muted-foreground">BackOffice · Pós-Vendas · Pré-Vendas · Criação</span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {ECOMMERCE_SUBMODULES.map((mod, i) => (
+            <ModuleCardComponent key={mod.path} mod={mod} i={i} navigate={navigate} />
+          ))}
+        </div>
+      </div>
+
+      {/* Other Modules */}
+      <div className="space-y-3">
+        <h2 className="font-barlow font-bold text-lg">Outros Módulos</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {OTHER_MODULES.map((mod, i) => (
+            <ModuleCardComponent key={mod.path} mod={mod} i={i + ECOMMERCE_SUBMODULES.length} navigate={navigate} />
+          ))}
+        </div>
       </div>
 
       {/* Recent activity feed */}
