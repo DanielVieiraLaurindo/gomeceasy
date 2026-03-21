@@ -4,7 +4,7 @@ import {
   Camera, RefreshCw, Briefcase, PenTool, Monitor, Settings, Megaphone,
   TrendingUp, FolderOpen, BookOpen, UserCheck, Columns3, Archive, Scale,
   Truck, MapPin, Bell, Eye, Boxes, CheckSquare, ClipboardList, Route,
-  Send, BarChart2, Globe
+  Send, BarChart2, Globe, Clock, Clipboard, Calculator
 } from 'lucide-react';
 import type { AppSetor } from '@/types';
 import type { LucideIcon } from 'lucide-react';
@@ -55,6 +55,10 @@ export const SIDEBAR_ITEMS: Record<AppSetor, SidebarItem[]> = {
   ],
   expedicao: [
     { path: '/expedicao', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/expedicao/clientes-prazo', label: 'Clientes Prazo', icon: Clock },
+    { path: '/expedicao/operacao-interna', label: 'Operação Interna', icon: Clipboard },
+    { path: '/expedicao/resumo-operacao', label: 'Resumo da Operação', icon: Calculator },
+    { path: '/expedicao/somatorio', label: 'Somatório', icon: BarChart2 },
     { path: '/expedicao/separacao', label: 'Separação', icon: Boxes },
     { path: '/expedicao/conferencia', label: 'Conferência', icon: CheckSquare },
     { path: '/expedicao/embalagem', label: 'Embalagem', icon: Package },
@@ -96,16 +100,28 @@ export const SIDEBAR_ITEMS: Record<AppSetor, SidebarItem[]> = {
   ],
 };
 
-// Master gets ALL items grouped
-export const MASTER_SIDEBAR_GROUPS: { label: string; setor: AppSetor }[] = [
-  { label: 'BackOffice', setor: 'backoffice' },
+// Master sidebar groups - organized with E-commerce grouping
+export interface MasterSidebarGroup {
+  label: string;
+  setor?: AppSetor;
+  setores?: AppSetor[];
+  isModule?: boolean;
+}
+
+export const MASTER_SIDEBAR_GROUPS: MasterSidebarGroup[] = [
+  { label: 'E-commerce', setores: ['backoffice', 'pos_vendas', 'pre_vendas', 'criacao'], isModule: true },
   { label: 'Expedição', setor: 'expedicao' },
   { label: 'Logística', setor: 'logistica' },
-  { label: 'Pós-Vendas', setor: 'pos_vendas' },
   { label: 'Garantia', setor: 'garantia' },
   { label: 'Financeiro', setor: 'financeiro_fiscal' },
   { label: 'Compras', setor: 'compras' },
-  { label: 'Pré-Vendas', setor: 'pre_vendas' },
-  { label: 'Criação', setor: 'criacao' },
   { label: 'TI', setor: 'ti' },
 ];
+
+// Sub-labels for E-commerce module setores
+export const ECOMMERCE_SETOR_LABELS: Record<string, string> = {
+  backoffice: 'BackOffice',
+  pos_vendas: 'Pós-Vendas',
+  pre_vendas: 'Pré-Vendas',
+  criacao: 'Criação',
+};

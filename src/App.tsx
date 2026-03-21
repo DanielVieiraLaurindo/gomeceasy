@@ -29,6 +29,12 @@ import TIDashboard from "@/pages/ti/TIDashboard";
 import ExpedicaoDashboard from "@/pages/expedicao/ExpedicaoDashboard";
 import LogisticaDashboard from "@/pages/logistica/LogisticaDashboard";
 
+// Expedição pages
+import ClientesPrazoPage from "@/pages/expedicao/ClientesPrazoPage";
+import OperacaoInternaPage from "@/pages/expedicao/OperacaoInternaPage";
+import ResumoOperacaoPage from "@/pages/expedicao/ResumoOperacaoPage";
+import SomatorioPage from "@/pages/expedicao/SomatorioPage";
+
 // Placeholder
 import PlaceholderPage from "@/components/PlaceholderPage";
 
@@ -64,6 +70,10 @@ const App = () => (
 
                 {/* Expedição */}
                 <Route path="/expedicao" element={<ExpedicaoDashboard />} />
+                <Route path="/expedicao/clientes-prazo" element={<ClientesPrazoPage />} />
+                <Route path="/expedicao/operacao-interna" element={<OperacaoInternaPage />} />
+                <Route path="/expedicao/resumo-operacao" element={<ResumoOperacaoPage />} />
+                <Route path="/expedicao/somatorio" element={<SomatorioPage />} />
                 <Route path="/expedicao/separacao" element={<PlaceholderPage title="Separação" description="Fila de separação de pedidos" />} />
                 <Route path="/expedicao/conferencia" element={<PlaceholderPage title="Conferência" description="Conferência de pedidos separados" />} />
                 <Route path="/expedicao/embalagem" element={<PlaceholderPage title="Embalagem" description="Controle de embalagem" />} />
