@@ -2,9 +2,11 @@ import {
   LayoutDashboard, Package, AlertTriangle, ShoppingCart, DollarSign, Search as SearchIcon,
   Building2, Warehouse, Users, Ticket, FileText, Shield, CreditCard, Receipt,
   Camera, RefreshCw, Briefcase, PenTool, Monitor, Settings, Megaphone,
-  TrendingUp, FolderOpen, BookOpen, UserCheck, Columns3, Archive, Scale
+  TrendingUp, FolderOpen, BookOpen, UserCheck, Columns3, Archive, Scale,
+  Truck, MapPin, Bell, Eye, Boxes, CheckSquare, ClipboardList, Route,
+  Send, BarChart2, Globe
 } from 'lucide-react';
-import type { AppRole } from '@/types';
+import type { AppSetor } from '@/types';
 import type { LucideIcon } from 'lucide-react';
 
 export interface SidebarItem {
@@ -14,25 +16,7 @@ export interface SidebarItem {
   badge?: number;
 }
 
-export const SIDEBAR_ITEMS: Record<AppRole, SidebarItem[]> = {
-  admin: [
-    { path: '/backoffice', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/backoffice/fulfillment', label: 'Fulfillment', icon: Package },
-    { path: '/backoffice/rupturas', label: 'Rupturas', icon: AlertTriangle },
-    { path: '/backoffice/pedidos-site', label: 'Pedidos do Site', icon: ShoppingCart },
-    { path: '/backoffice/precificacao', label: 'Precificação', icon: DollarSign },
-    { path: '/backoffice/cnpjs', label: 'Análise CNPJs', icon: SearchIcon },
-    { path: '/backoffice/marcas', label: 'Marcas', icon: Building2 },
-    { path: '/backoffice/cds', label: 'Centros Distrib.', icon: Warehouse },
-    { path: '/pos-vendas', label: 'Pós-Vendas', icon: RefreshCw },
-    { path: '/garantia', label: 'Garantia', icon: Shield },
-    { path: '/financeiro', label: 'Financeiro', icon: CreditCard },
-    { path: '/compras', label: 'Compras', icon: Briefcase },
-    { path: '/pre-vendas', label: 'Pré-Vendas', icon: Megaphone },
-    { path: '/criacao', label: 'Criação', icon: PenTool },
-    { path: '/ti', label: 'TI', icon: Monitor },
-    { path: '/configuracoes', label: 'Configurações', icon: Settings },
-  ],
+export const SIDEBAR_ITEMS: Record<AppSetor, SidebarItem[]> = {
   backoffice: [
     { path: '/backoffice', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/backoffice/fulfillment', label: 'Fulfillment', icon: Package },
@@ -63,9 +47,27 @@ export const SIDEBAR_ITEMS: Record<AppRole, SidebarItem[]> = {
   financeiro_fiscal: [
     { path: '/financeiro', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/financeiro/reembolsos', label: 'Validação Reembolsos', icon: Receipt },
+    { path: '/financeiro/validacao-financeira', label: 'Validação Financeira', icon: CheckSquare },
     { path: '/financeiro/pagamentos', label: 'Pagamentos', icon: CreditCard },
     { path: '/financeiro/ressarcimentos', label: 'Ressarcimentos', icon: Scale },
     { path: '/financeiro/cnpjs', label: 'Análise CNPJs', icon: SearchIcon },
+    { path: '/financeiro/notas-fiscais', label: 'Notas Fiscais', icon: FileText },
+  ],
+  expedicao: [
+    { path: '/expedicao', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/expedicao/separacao', label: 'Separação', icon: Boxes },
+    { path: '/expedicao/conferencia', label: 'Conferência', icon: CheckSquare },
+    { path: '/expedicao/embalagem', label: 'Embalagem', icon: Package },
+    { path: '/expedicao/volumes', label: 'Volumes', icon: Archive },
+    { path: '/expedicao/ondas', label: 'Ondas', icon: Send },
+    { path: '/expedicao/despacho', label: 'Despacho', icon: Truck },
+  ],
+  logistica: [
+    { path: '/logistica', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/logistica/rastreamento', label: 'Rastreamento', icon: MapPin },
+    { path: '/logistica/ocorrencias', label: 'Ocorrências', icon: AlertTriangle },
+    { path: '/logistica/transportadoras', label: 'Transportadoras', icon: Truck },
+    { path: '/logistica/sla', label: 'SLA', icon: BarChart2 },
   ],
   compras: [
     { path: '/compras', label: 'Dashboard', icon: LayoutDashboard },
@@ -88,8 +90,22 @@ export const SIDEBAR_ITEMS: Record<AppRole, SidebarItem[]> = {
   ],
   ti: [
     { path: '/ti', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/ti/chamados', label: 'Chamados', icon: Ticket },
     { path: '/ti/usuarios', label: 'Usuários', icon: Users },
+    { path: '/ti/chamados', label: 'Chamados', icon: Ticket },
     { path: '/ti/logs', label: 'Logs', icon: FileText },
   ],
 };
+
+// Master gets ALL items grouped
+export const MASTER_SIDEBAR_GROUPS: { label: string; setor: AppSetor }[] = [
+  { label: 'BackOffice', setor: 'backoffice' },
+  { label: 'Expedição', setor: 'expedicao' },
+  { label: 'Logística', setor: 'logistica' },
+  { label: 'Pós-Vendas', setor: 'pos_vendas' },
+  { label: 'Garantia', setor: 'garantia' },
+  { label: 'Financeiro', setor: 'financeiro_fiscal' },
+  { label: 'Compras', setor: 'compras' },
+  { label: 'Pré-Vendas', setor: 'pre_vendas' },
+  { label: 'Criação', setor: 'criacao' },
+  { label: 'TI', setor: 'ti' },
+];

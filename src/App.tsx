@@ -8,6 +8,10 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/AppLayout";
 import AuthPage from "@/pages/AuthPage";
 import NotFound from "./pages/NotFound";
+import Index from "@/pages/Index";
+
+// Master
+import MasterDashboard from "@/pages/master/MasterDashboard";
 
 // BackOffice
 import BackOfficeDashboard from "@/pages/backoffice/BackOfficeDashboard";
@@ -22,6 +26,8 @@ import ComprasDashboard from "@/pages/compras/ComprasDashboard";
 import PreVendasDashboard from "@/pages/pre-vendas/PreVendasDashboard";
 import CriacaoDashboard from "@/pages/criacao/CriacaoDashboard";
 import TIDashboard from "@/pages/ti/TIDashboard";
+import ExpedicaoDashboard from "@/pages/expedicao/ExpedicaoDashboard";
+import LogisticaDashboard from "@/pages/logistica/LogisticaDashboard";
 
 // Placeholder
 import PlaceholderPage from "@/components/PlaceholderPage";
@@ -38,9 +44,13 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/auth" element={<AuthPage />} />
-              <Route path="/" element={<Navigate to="/backoffice" replace />} />
 
               <Route element={<AppLayout />}>
+                <Route path="/" element={<Index />} />
+
+                {/* Master */}
+                <Route path="/master" element={<MasterDashboard />} />
+
                 {/* BackOffice */}
                 <Route path="/backoffice" element={<BackOfficeDashboard />} />
                 <Route path="/backoffice/fulfillment" element={<FulfillmentPage />} />
@@ -51,6 +61,22 @@ const App = () => (
                 <Route path="/backoffice/cnpjs" element={<PlaceholderPage title="Análise de CNPJs" description="Consulta e validação de CNPJs" />} />
                 <Route path="/backoffice/marcas" element={<PlaceholderPage title="Marcas e Fornecedores" description="Cadastro de marcas e fornecedores" />} />
                 <Route path="/backoffice/cds" element={<PlaceholderPage title="Centros de Distribuição" description="Gestão de CDs" />} />
+
+                {/* Expedição */}
+                <Route path="/expedicao" element={<ExpedicaoDashboard />} />
+                <Route path="/expedicao/separacao" element={<PlaceholderPage title="Separação" description="Fila de separação de pedidos" />} />
+                <Route path="/expedicao/conferencia" element={<PlaceholderPage title="Conferência" description="Conferência de pedidos separados" />} />
+                <Route path="/expedicao/embalagem" element={<PlaceholderPage title="Embalagem" description="Controle de embalagem" />} />
+                <Route path="/expedicao/volumes" element={<PlaceholderPage title="Volumes" description="Gestão de volumes por envio" />} />
+                <Route path="/expedicao/ondas" element={<PlaceholderPage title="Ondas" description="Gestão de ondas de despacho" />} />
+                <Route path="/expedicao/despacho" element={<PlaceholderPage title="Despacho" description="Confirmação de coleta e despacho" />} />
+
+                {/* Logística */}
+                <Route path="/logistica" element={<LogisticaDashboard />} />
+                <Route path="/logistica/rastreamento" element={<PlaceholderPage title="Rastreamento" description="Rastreamento de entregas" />} />
+                <Route path="/logistica/ocorrencias" element={<PlaceholderPage title="Ocorrências" description="Gestão de ocorrências logísticas" />} />
+                <Route path="/logistica/transportadoras" element={<PlaceholderPage title="Transportadoras" description="Cadastro de transportadoras" />} />
+                <Route path="/logistica/sla" element={<PlaceholderPage title="SLA" description="Performance de SLA de entregas" />} />
 
                 {/* Pós-Vendas */}
                 <Route path="/pos-vendas" element={<PosVendasDashboard />} />
@@ -72,9 +98,11 @@ const App = () => (
                 {/* Financeiro */}
                 <Route path="/financeiro" element={<FinanceiroDashboard />} />
                 <Route path="/financeiro/reembolsos" element={<PlaceholderPage title="Validação de Reembolsos" description="Fila de reembolsos para validação" />} />
+                <Route path="/financeiro/validacao-financeira" element={<PlaceholderPage title="Validação Financeira" description="Validação financeira de casos" />} />
                 <Route path="/financeiro/pagamentos" element={<PlaceholderPage title="Pagamentos" description="Fila de pagamentos" />} />
                 <Route path="/financeiro/ressarcimentos" element={<PlaceholderPage title="Ressarcimentos" description="Ressarcimentos de mão de obra" />} />
                 <Route path="/financeiro/cnpjs" element={<PlaceholderPage title="Análise de CNPJs" description="Consulta e validação de CNPJs" />} />
+                <Route path="/financeiro/notas-fiscais" element={<PlaceholderPage title="Notas Fiscais" description="Gestão de notas fiscais" />} />
 
                 {/* Compras */}
                 <Route path="/compras" element={<ComprasDashboard />} />
@@ -97,8 +125,8 @@ const App = () => (
 
                 {/* TI */}
                 <Route path="/ti" element={<TIDashboard />} />
-                <Route path="/ti/chamados" element={<PlaceholderPage title="Chamados" description="Chamados internos de TI" />} />
                 <Route path="/ti/usuarios" element={<PlaceholderPage title="Usuários" description="Gestão de usuários" />} />
+                <Route path="/ti/chamados" element={<PlaceholderPage title="Chamados" description="Chamados internos de TI" />} />
                 <Route path="/ti/logs" element={<PlaceholderPage title="Logs" description="Logs de atividades" />} />
 
                 {/* Settings */}

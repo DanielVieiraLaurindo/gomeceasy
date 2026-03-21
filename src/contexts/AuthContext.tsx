@@ -1,15 +1,17 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import type { Profile, AppRole } from '@/types';
+import type { Profile, AppSetor, UserRole } from '@/types';
 
 interface AuthState {
   user: any | null;
   profile: Profile | null;
-  role: AppRole | null;
+  role: UserRole | null;
+  setor: AppSetor | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, nome: string, setor: AppRole) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, nome: string, setor: AppSetor) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
@@ -21,8 +23,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
-    if (data) setProfile(data as Profile);
-    return data as Profile | null;
+    if (data) setProfile(data as unknown as Profile);
+    return data as unknown as Profile | null;
+  };
+
+  const refreshProfile = async () => {
+    if (user?.id) await fetchProfile(user.id);
   };
 
   useEffect(() => {
@@ -53,11 +59,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error };
   };
 
-  const signUp = async (email: string, password: string, nome: string, setor: AppRole) => {
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    if (!error && data.user) {
-      await supabase.from('profiles').insert({ id: data.user.id, nome, email, setor, ativo: true });
-    }
+  const signUp = async (email: string, password: string, nome: string, setor: AppSetor) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { nome, setor } }
+    });
     return { error };
   };
 
@@ -68,7 +75,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, role: profile?.setor || null, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{
+      user,
+      profile,
+      role: (profile?.role as UserRole) || null,
+      setor: (profile?.setor as AppSetor) || null,
+      loading,
+      signIn,
+      signUp,
+      signOut,
+      refreshProfile
+    }}>
       {children}
     </AuthContext.Provider>
   );
