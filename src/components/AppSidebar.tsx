@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, LogOut, LayoutDashboard, ChevronDown } from 
 import { GoPartsLogo } from './GoPartsLogo';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
-import { SIDEBAR_ITEMS, MASTER_SIDEBAR_GROUPS, type SidebarItem } from '@/config/sidebarConfig';
+import { SIDEBAR_ITEMS, MASTER_SIDEBAR_GROUPS, ECOMMERCE_SETOR_LABELS, type SidebarItem } from '@/config/sidebarConfig';
 import { SETOR_LABELS, type AppSetor } from '@/types';
 
 export function AppSidebar() {
@@ -92,13 +92,81 @@ export function AppSidebar() {
       </motion.button>
 
       {!collapsed && MASTER_SIDEBAR_GROUPS.map(group => {
-        const isOpen = openGroups.includes(group.setor);
-        const items = SIDEBAR_ITEMS[group.setor] || [];
+        const groupKey = group.setor || group.label;
+        const isOpen = openGroups.includes(groupKey);
+        
+        // Handle E-commerce module (multiple setores)
+        if (group.isModule && group.setores) {
+          const allItems = group.setores.flatMap(s => SIDEBAR_ITEMS[s] || []);
+          const hasActiveChild = allItems.some(i => isActive(i.path));
+          
+          return (
+            <div key={groupKey}>
+              <button
+                onClick={() => toggleGroup(groupKey)}
+                className={cn(
+                  'flex items-center w-full gap-2 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors',
+                  hasActiveChild ? 'text-primary' : 'text-sidebar-foreground/50 hover:text-sidebar-foreground/80'
+                )}
+              >
+                <ChevronDown className={cn('w-3 h-3 transition-transform', isOpen && 'rotate-180')} />
+                {group.label}
+              </button>
+              <AnimatePresence>
+                {isOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden"
+                  >
+                    {group.setores.map(setorKey => {
+                      const subItems = SIDEBAR_ITEMS[setorKey] || [];
+                      const subLabel = ECOMMERCE_SETOR_LABELS[setorKey] || SETOR_LABELS[setorKey];
+                      const subIsOpen = openGroups.includes(setorKey);
+                      const subHasActive = subItems.some(i => isActive(i.path));
+
+                      return (
+                        <div key={setorKey}>
+                          <button
+                            onClick={() => toggleGroup(setorKey)}
+                            className={cn(
+                              'flex items-center w-full gap-2 px-6 py-1 text-[11px] font-semibold tracking-wide transition-colors',
+                              subHasActive ? 'text-primary' : 'text-sidebar-foreground/40 hover:text-sidebar-foreground/70'
+                            )}
+                          >
+                            <ChevronDown className={cn('w-2.5 h-2.5 transition-transform', subIsOpen && 'rotate-180')} />
+                            {subLabel}
+                          </button>
+                          <AnimatePresence>
+                            {subIsOpen && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="overflow-hidden pl-2"
+                              >
+                                {subItems.map(renderItem)}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      );
+                    })}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          );
+        }
+        
+        // Normal single-setor group
+        const items = group.setor ? SIDEBAR_ITEMS[group.setor] || [] : [];
         const hasActiveChild = items.some(i => isActive(i.path));
         return (
-          <div key={group.setor}>
+          <div key={groupKey}>
             <button
-              onClick={() => toggleGroup(group.setor)}
+              onClick={() => toggleGroup(groupKey)}
               className={cn(
                 'flex items-center w-full gap-2 px-4 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors',
                 hasActiveChild ? 'text-primary' : 'text-sidebar-foreground/50 hover:text-sidebar-foreground/80'
@@ -123,7 +191,10 @@ export function AppSidebar() {
         );
       })}
 
-      {collapsed && MASTER_SIDEBAR_GROUPS.flatMap(g => SIDEBAR_ITEMS[g.setor] || [])
+      {collapsed && MASTER_SIDEBAR_GROUPS.flatMap(g => {
+        if (g.setores) return g.setores.flatMap(s => SIDEBAR_ITEMS[s] || []);
+        return g.setor ? SIDEBAR_ITEMS[g.setor] || [] : [];
+      })
         .filter((item, idx, arr) => arr.findIndex(i => i.path === item.path) === idx)
         .map(renderItem)
       }
