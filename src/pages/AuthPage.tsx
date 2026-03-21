@@ -47,9 +47,9 @@ export default function AuthPage() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (signupPw !== confirmPw) { toast.error('Senhas não coincidem'); return; }
-    if (!setor) { toast.error('Selecione um setor'); return; }
-    if (signupPw.length < 6) { toast.error('Senha deve ter pelo menos 6 caracteres'); return; }
+    if (signupPw !== confirmPw) {toast.error('Senhas não coincidem');return;}
+    if (!setor) {toast.error('Selecione um setor');return;}
+    if (signupPw.length < 6) {toast.error('Senha deve ter pelo menos 6 caracteres');return;}
     setLoading(true);
     const { error } = await signUp(signupEmail, signupPw, nome, setor as AppSetor);
     setLoading(false);
@@ -64,7 +64,7 @@ export default function AuthPage() {
     e.preventDefault();
     setLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: `${window.location.origin}/reset-password`
     });
     setLoading(false);
     if (error) {
@@ -76,7 +76,7 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4 border-[#969696]">
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-8">
           <div className="flex items-center gap-3">
@@ -84,21 +84,21 @@ export default function AuthPage() {
           </div>
         </div>
         <div className="card-base p-6">
-          {forgotMode ? (
-            <form onSubmit={handleForgotPassword} className="space-y-4">
+          {forgotMode ?
+          <form onSubmit={handleForgotPassword} className="space-y-4">
               <h2 className="text-lg font-barlow font-bold">Recuperar senha</h2>
               <div>
                 <Label>E-mail</Label>
-                <Input type="email" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} required />
+                <Input type="email" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} required />
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                 Enviar link de recuperação
               </Button>
               <Button type="button" variant="ghost" className="w-full" onClick={() => setForgotMode(false)}>Voltar</Button>
-            </form>
-          ) : (
-            <Tabs defaultValue="login">
+            </form> :
+
+          <Tabs defaultValue="login">
               <TabsList className="grid w-full grid-cols-2 mb-6">
                 <TabsTrigger value="login">Login</TabsTrigger>
                 <TabsTrigger value="cadastrar">Cadastrar</TabsTrigger>
@@ -108,12 +108,12 @@ export default function AuthPage() {
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div>
                     <Label htmlFor="login-email">E-mail</Label>
-                    <Input id="login-email" type="email" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} required />
+                    <Input id="login-email" type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} required />
                   </div>
                   <div>
                     <Label htmlFor="login-pw">Senha</Label>
                     <div className="relative">
-                      <Input id="login-pw" type={showPw ? 'text' : 'password'} value={loginPw} onChange={e => setLoginPw(e.target.value)} required />
+                      <Input id="login-pw" type={showPw ? 'text' : 'password'} value={loginPw} onChange={(e) => setLoginPw(e.target.value)} required />
                       <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                         {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -133,30 +133,30 @@ export default function AuthPage() {
                 <form onSubmit={handleSignup} className="space-y-4">
                   <div>
                     <Label>Nome completo</Label>
-                    <Input value={nome} onChange={e => setNome(e.target.value)} required />
+                    <Input value={nome} onChange={(e) => setNome(e.target.value)} required />
                   </div>
                   <div>
                     <Label>E-mail</Label>
-                    <Input type="email" value={signupEmail} onChange={e => setSignupEmail(e.target.value)} required />
+                    <Input type="email" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} required />
                   </div>
                   <div>
                     <Label>Setor</Label>
-                    <Select value={setor} onValueChange={v => setSetor(v as AppSetor)}>
+                    <Select value={setor} onValueChange={(v) => setSetor(v as AppSetor)}>
                       <SelectTrigger><SelectValue placeholder="Selecione seu setor" /></SelectTrigger>
                       <SelectContent>
-                        {SETOR_OPTIONS.map(s => (
-                          <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                        ))}
+                        {SETOR_OPTIONS.map((s) =>
+                      <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                      )}
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
                     <Label>Senha</Label>
-                    <Input type="password" value={signupPw} onChange={e => setSignupPw(e.target.value)} required />
+                    <Input type="password" value={signupPw} onChange={(e) => setSignupPw(e.target.value)} required />
                   </div>
                   <div>
                     <Label>Confirmar senha</Label>
-                    <Input type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)} required />
+                    <Input type="password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} required />
                   </div>
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
@@ -165,12 +165,12 @@ export default function AuthPage() {
                 </form>
               </TabsContent>
             </Tabs>
-          )}
+          }
         </div>
         <p className="text-center text-xs text-muted-foreground mt-4">
           GoMec Auto Peças — Sistema GoEasy ERP
         </p>
       </div>
-    </div>
-  );
+    </div>);
+
 }
