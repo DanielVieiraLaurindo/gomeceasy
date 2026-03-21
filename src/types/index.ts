@@ -1,7 +1,18 @@
-export type AppRole = 'admin' | 'pos_vendas' | 'pre_vendas' | 'criacao' | 'backoffice' | 'compras' | 'ti' | 'garantia' | 'financeiro_fiscal';
+// Roles hierarchy: master > admin > usuario
+export type UserRole = 'master' | 'admin' | 'usuario';
 
-export const ROLE_LABELS: Record<AppRole, string> = {
+export type AppSetor =
+  | 'pos_vendas' | 'pre_vendas' | 'criacao' | 'backoffice'
+  | 'compras' | 'ti' | 'garantia' | 'financeiro_fiscal'
+  | 'expedicao' | 'logistica';
+
+export const ROLE_LABELS: Record<UserRole, string> = {
+  master: 'Master',
   admin: 'Administrador',
+  usuario: 'Usuário',
+};
+
+export const SETOR_LABELS: Record<AppSetor, string> = {
   pos_vendas: 'Pós-Vendas',
   pre_vendas: 'Pré-Vendas',
   criacao: 'Criação',
@@ -10,9 +21,11 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   ti: 'Tecnologia da Informação',
   garantia: 'Garantia',
   financeiro_fiscal: 'Financeiro Fiscal',
+  expedicao: 'Expedição',
+  logistica: 'Logística',
 };
 
-export const SETOR_OPTIONS: { value: AppRole; label: string }[] = [
+export const SETOR_OPTIONS: { value: AppSetor; label: string }[] = [
   { value: 'pos_vendas', label: 'Pós-Vendas' },
   { value: 'pre_vendas', label: 'Pré-Vendas' },
   { value: 'criacao', label: 'Criação' },
@@ -21,10 +34,11 @@ export const SETOR_OPTIONS: { value: AppRole; label: string }[] = [
   { value: 'ti', label: 'Tecnologia da Informação' },
   { value: 'garantia', label: 'Garantia' },
   { value: 'financeiro_fiscal', label: 'Financeiro Fiscal' },
+  { value: 'expedicao', label: 'Expedição' },
+  { value: 'logistica', label: 'Logística' },
 ];
 
-export const ROLE_HOME_ROUTES: Record<AppRole, string> = {
-  admin: '/backoffice',
+export const SETOR_HOME_ROUTES: Record<AppSetor, string> = {
   pos_vendas: '/pos-vendas',
   pre_vendas: '/pre-vendas',
   criacao: '/criacao',
@@ -33,17 +47,27 @@ export const ROLE_HOME_ROUTES: Record<AppRole, string> = {
   ti: '/ti',
   garantia: '/garantia',
   financeiro_fiscal: '/financeiro',
+  expedicao: '/expedicao',
+  logistica: '/logistica',
 };
 
 export interface Profile {
   id: string;
   nome: string;
   email: string;
-  setor: AppRole;
+  setor: AppSetor;
+  role: UserRole;
   avatar_url: string | null;
   ativo: boolean;
   created_at: string;
 }
+
+// Helper: can delete?
+export const canDelete = (role: UserRole) => role === 'master' || role === 'admin';
+export const canManageUsers = (role: UserRole) => role === 'master' || role === 'admin';
+export const canBulkDelete = (role: UserRole) => role === 'master' || role === 'admin';
+export const canSeeAll = (role: UserRole) => role === 'master' || role === 'admin';
+export const isMaster = (role: UserRole) => role === 'master';
 
 // Status types
 export type RupturaStatus = 'ruptura_identificada' | 'aguardando_compras' | 'aguardando_retorno_cliente' | 'solicitado_compra' | 'solicitado_transferencia' | 'revertida' | 'cancelada';
@@ -52,7 +76,23 @@ export type EnvioStatus = 'pendente' | 'separacao' | 'embalado' | 'despachado' |
 
 export type CaseType = 'GARANTIA' | 'DEVOLUCAO' | 'DESCARTE';
 
-export type CaseStatus = 'aguardando_analise' | 'em_analise' | 'antecipado' | 'aguardando_backoffice' | 'em_mediacao' | 'finalizado' | 'reembolsado' | 'arquivado';
+export type CaseStatus =
+  | 'rascunho'
+  | 'aguardando_analise'
+  | 'em_analise'
+  | 'aguardando_postagem'
+  | 'antecipado'
+  | 'aguardando_backoffice'
+  | 'em_mediacao'
+  | 'correcao_solicitada_pos_vendas'
+  | 'aguardando_validacao_gestor'
+  | 'aguardando_validacao_fiscal'
+  | 'aguardando_validacao_financeira'
+  | 'aguardando_pagamento'
+  | 'pago'
+  | 'finalizado'
+  | 'reembolsado'
+  | 'arquivado';
 
 export type DevolucaoStatus = 'aberto' | 'em_analise' | 'aprovado' | 'recusado' | 'em_transito' | 'recebido' | 'reembolsado' | 'concluido';
 
@@ -74,11 +114,19 @@ export const STATUS_COLORS: Record<string, string> = {
   entregue: 'bg-success text-success-foreground',
   problema: 'bg-destructive text-destructive-foreground',
   // Case
+  rascunho: 'bg-muted text-muted-foreground',
   aguardando_analise: 'bg-warning text-warning-foreground',
   em_analise: 'bg-info text-info-foreground',
+  aguardando_postagem: 'bg-warning text-warning-foreground',
   antecipado: 'bg-purple text-purple-foreground',
   aguardando_backoffice: 'bg-warning text-warning-foreground',
   em_mediacao: 'bg-primary text-primary-foreground',
+  correcao_solicitada_pos_vendas: 'bg-destructive text-destructive-foreground',
+  aguardando_validacao_gestor: 'bg-warning text-warning-foreground',
+  aguardando_validacao_fiscal: 'bg-info text-info-foreground',
+  aguardando_validacao_financeira: 'bg-purple text-purple-foreground',
+  aguardando_pagamento: 'bg-warning text-warning-foreground',
+  pago: 'bg-success text-success-foreground',
   finalizado: 'bg-success text-success-foreground',
   reembolsado: 'bg-success text-success-foreground',
   arquivado: 'bg-muted text-muted-foreground',
@@ -88,6 +136,27 @@ export const STATUS_COLORS: Record<string, string> = {
   recusado: 'bg-destructive text-destructive-foreground',
   recebido: 'bg-info text-info-foreground',
   concluido: 'bg-success text-success-foreground',
+  // Expedição
+  criada: 'bg-muted text-muted-foreground',
+  em_separacao: 'bg-warning text-warning-foreground',
+  conferindo: 'bg-info text-info-foreground',
+  despachada: 'bg-success text-success-foreground',
+  // Ocorrências
+  aberta: 'bg-warning text-warning-foreground',
+  em_tratativa: 'bg-info text-info-foreground',
+  resolvida: 'bg-success text-success-foreground',
+  // Leads
+  prospeccao: 'bg-muted text-muted-foreground',
+  contato: 'bg-info text-info-foreground',
+  proposta: 'bg-warning text-warning-foreground',
+  negociacao: 'bg-purple text-purple-foreground',
+  fechado_ganho: 'bg-success text-success-foreground',
+  fechado_perdido: 'bg-destructive text-destructive-foreground',
+  // Criação
+  solicitado: 'bg-warning text-warning-foreground',
+  em_producao: 'bg-info text-info-foreground',
+  em_revisao: 'bg-purple text-purple-foreground',
+  publicado: 'bg-success text-success-foreground',
 };
 
 export const STATUS_LABELS: Record<string, string> = {
@@ -105,22 +174,48 @@ export const STATUS_LABELS: Record<string, string> = {
   em_transito: 'Em Trânsito',
   entregue: 'Entregue',
   problema: 'Problema',
+  rascunho: 'Rascunho',
   aguardando_analise: 'Aguardando Análise',
   em_analise: 'Em Análise',
+  aguardando_postagem: 'Aguardando Postagem',
   antecipado: 'Antecipado',
   aguardando_backoffice: 'Aguardando Backoffice',
   em_mediacao: 'Em Mediação',
+  correcao_solicitada_pos_vendas: 'Correção Solicitada – Pós-Vendas',
+  aguardando_validacao_gestor: 'Aguardando Validação do Gestor',
+  aguardando_validacao_fiscal: 'Aguardando Validação Fiscal',
+  aguardando_validacao_financeira: 'Aguardando Validação Financeira',
+  aguardando_pagamento: 'Aguardando Pagamento',
+  pago: '✅ Pago',
   finalizado: 'Finalizado',
   reembolsado: 'Reembolsado',
   arquivado: 'Arquivado',
   aberto: 'Aberto',
   aprovado: 'Aprovado',
   recusado: 'Recusado',
-  em_transito_dev: 'Em Trânsito',
   recebido: 'Recebido',
   concluido: 'Concluído',
-  aguardando_pagamento: 'Aguardando Pagamento',
-  pago: 'Pago',
-  reprovado: 'Reprovado',
   aguardando_fiscal: 'Aguardando Fiscal',
+  reprovado: 'Reprovado',
+  // Expedição
+  criada: 'Criada',
+  em_separacao: 'Em Separação',
+  conferindo: 'Conferindo',
+  despachada: 'Despachada',
+  // Ocorrências
+  aberta: 'Aberta',
+  em_tratativa: 'Em Tratativa',
+  resolvida: 'Resolvida',
+  // Leads
+  prospeccao: 'Prospecção',
+  contato: 'Contato',
+  proposta: 'Proposta',
+  negociacao: 'Negociação',
+  fechado_ganho: 'Fechado-Ganho',
+  fechado_perdido: 'Fechado-Perdido',
+  // Criação
+  solicitado: 'Solicitado',
+  em_producao: 'Em Produção',
+  em_revisao: 'Em Revisão',
+  publicado: 'Publicado',
 };

@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ROLE_LABELS } from '@/types';
+import { SETOR_LABELS, ROLE_LABELS } from '@/types';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,9 +15,12 @@ import {
 import { useNavigate } from 'react-router-dom';
 
 export function AppHeader() {
-  const { profile, role, signOut } = useAuth();
+  const { profile, role, setor, signOut } = useAuth();
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
+
+  const displayRole = role ? ROLE_LABELS[role] : '';
+  const displaySetor = setor ? SETOR_LABELS[setor] : '';
 
   return (
     <header className="sticky top-0 z-30 flex items-center h-14 px-6 bg-background border-b gap-4">
@@ -60,7 +63,7 @@ export function AppHeader() {
               </div>
               <div className="text-left hidden md:block">
                 <div className="text-sm font-medium leading-none">{profile?.nome || 'Usuário'}</div>
-                <div className="text-xs text-muted-foreground">{role ? ROLE_LABELS[role] : ''}</div>
+                <div className="text-xs text-muted-foreground">{displaySetor}{displayRole ? ` · ${displayRole}` : ''}</div>
               </div>
             </Button>
           </DropdownMenuTrigger>
