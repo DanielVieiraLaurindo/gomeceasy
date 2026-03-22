@@ -90,7 +90,7 @@ const App = () => (
 
                 {/* Pós-Vendas */}
                 <Route path="/pos-vendas" element={<PosVendasDashboard />} />
-                <Route path="/pos-vendas/casos" element={<PlaceholderPage title="Casos" description="Gestão de casos de pós-vendas" />} />
+                <Route path="/pos-vendas/casos" element={<CasosPage />} />
                 <Route path="/pos-vendas/devolucoes" element={<PlaceholderPage title="Devoluções" description="Gestão de devoluções" />} />
                 <Route path="/pos-vendas/garantia" element={<PlaceholderPage title="Garantias" description="Casos de garantia" />} />
                 <Route path="/pos-vendas/reembolsos" element={<PlaceholderPage title="Reembolsos" description="Pipeline de reembolsos" />} />
