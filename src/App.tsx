@@ -20,6 +20,7 @@ import RupturasPage from "@/pages/backoffice/RupturasPage";
 
 // Module Dashboards
 import PosVendasDashboard from "@/pages/pos-vendas/PosVendasDashboard";
+import CasosPage from "@/pages/pos-vendas/CasosPage";
 import GarantiaDashboard from "@/pages/garantia/GarantiaDashboard";
 import FinanceiroDashboard from "@/pages/financeiro/FinanceiroDashboard";
 import ComprasDashboard from "@/pages/compras/ComprasDashboard";
