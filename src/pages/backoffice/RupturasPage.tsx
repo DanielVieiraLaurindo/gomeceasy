@@ -414,7 +414,7 @@ export default function RupturasPage() {
           <div className="space-y-4">
             <div>
               <Label>Status</Label>
-              <Select value={editForm.status} onValueChange={v => setEditForm(f => ({ ...f, status: v }))}>
+              <Select value={editForm.status} onValueChange={v => setEditForm(f => ({ ...f, status: v as RupturaStatus }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {[...KANBAN_COLUMNS, 'revertida' as const, 'cancelada' as const].map(s => (
