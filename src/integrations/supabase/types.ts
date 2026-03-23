@@ -465,6 +465,183 @@ export type Database = {
         }
         Relationships: []
       }
+      divergencia_anexos: {
+        Row: {
+          created_at: string
+          divergencia_id: string
+          id: string
+          nome_arquivo: string
+          tipo: string | null
+          uploaded_by: string | null
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          divergencia_id: string
+          id?: string
+          nome_arquivo: string
+          tipo?: string | null
+          uploaded_by?: string | null
+          url: string
+        }
+        Update: {
+          created_at?: string
+          divergencia_id?: string
+          id?: string
+          nome_arquivo?: string
+          tipo?: string | null
+          uploaded_by?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "divergencia_anexos_divergencia_id_fkey"
+            columns: ["divergencia_id"]
+            isOneToOne: false
+            referencedRelation: "divergencias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      divergencia_historico: {
+        Row: {
+          created_at: string
+          divergencia_id: string
+          id: string
+          observacao: string | null
+          status: string
+          usuario_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          divergencia_id: string
+          id?: string
+          observacao?: string | null
+          status: string
+          usuario_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          divergencia_id?: string
+          id?: string
+          observacao?: string | null
+          status?: string
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "divergencia_historico_divergencia_id_fkey"
+            columns: ["divergencia_id"]
+            isOneToOne: false
+            referencedRelation: "divergencias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      divergencia_itens: {
+        Row: {
+          codigo_interno: string
+          created_at: string
+          descricao_produto: string
+          divergencia_id: string
+          id: string
+          quantidade: number
+          referencia: string | null
+          unidade_medida: string
+        }
+        Insert: {
+          codigo_interno: string
+          created_at?: string
+          descricao_produto?: string
+          divergencia_id: string
+          id?: string
+          quantidade?: number
+          referencia?: string | null
+          unidade_medida?: string
+        }
+        Update: {
+          codigo_interno?: string
+          created_at?: string
+          descricao_produto?: string
+          divergencia_id?: string
+          id?: string
+          quantidade?: number
+          referencia?: string | null
+          unidade_medida?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "divergencia_itens_divergencia_id_fkey"
+            columns: ["divergencia_id"]
+            isOneToOne: false
+            referencedRelation: "divergencias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      divergencias: {
+        Row: {
+          acao: string
+          anexo_nf_url: string | null
+          anotacoes: string | null
+          atualizado_por: string | null
+          codigo_fornecedor: string
+          created_at: string
+          criado_por: string | null
+          data: string
+          id: string
+          loja: string
+          nome_fornecedor: string
+          nota_fiscal: string | null
+          numero_nf_devolucao: string | null
+          ocorrencia: string
+          requisicao_dc: string | null
+          requisicao_rc: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          acao?: string
+          anexo_nf_url?: string | null
+          anotacoes?: string | null
+          atualizado_por?: string | null
+          codigo_fornecedor: string
+          created_at?: string
+          criado_por?: string | null
+          data?: string
+          id?: string
+          loja: string
+          nome_fornecedor?: string
+          nota_fiscal?: string | null
+          numero_nf_devolucao?: string | null
+          ocorrencia?: string
+          requisicao_dc?: string | null
+          requisicao_rc?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          acao?: string
+          anexo_nf_url?: string | null
+          anotacoes?: string | null
+          atualizado_por?: string | null
+          codigo_fornecedor?: string
+          created_at?: string
+          criado_por?: string | null
+          data?: string
+          id?: string
+          loja?: string
+          nome_fornecedor?: string
+          nota_fiscal?: string | null
+          numero_nf_devolucao?: string | null
+          ocorrencia?: string
+          requisicao_dc?: string | null
+          requisicao_rc?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       envios: {
         Row: {
           codigo_rastreio: string | null

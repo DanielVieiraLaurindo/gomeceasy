@@ -22,6 +22,10 @@ const CasosPage = React.lazy(() => import("@/pages/pos-vendas/CasosPage"));
 const GarantiaDashboard = React.lazy(() => import("@/pages/garantia/GarantiaDashboard"));
 const FinanceiroDashboard = React.lazy(() => import("@/pages/financeiro/FinanceiroDashboard"));
 const ComprasDashboard = React.lazy(() => import("@/pages/compras/ComprasDashboard"));
+const DivergenciasDashboard = React.lazy(() => import("@/pages/compras/DivergenciasDashboard"));
+const DivergenciasListPage = React.lazy(() => import("@/pages/compras/DivergenciasListPage"));
+const DetalheDivergenciaPage = React.lazy(() => import("@/pages/compras/DetalheDivergenciaPage"));
+const HistoricoDivergenciasPage = React.lazy(() => import("@/pages/compras/HistoricoDivergenciasPage"));
 const PreVendasDashboard = React.lazy(() => import("@/pages/pre-vendas/PreVendasDashboard"));
 const CriacaoDashboard = React.lazy(() => import("@/pages/criacao/CriacaoDashboard"));
 const TIDashboard = React.lazy(() => import("@/pages/ti/TIDashboard"));
@@ -125,6 +129,10 @@ const App = () => (
 
                   {/* Compras */}
                   <Route path="/compras" element={<ComprasDashboard />} />
+                  <Route path="/compras/divergencias" element={<DivergenciasListPage />} />
+                  <Route path="/compras/divergencias/dashboard" element={<DivergenciasDashboard />} />
+                  <Route path="/compras/divergencias/historico" element={<HistoricoDivergenciasPage />} />
+                  <Route path="/compras/divergencias/:id" element={<DetalheDivergenciaPage />} />
                   <Route path="/compras/solicitacoes" element={<PlaceholderPage title="Solicitações de Reposição" description="Solicitações recebidas do BackOffice" />} />
                   <Route path="/compras/pedidos" element={<PlaceholderPage title="Pedidos de Compra" description="Pedidos de compra" />} />
                   <Route path="/compras/marcas" element={<PlaceholderPage title="Marcas" description="Marcas e fornecedores" />} />
