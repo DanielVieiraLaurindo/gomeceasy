@@ -36,6 +36,8 @@ const OperacaoInternaPage = React.lazy(() => import("@/pages/expedicao/OperacaoI
 const ResumoOperacaoPage = React.lazy(() => import("@/pages/expedicao/ResumoOperacaoPage"));
 const SomatorioPage = React.lazy(() => import("@/pages/expedicao/SomatorioPage"));
 const PlaceholderPage = React.lazy(() => import("@/components/PlaceholderPage"));
+const PrecificacaoPage = React.lazy(() => import("@/pages/compras/PrecificacaoPage"));
+const UserManagementPage = React.lazy(() => import("@/pages/ti/UserManagementPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
