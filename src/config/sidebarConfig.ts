@@ -58,12 +58,12 @@ export const SIDEBAR_ITEMS: Record<AppSetor, SidebarItem[]> = {
   ],
   expedicao_loja: [
     { path: '/expedicao-loja', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/expedicao-loja/clientes-prazo', label: 'Clientes Prazo', icon: Clock },
     { path: '/expedicao-loja/rastreamento', label: 'Rastreamento', icon: MapPin },
     { path: '/expedicao-loja/transportadoras', label: 'Transportadoras', icon: Truck },
   ],
   expedicao_ecommerce: [
     { path: '/expedicao-ecommerce', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/expedicao-ecommerce/clientes-prazo', label: 'Clientes Prazo', icon: Clock },
     { path: '/expedicao-ecommerce/operacao-interna', label: 'Operação Interna', icon: Clipboard },
     { path: '/expedicao-ecommerce/resumo-operacao', label: 'Resumo da Operação', icon: Calculator },
     { path: '/expedicao-ecommerce/somatorio', label: 'Somatório', icon: BarChart2 },

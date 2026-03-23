@@ -95,12 +95,12 @@ const App = () => (
 
                   {/* Expedição Loja */}
                   <Route path="/expedicao-loja" element={<ExpedicaoLojaDashboard />} />
+                  <Route path="/expedicao-loja/clientes-prazo" element={<ClientesPrazoPage />} />
                   <Route path="/expedicao-loja/rastreamento" element={<PlaceholderPage title="Rastreamento" description="Rastreamento de entregas da loja" />} />
                   <Route path="/expedicao-loja/transportadoras" element={<PlaceholderPage title="Transportadoras" description="Cadastro de transportadoras" />} />
 
                   {/* Expedição Ecommerce */}
                   <Route path="/expedicao-ecommerce" element={<ExpedicaoEcommerceDashboard />} />
-                  <Route path="/expedicao-ecommerce/clientes-prazo" element={<ClientesPrazoPage />} />
                   <Route path="/expedicao-ecommerce/operacao-interna" element={<OperacaoInternaPage />} />
                   <Route path="/expedicao-ecommerce/resumo-operacao" element={<ResumoOperacaoPage />} />
                   <Route path="/expedicao-ecommerce/somatorio" element={<SomatorioPage />} />
