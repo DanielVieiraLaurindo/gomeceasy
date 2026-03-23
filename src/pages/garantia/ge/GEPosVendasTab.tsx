@@ -182,8 +182,12 @@ export default function GEPosVendasTab() {
           ) : (
             <div className="grid gap-4 mt-4">
               {activeCases.map(c => (
-                <Card key={c.id} className="hover:shadow-md transition-shadow border-l-4 border-l-primary/30">
+                <Card key={c.id} className={cn("hover:shadow-md transition-shadow border-l-4 border-l-primary/30", selectedIds.has(c.id) && "ring-2 ring-primary/30")}>
                   <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      <Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => {
+                        setSelectedIds(prev => { const n = new Set(prev); n.has(c.id) ? n.delete(c.id) : n.add(c.id); return n; });
+                      }} className="mt-1" />
                     <div className="flex items-start justify-between">
                       <div className="flex-1 space-y-3">
                         <div className="flex items-center gap-2 flex-wrap">
