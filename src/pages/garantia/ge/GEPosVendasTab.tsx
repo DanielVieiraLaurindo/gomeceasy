@@ -188,7 +188,6 @@ export default function GEPosVendasTab() {
                       <Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => {
                         setSelectedIds(prev => { const n = new Set(prev); n.has(c.id) ? n.delete(c.id) : n.add(c.id); return n; });
                       }} className="mt-1" />
-                    <div className="flex items-start justify-between">
                       <div className="flex-1 space-y-3">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-bold text-lg">#{c.case_number}</span>
