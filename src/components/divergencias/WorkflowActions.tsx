@@ -59,8 +59,9 @@ export default function WorkflowActions({ divergencia, itens }: WorkflowActionsP
   const [refreshing, setRefreshing] = useState(false);
 
   const d = divergencia;
+  const workflowRoles = getWorkflowRoles(role, setor);
   const actions = getAvailableActions(d.ocorrencia as TipoOcorrencia, d.status as StatusDivergencia, d.acao as AcaoDivergencia);
-  const userActions = actions.filter((a) => canExecuteAction(a, role || ""));
+  const userActions = actions.filter((a) => canExecuteAction(a, workflowRoles));
   const isMaster = role === "master";
 
   const executeAction = async (action: WorkflowAction) => {

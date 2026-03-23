@@ -194,9 +194,19 @@ export function getAvailableActions(
 
 export function canExecuteAction(
   action: WorkflowAction,
-  userRole: string
+  userRoles: string[]
 ): boolean {
-  return action.allowedRoles.includes(userRole) || action.allowedRoles.includes("master");
+  return action.allowedRoles.some((r) => userRoles.includes(r));
+}
+
+/** Map profile role + setor to workflow roles */
+export function getWorkflowRoles(role: string | null, setor: string | null): string[] {
+  const roles: string[] = [];
+  if (role === "master") roles.push("master");
+  if (setor === "compras" || role === "master") roles.push("compras");
+  if (setor === "financeiro_fiscal" || role === "master") roles.push("fiscal");
+  if (setor === "backoffice" || setor === "expedicao" || role === "master") roles.push("recebimento");
+  return roles;
 }
 
 export function getFollowUpDays(
