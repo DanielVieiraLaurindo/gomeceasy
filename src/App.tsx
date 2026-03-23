@@ -39,6 +39,9 @@ const SomatorioPage = React.lazy(() => import("@/pages/expedicao/SomatorioPage")
 const PlaceholderPage = React.lazy(() => import("@/components/PlaceholderPage"));
 const PrecificacaoPage = React.lazy(() => import("@/pages/compras/PrecificacaoPage"));
 const UserManagementPage = React.lazy(() => import("@/pages/ti/UserManagementPage"));
+const UsoConsumoDashboard = React.lazy(() => import("@/pages/compras/UsoConsumoDashboard"));
+const UsoConsumoNovaPage = React.lazy(() => import("@/pages/compras/UsoConsumoNovaPage"));
+const UsoConsumoDetalhePage = React.lazy(() => import("@/pages/compras/UsoConsumoDetalhePage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -140,6 +143,9 @@ const App = () => (
 
                   {/* Compras */}
                   <Route path="/compras" element={<ComprasDashboard />} />
+                  <Route path="/compras/uso-consumo" element={<UsoConsumoDashboard />} />
+                  <Route path="/compras/uso-consumo/nova" element={<UsoConsumoNovaPage />} />
+                  <Route path="/compras/uso-consumo/:id" element={<UsoConsumoDetalhePage />} />
                   <Route path="/compras/divergencias" element={<DivergenciasListPage />} />
                   <Route path="/compras/divergencias/dashboard" element={<DivergenciasDashboard />} />
                   <Route path="/compras/divergencias/historico" element={<HistoricoDivergenciasPage />} />

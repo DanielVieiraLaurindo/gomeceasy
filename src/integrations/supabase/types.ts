@@ -868,6 +868,27 @@ export type Database = {
         }
         Relationships: []
       }
+      manager_mappings: {
+        Row: {
+          created_at: string
+          gestor_id: string
+          id: string
+          solicitante_id: string
+        }
+        Insert: {
+          created_at?: string
+          gestor_id: string
+          id?: string
+          solicitante_id: string
+        }
+        Update: {
+          created_at?: string
+          gestor_id?: string
+          id?: string
+          solicitante_id?: string
+        }
+        Relationships: []
+      }
       motivos_cancelamento: {
         Row: {
           contagem: number | null
@@ -1042,6 +1063,250 @@ export type Database = {
         }
         Relationships: []
       }
+      purchase_request_items: {
+        Row: {
+          created_at: string
+          destinado_a: string | null
+          gestor_approved: boolean
+          id: string
+          item_attachment_name: string | null
+          item_attachment_path: string | null
+          item_name: string
+          purchased: boolean
+          quantity: number
+          quotation_batch: number | null
+          reference_models: string | null
+          request_id: string
+        }
+        Insert: {
+          created_at?: string
+          destinado_a?: string | null
+          gestor_approved?: boolean
+          id?: string
+          item_attachment_name?: string | null
+          item_attachment_path?: string | null
+          item_name: string
+          purchased?: boolean
+          quantity?: number
+          quotation_batch?: number | null
+          reference_models?: string | null
+          request_id: string
+        }
+        Update: {
+          created_at?: string
+          destinado_a?: string | null
+          gestor_approved?: boolean
+          id?: string
+          item_attachment_name?: string | null
+          item_attachment_path?: string | null
+          item_name?: string
+          purchased?: boolean
+          quantity?: number
+          quotation_batch?: number | null
+          reference_models?: string | null
+          request_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_request_items_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_requests: {
+        Row: {
+          application: string | null
+          approver_decision: string | null
+          approver_observations: string | null
+          assigned_approver_id: string | null
+          assigned_buyer_id: string | null
+          assigned_controller_id: string | null
+          controller_decision: string | null
+          controller_observations: string | null
+          created_at: string
+          current_status: Database["public"]["Enums"]["request_status"]
+          delivery_deadline: string | null
+          department: string | null
+          gestor_decision: string | null
+          gestor_id: string | null
+          id: string
+          invoice_number: string | null
+          item_name: string
+          observations: string | null
+          order_number: string | null
+          quantity: number
+          reference_models: string | null
+          req_number: string
+          requester_id: string
+          requires_controller_approval: boolean
+          selected_quotation_id: string | null
+          store: string | null
+          supplier_delivery_estimate: string | null
+          updated_at: string
+        }
+        Insert: {
+          application?: string | null
+          approver_decision?: string | null
+          approver_observations?: string | null
+          assigned_approver_id?: string | null
+          assigned_buyer_id?: string | null
+          assigned_controller_id?: string | null
+          controller_decision?: string | null
+          controller_observations?: string | null
+          created_at?: string
+          current_status?: Database["public"]["Enums"]["request_status"]
+          delivery_deadline?: string | null
+          department?: string | null
+          gestor_decision?: string | null
+          gestor_id?: string | null
+          id?: string
+          invoice_number?: string | null
+          item_name: string
+          observations?: string | null
+          order_number?: string | null
+          quantity?: number
+          reference_models?: string | null
+          req_number?: string
+          requester_id: string
+          requires_controller_approval?: boolean
+          selected_quotation_id?: string | null
+          store?: string | null
+          supplier_delivery_estimate?: string | null
+          updated_at?: string
+        }
+        Update: {
+          application?: string | null
+          approver_decision?: string | null
+          approver_observations?: string | null
+          assigned_approver_id?: string | null
+          assigned_buyer_id?: string | null
+          assigned_controller_id?: string | null
+          controller_decision?: string | null
+          controller_observations?: string | null
+          created_at?: string
+          current_status?: Database["public"]["Enums"]["request_status"]
+          delivery_deadline?: string | null
+          department?: string | null
+          gestor_decision?: string | null
+          gestor_id?: string | null
+          id?: string
+          invoice_number?: string | null
+          item_name?: string
+          observations?: string | null
+          order_number?: string | null
+          quantity?: number
+          reference_models?: string | null
+          req_number?: string
+          requester_id?: string
+          requires_controller_approval?: boolean
+          selected_quotation_id?: string | null
+          store?: string | null
+          supplier_delivery_estimate?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      quotation_items: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string | null
+          item_name: string
+          observations: string | null
+          quantity: number | null
+          quotation_id: string
+          total_price: number | null
+          unit_price: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id?: string | null
+          item_name: string
+          observations?: string | null
+          quantity?: number | null
+          quotation_id: string
+          total_price?: number | null
+          unit_price?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string | null
+          item_name?: string
+          observations?: string | null
+          quantity?: number | null
+          quotation_id?: string
+          total_price?: number | null
+          unit_price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotation_items_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_request_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotation_items_quotation_id_fkey"
+            columns: ["quotation_id"]
+            isOneToOne: false
+            referencedRelation: "quotations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quotations: {
+        Row: {
+          created_at: string
+          created_by: string
+          file_name: string | null
+          file_path: string | null
+          id: string
+          quotation_batch: number
+          request_id: string
+          selected: boolean
+          supplier_name: string
+          total_value: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          file_name?: string | null
+          file_path?: string | null
+          id?: string
+          quotation_batch?: number
+          request_id: string
+          selected?: boolean
+          supplier_name: string
+          total_value?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          file_name?: string | null
+          file_path?: string | null
+          id?: string
+          quotation_batch?: number
+          request_id?: string
+          selected?: boolean
+          supplier_name?: string
+          total_value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotations_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reembolso_aprovacoes: {
         Row: {
           acao: string
@@ -1189,6 +1454,85 @@ export type Database = {
           sku?: string
         }
         Relationships: []
+      }
+      request_attachments: {
+        Row: {
+          content_type: string | null
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number
+          id: string
+          request_id: string
+          uploaded_by: string
+        }
+        Insert: {
+          content_type?: string | null
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size?: number
+          id?: string
+          request_id: string
+          uploaded_by: string
+        }
+        Update: {
+          content_type?: string | null
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          id?: string
+          request_id?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "request_attachments_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      request_status_history: {
+        Row: {
+          changed_at: string
+          changed_by: string
+          id: string
+          new_status: Database["public"]["Enums"]["request_status"]
+          observation: string | null
+          old_status: Database["public"]["Enums"]["request_status"] | null
+          request_id: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by: string
+          id?: string
+          new_status: Database["public"]["Enums"]["request_status"]
+          observation?: string | null
+          old_status?: Database["public"]["Enums"]["request_status"] | null
+          request_id: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string
+          id?: string
+          new_status?: Database["public"]["Enums"]["request_status"]
+          observation?: string | null
+          old_status?: Database["public"]["Enums"]["request_status"] | null
+          request_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "request_status_history_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_requests"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ressarcimentos_mo: {
         Row: {
@@ -1687,7 +2031,17 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      request_status:
+        | "solicitado"
+        | "autorizado"
+        | "em_cotacao"
+        | "aguardando_aprovacao"
+        | "aprovado"
+        | "reprovado"
+        | "pedido_efetuado"
+        | "a_caminho"
+        | "recebido"
+        | "concluido"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1814,6 +2168,19 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      request_status: [
+        "solicitado",
+        "autorizado",
+        "em_cotacao",
+        "aguardando_aprovacao",
+        "aprovado",
+        "reprovado",
+        "pedido_efetuado",
+        "a_caminho",
+        "recebido",
+        "concluido",
+      ],
+    },
   },
 } as const
