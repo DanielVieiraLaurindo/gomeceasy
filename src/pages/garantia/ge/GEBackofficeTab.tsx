@@ -255,6 +255,10 @@ export default function GEBackofficeTab() {
           {bulkAction && bulkValue && (
             <Button size="sm" onClick={handleBulkApply} disabled={updateCase.isPending}>Aplicar</Button>
           )}
+          <Button variant="destructive" size="sm" onClick={async () => {
+            for (const id of selectedIds) await deleteCase.mutateAsync(id);
+            setSelectedIds(new Set()); toast.success(`${selectedIds.size} casos excluídos`);
+          }}><Trash2 className="w-4 h-4 mr-1" />Excluir</Button>
           <Button variant="ghost" size="sm" onClick={() => { setSelectedIds(new Set()); setBulkAction(null); }}><X className="w-4 h-4" /></Button>
         </div>
       )}
