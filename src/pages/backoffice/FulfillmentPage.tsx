@@ -214,14 +214,26 @@ export default function FulfillmentPage() {
         <MetricCard title="Problemas" value={metrics.problemas} icon={AlertTriangle} variant="danger" delay={0.24} />
       </div>
 
-      <Tabs defaultValue="envios">
-        <TabsList>
+      <Tabs defaultValue="dashboard">
+        <TabsList className="flex-wrap">
+          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="estoque">Central de Estoque</TabsTrigger>
+          <TabsTrigger value="compras">Pedidos de Compras</TabsTrigger>
           <TabsTrigger value="envios">Envios</TabsTrigger>
-          <TabsTrigger value="expedicao">Expedição</TabsTrigger>
-          <TabsTrigger value="volumes">Volumes</TabsTrigger>
-          <TabsTrigger value="marcas">Marcas</TabsTrigger>
+          <TabsTrigger value="fiscal">Dados Fiscais</TabsTrigger>
           <TabsTrigger value="cds">Centros Distrib.</TabsTrigger>
+          <TabsTrigger value="produtos">Cadastro Produtos</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="dashboard" className="mt-4">
+          <FulfillmentDashboardTab />
+        </TabsContent>
+        <TabsContent value="estoque" className="mt-4">
+          <CentralEstoqueTab />
+        </TabsContent>
+        <TabsContent value="compras" className="mt-4">
+          <PedidosComprasTab />
+        </TabsContent>
 
         {/* ENVIOS TAB — expandable rows */}
         <TabsContent value="envios" className="space-y-4 mt-4">
