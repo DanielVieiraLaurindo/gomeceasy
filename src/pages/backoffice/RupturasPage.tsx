@@ -1,11 +1,10 @@
-import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { MetricCard } from '@/components/MetricCard';
 import {
   AlertTriangle, Search, Download, Plus, LayoutList, Columns3,
   ChevronDown, ChevronUp, ArrowUpDown, ArrowUp, ArrowDown,
-  Trash2, Edit, Eye, FolderCheck, X, Loader2
+  Trash2, Edit, Eye, FolderCheck, X, Loader2, CalendarDays
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -21,13 +20,27 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useRupturas } from '@/hooks/useRupturas';
+import { supabase } from '@/integrations/supabase/client';
+import { exportToExcel } from '@/lib/export-utils';
 import { toast } from 'sonner';
+import { format, isToday, isYesterday } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 const FLEX_TRANSPORTADORAS = ['UPFLORA COMERCIO DE VARIEDADES LTDA', 'PEX TA ENTREGUE LOGISTICA LTDA'];
 const KANBAN_COLUMNS: RupturaStatus[] = ['ruptura_identificada', 'aguardando_compras', 'aguardando_retorno_cliente', 'solicitado_compra', 'solicitado_transferencia'];
 
 type SortField = 'numero_pedido' | 'canal_venda' | 'produto' | 'valor_total' | 'status' | 'created_at';
 type SortDir = 'asc' | 'desc';
+
+const isFlex = (t: string) => FLEX_TRANSPORTADORAS.some(f => (t || '').toUpperCase().includes(f.toUpperCase()));
+
+function getDateLabel(dateStr: string | null) {
+  if (!dateStr) return 'Sem data';
+  const d = new Date(dateStr);
+  if (isToday(d)) return 'Hoje';
+  if (isYesterday(d)) return 'Ontem';
+  return format(d, "dd/MM/yyyy", { locale: ptBR });
+}
 
 export default function RupturasPage() {
   const { profile } = useAuth();
@@ -36,43 +49,91 @@ export default function RupturasPage() {
   const { data: rupturas = [], isLoading, updateRuptura, deleteRuptura, deleteMultiple } = useRupturas();
 
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [canalFilter, setCanalFilter] = useState<string>('all');
+  const [unidadeFilter, setUnidadeFilter] = useState<string>('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [showConcluidos, setShowConcluidos] = useState(true);
+  const [showConcluidos, setShowConcluidos] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [sortField, setSortField] = useState<SortField>('created_at');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [editDialog, setEditDialog] = useState<any | null>(null);
   const [obsDialog, setObsDialog] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<any>({});
+  const [motivosSugeridos, setMotivosSugeridos] = useState<string[]>([]);
+
+  // Debounce search 600ms
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => {
+    debounceRef.current = setTimeout(() => setDebouncedSearch(search), 600);
+    return () => clearTimeout(debounceRef.current);
+  }, [search]);
+
+  // Load motivos
+  useEffect(() => {
+    supabase.from('motivos_cancelamento').select('motivo').order('contagem', { ascending: false }).limit(10)
+      .then(({ data }) => { if (data) setMotivosSugeridos(data.map((d: any) => d.motivo)); });
+  }, []);
 
   const abertas = useMemo(() => rupturas.filter(r => !['revertida', 'cancelada'].includes(r.status)), [rupturas]);
   const concluidas = useMemo(() => rupturas.filter(r => ['revertida', 'cancelada'].includes(r.status)), [rupturas]);
 
   const filtered = useMemo(() => {
-    let items = abertas.filter(r =>
-      [r.numero_pedido, r.sku, r.produto, r.comprador || '', r.observacoes || ''].some(f => f.toLowerCase().includes(search.toLowerCase()))
-    );
-    if (statusFilter !== 'all') items = items.filter(r => r.status === statusFilter);
-    if (canalFilter !== 'all') items = items.filter(r => r.canal_venda === canalFilter);
+    const fromDate = dateFrom ? new Date(dateFrom + 'T00:00:00') : null;
+    const toDate = dateTo ? new Date(dateTo + 'T23:59:59') : null;
+
+    let items = abertas.filter(r => {
+      const matchSearch = !debouncedSearch || [r.numero_pedido, r.sku, r.produto, r.comprador || '', r.observacoes || '']
+        .some(f => f.toLowerCase().includes(debouncedSearch.toLowerCase()));
+      const matchStatus = statusFilter === 'all' || r.status === statusFilter;
+      const matchCanal = canalFilter === 'all' || r.canal_venda === canalFilter;
+      const matchUnidade = unidadeFilter === 'all' || r.unidade_negocio === unidadeFilter;
+      const matchFrom = !fromDate || new Date(r.created_at || '') >= fromDate;
+      const matchTo = !toDate || new Date(r.created_at || '') <= toDate;
+      return matchSearch && matchStatus && matchCanal && matchUnidade && matchFrom && matchTo;
+    });
     items.sort((a: any, b: any) => {
       const av = a[sortField]; const bv = b[sortField];
       const cmp = typeof av === 'number' ? av - bv : String(av || '').localeCompare(String(bv || ''));
       return sortDir === 'asc' ? cmp : -cmp;
     });
     return items;
-  }, [abertas, search, statusFilter, canalFilter, sortField, sortDir]);
+  }, [abertas, debouncedSearch, statusFilter, canalFilter, unidadeFilter, dateFrom, dateTo, sortField, sortDir]);
+
+  // Group by date
+  const grouped = useMemo(() => {
+    const groups: { label: string; items: typeof filtered }[] = [];
+    let currentLabel = '';
+    filtered.forEach(item => {
+      const label = getDateLabel(item.data_entrada_falta || item.created_at);
+      if (label !== currentLabel) {
+        groups.push({ label, items: [item] });
+        currentLabel = label;
+      } else {
+        groups[groups.length - 1].items.push(item);
+      }
+    });
+    return groups;
+  }, [filtered]);
 
   const metrics = useMemo(() => ({
     abertas: abertas.length,
     hoje: abertas.filter(r => r.created_at?.split('T')[0] === new Date().toISOString().split('T')[0]).length,
     valorRisco: abertas.reduce((s, r) => s + (r.valor_total || 0), 0),
     taxaReversao: rupturas.length > 0 ? (concluidas.filter(r => r.status === 'revertida').length / rupturas.length * 100) : 0,
+    valorRecuperado: concluidas.filter(r => r.status === 'revertida').reduce((s, r) => s + (r.valor_total || 0), 0),
+    emAtraso: abertas.filter(r => {
+      const created = new Date(r.created_at || '');
+      return (Date.now() - created.getTime()) > 24 * 60 * 60 * 1000;
+    }).length,
   }), [abertas, concluidas, rupturas]);
 
   const canais = useMemo(() => [...new Set(rupturas.map(r => r.canal_venda).filter(Boolean))], [rupturas]);
+  const unidades = useMemo(() => [...new Set(rupturas.map(r => r.unidade_negocio).filter(Boolean))], [rupturas]);
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -87,7 +148,7 @@ export default function RupturasPage() {
   const toggleSelectAll = () => selectedIds.size === filtered.length ? setSelectedIds(new Set()) : setSelectedIds(new Set(filtered.map(r => r.id)));
 
   const bulkDelete = () => {
-    deleteMultiple.mutate(Array.from(selectedIds), { onSuccess: () => { setSelectedIds(new Set()); toast.success('Rupturas excluídas'); } });
+    deleteMultiple.mutate(Array.from(selectedIds), { onSuccess: () => { setSelectedIds(new Set()); toast.success(`${selectedIds.size} rupturas excluídas`); } });
   };
   const bulkStatusUpdate = (status: RupturaStatus) => {
     Promise.all(Array.from(selectedIds).map(id => updateRuptura.mutateAsync({ id, status }))).then(() => { setSelectedIds(new Set()); toast.success('Status atualizado'); });
@@ -97,19 +158,46 @@ export default function RupturasPage() {
     updateRuptura.mutate({ id, status }, { onSuccess: () => toast.success('Status atualizado') });
   };
 
-  const openEdit = (r: any) => { setEditDialog(r); setEditForm({ status: r.status, pedido_compra: r.pedido_compra, prazo_entrega: r.prazo_entrega, numero_transferencia: r.numero_transferencia, motivo_cancelamento: r.motivo_cancelamento, observacoes: r.observacoes }); };
-  const saveEdit = () => {
+  const openEdit = (r: any) => { setEditDialog(r); setEditForm({ status: r.status, pedido_compra: r.pedido_compra, prazo_entrega: r.prazo_entrega, numero_transferencia: r.numero_transferencia, motivo_cancelamento: r.motivo_cancelamento, observacoes: r.observacoes, sku: r.sku, canal_venda: r.canal_venda }); };
+
+  const saveCancellationReason = async (motivo: string) => {
+    if (!motivo.trim()) return;
+    const { data } = await supabase.from('motivos_cancelamento').select('id, contagem').eq('motivo', motivo.trim()).maybeSingle();
+    if (data) { await supabase.from('motivos_cancelamento').update({ contagem: (data.contagem || 0) + 1 }).eq('id', data.id); }
+    else { await supabase.from('motivos_cancelamento').insert({ motivo: motivo.trim() }); }
+  };
+
+  const saveEdit = async () => {
     if (!editDialog) return;
+    if (editForm.status === 'cancelada' && !editForm.motivo_cancelamento?.trim()) {
+      toast.error('Informe o motivo do cancelamento');
+      return;
+    }
+    if (editForm.status === 'cancelada') await saveCancellationReason(editForm.motivo_cancelamento);
     updateRuptura.mutate({ id: editDialog.id, ...editForm }, { onSuccess: () => { setEditDialog(null); toast.success('Ruptura atualizada'); } });
   };
 
-  const isFlex = (t: string) => FLEX_TRANSPORTADORAS.includes(t || '');
+  const handleExport = () => {
+    exportToExcel(filtered.map(r => ({
+      Pedido: r.numero_pedido, SKU: r.sku, Produto: r.produto,
+      Canal: r.canal_venda, Status: STATUS_LABELS[r.status] || r.status,
+      Valor: r.valor_total, Transportadora: r.transportadora,
+      Observações: r.observacoes, Data: r.created_at?.split('T')[0],
+    })), 'rupturas');
+    toast.success('Exportação iniciada');
+  };
 
-  const onDragEnd = (result: DropResult) => {
+  const onDragEnd = useCallback((result: DropResult) => {
     if (!result.destination) return;
     const newStatus = result.destination.droppableId as RupturaStatus;
-    updateRuptura.mutate({ id: result.draggableId, status: newStatus });
-  };
+    if (newStatus === result.source.droppableId) return;
+    if (selectedIds.has(result.draggableId) && selectedIds.size > 1) {
+      bulkStatusUpdate(newStatus);
+    } else {
+      updateRuptura.mutate({ id: result.draggableId, status: newStatus });
+      toast.success(`Status alterado para ${STATUS_LABELS[newStatus]}`);
+    }
+  }, [selectedIds]);
 
   if (isLoading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
@@ -117,74 +205,86 @@ export default function RupturasPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-barlow font-bold">Rupturas</h1>
-          <p className="text-muted-foreground text-sm">Gestão de rupturas de estoque</p>
+          <h1 className="text-2xl font-barlow font-bold">Rupturas & Cancelamentos</h1>
+          <p className="text-muted-foreground text-sm">Gerencie faltas de estoque e cancelamentos</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => setViewMode(v => v === 'table' ? 'kanban' : 'table')}>
-            {viewMode === 'table' ? <Columns3 className="w-4 h-4" /> : <LayoutList className="w-4 h-4" />}
+            {viewMode === 'table' ? <><Columns3 className="w-4 h-4 mr-1" />Kanban</> : <><LayoutList className="w-4 h-4 mr-1" />Lista</>}
           </Button>
-          <Button variant="outline" size="sm"><Download className="w-4 h-4 mr-2" />Exportar</Button>
+          <Button variant="outline" size="sm" onClick={handleExport}><Download className="w-4 h-4 mr-2" />Exportar</Button>
           <Button size="sm" onClick={() => navigate('/backoffice/rupturas/nova')}><Plus className="w-4 h-4 mr-2" />Nova Ruptura</Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <MetricCard title="Rupturas Abertas" value={metrics.abertas} icon={AlertTriangle} variant="danger" delay={0} />
-        <MetricCard title="Rupturas Hoje" value={metrics.hoje} icon={AlertTriangle} variant="warning" delay={0.08} />
-        <MetricCard title="Valor em Risco" value={`R$ ${metrics.valorRisco.toFixed(2)}`} icon={AlertTriangle} variant="danger" delay={0.16} />
-        <MetricCard title="Taxa de Reversão" value={`${metrics.taxaReversao.toFixed(0)}%`} icon={AlertTriangle} variant="success" delay={0.24} trend={{ value: metrics.taxaReversao, label: 'total' }} />
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <MetricCard title="Abertas" value={metrics.abertas} icon={AlertTriangle} variant="danger" delay={0} />
+        <MetricCard title="Hoje" value={metrics.hoje} icon={AlertTriangle} variant="warning" delay={0} />
+        <MetricCard title="Valor em Risco" value={`R$ ${(metrics.valorRisco / 1000).toFixed(1)}k`} icon={AlertTriangle} variant="danger" delay={0} />
+        <MetricCard title="Taxa Reversão" value={`${metrics.taxaReversao.toFixed(0)}%`} icon={AlertTriangle} variant="success" delay={0} trend={{ value: metrics.taxaReversao, label: 'total' }} />
+        <MetricCard title="Recuperado" value={`R$ ${(metrics.valorRecuperado / 1000).toFixed(1)}k`} icon={AlertTriangle} variant="success" delay={0} />
+        <MetricCard title="Em Atraso" value={metrics.emAtraso} icon={AlertTriangle} variant="warning" delay={0} />
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative max-w-sm flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Buscar pedido, SKU, produto..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} />
+          <Input placeholder="Buscar pedido, SKU, produto, obs..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <Button variant="outline" size="sm" onClick={() => setShowFilters(f => !f)}>
           Filtros <ChevronDown className={cn('w-4 h-4 ml-1 transition-transform', showFilters && 'rotate-180')} />
         </Button>
       </div>
 
-      <AnimatePresence>
-        {showFilters && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden flex gap-3">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-48"><SelectValue placeholder="Status" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os Status</SelectItem>
-                {KANBAN_COLUMNS.map(s => <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={canalFilter} onValueChange={setCanalFilter}>
-              <SelectTrigger className="w-48"><SelectValue placeholder="Canal" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os Canais</SelectItem>
-                {canais.map(c => <SelectItem key={c} value={c!}>{c}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {showFilters && (
+        <div className="flex flex-wrap gap-3 p-3 bg-muted/50 rounded-lg">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-48"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os Status</SelectItem>
+              {[...KANBAN_COLUMNS, 'revertida' as const, 'cancelada' as const].map(s => <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={canalFilter} onValueChange={setCanalFilter}>
+            <SelectTrigger className="w-48"><SelectValue placeholder="Canal" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os Canais</SelectItem>
+              {canais.map(c => <SelectItem key={c} value={c!}>{c}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={unidadeFilter} onValueChange={setUnidadeFilter}>
+            <SelectTrigger className="w-48"><SelectValue placeholder="Unidade" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas Unidades</SelectItem>
+              {unidades.map(u => <SelectItem key={u} value={u!}>{u}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <div className="flex items-center gap-2">
+            <Label className="text-xs">De:</Label>
+            <Input type="date" className="w-36 h-9" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+            <Label className="text-xs">Até:</Label>
+            <Input type="date" className="w-36 h-9" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+          </div>
+        </div>
+      )}
 
       {selectedIds.size > 0 && canBulkDelete(role) && (
-        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-          className="sticky bottom-4 z-30 card-base p-3 flex items-center gap-3 border-primary/30 bg-primary/5">
+        <div className="sticky bottom-4 z-30 card-base p-3 flex items-center gap-3 border-primary/30 bg-primary/5">
           <span className="text-sm font-medium">{selectedIds.size} selecionado(s)</span>
           <Button size="sm" variant="destructive" onClick={bulkDelete}><Trash2 className="w-4 h-4 mr-1" />Excluir</Button>
           <Select onValueChange={v => bulkStatusUpdate(v as RupturaStatus)}>
             <SelectTrigger className="w-48 h-9"><SelectValue placeholder="Alterar status" /></SelectTrigger>
-            <SelectContent>{KANBAN_COLUMNS.map(s => <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>)}</SelectContent>
+            <SelectContent>{[...KANBAN_COLUMNS, 'revertida' as const, 'cancelada' as const].map(s => <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>)}</SelectContent>
           </Select>
           <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}><X className="w-4 h-4" /></Button>
-        </motion.div>
+        </div>
       )}
 
       {viewMode === 'table' ? (
         <div className="card-base overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" style={{ maxHeight: '65vh' }}>
             <table className="w-full text-sm">
-              <thead>
+              <thead className="sticky top-0 z-10">
                 <tr className="bg-table-header border-b">
                   {canBulkDelete(role) && <th className="p-3 w-10"><Checkbox checked={selectedIds.size === filtered.length && filtered.length > 0} onCheckedChange={toggleSelectAll} /></th>}
                   <th className="text-left p-3 font-medium cursor-pointer select-none" onClick={() => toggleSort('numero_pedido')}><span className="flex items-center">Pedido<SortIcon field="numero_pedido" /></span></th>
@@ -198,38 +298,46 @@ export default function RupturasPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((r, i) => (
-                  <motion.tr key={r.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }} className="border-b hover:bg-table-hover transition-colors">
-                    {canBulkDelete(role) && <td className="p-3"><Checkbox checked={selectedIds.has(r.id)} onCheckedChange={() => toggleSelect(r.id)} /></td>}
-                    <td className="p-3 font-mono-data font-medium">{r.numero_pedido}</td>
-                    <td className="p-3 text-muted-foreground">{r.canal_venda}</td>
-                    <td className="p-3 font-mono-data text-muted-foreground">{r.sku}</td>
-                    <td className="p-3 max-w-[200px] truncate">{r.produto}</td>
-                    <td className="p-3 text-right font-mono-data">R$ {(r.valor_total || 0).toFixed(2)}</td>
-                    <td className="p-3">
-                      <Select value={r.status} onValueChange={v => updateStatus(r.id, v as RupturaStatus)}>
-                        <SelectTrigger className="h-7 w-auto border-0 px-0">
-                          <Badge className={cn('text-[10px]', STATUS_COLORS[r.status])}>{STATUS_LABELS[r.status]}</Badge>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {KANBAN_COLUMNS.map(s => <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>)}
-                          <SelectItem value="revertida">Revertida</SelectItem>
-                          <SelectItem value="cancelada">Cancelada</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </td>
-                    <td className="p-3">
-                      <span className="text-xs text-muted-foreground">{r.transportadora}</span>
-                      {isFlex(r.transportadora || '') && <Badge variant="destructive" className="ml-1 text-[9px] animate-pulse">FLEX</Badge>}
-                    </td>
-                    <td className="p-3 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(r)}><Edit className="w-3.5 h-3.5" /></Button>
-                        {r.observacoes && <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setObsDialog(r.observacoes)}><Eye className="w-3.5 h-3.5" /></Button>}
-                        {canDelete(role) && <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteRuptura.mutate(r.id, { onSuccess: () => toast.success('Ruptura excluída') })}><Trash2 className="w-3.5 h-3.5" /></Button>}
+                {grouped.map(group => (
+                  <React.Fragment key={`g-${group.label}`}>
+                    <tr><td colSpan={9} className="bg-muted/50 py-2 px-3">
+                      <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+                        <CalendarDays className="w-3.5 h-3.5" />{group.label}
+                        <Badge variant="secondary" className="text-[10px] h-4 px-1.5">{group.items.length}</Badge>
                       </div>
-                    </td>
-                  </motion.tr>
+                    </td></tr>
+                    {group.items.map(r => (
+                      <tr key={r.id} className="border-b hover:bg-table-hover transition-colors">
+                        {canBulkDelete(role) && <td className="p-3"><Checkbox checked={selectedIds.has(r.id)} onCheckedChange={() => toggleSelect(r.id)} /></td>}
+                        <td className="p-3 font-mono-data font-medium">{r.numero_pedido}</td>
+                        <td className="p-3 text-muted-foreground text-xs">{r.canal_venda}</td>
+                        <td className="p-3 font-mono-data text-muted-foreground text-xs">{r.sku}</td>
+                        <td className="p-3 max-w-[200px] truncate">{r.produto}</td>
+                        <td className="p-3 text-right font-mono-data">R$ {(r.valor_total || 0).toFixed(2)}</td>
+                        <td className="p-3">
+                          <Select value={r.status} onValueChange={v => updateStatus(r.id, v as RupturaStatus)}>
+                            <SelectTrigger className="h-7 w-auto border-0 px-0">
+                              <Badge className={cn('text-[10px]', STATUS_COLORS[r.status])}>{STATUS_LABELS[r.status]}</Badge>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {[...KANBAN_COLUMNS, 'revertida' as const, 'cancelada' as const].map(s => <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </td>
+                        <td className="p-3">
+                          <span className="text-xs text-muted-foreground">{r.transportadora}</span>
+                          {isFlex(r.transportadora || '') && <Badge variant="destructive" className="ml-1 text-[9px] animate-pulse">FLEX</Badge>}
+                        </td>
+                        <td className="p-3 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(r)}><Edit className="w-3.5 h-3.5" /></Button>
+                            {r.observacoes && <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setObsDialog(r.observacoes)}><Eye className="w-3.5 h-3.5" /></Button>}
+                            {canDelete(role) && <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteRuptura.mutate(r.id, { onSuccess: () => toast.success('Ruptura excluída') })}><Trash2 className="w-3.5 h-3.5" /></Button>}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </React.Fragment>
                 ))}
                 {filtered.length === 0 && <tr><td colSpan={9} className="p-12 text-center text-muted-foreground">Nenhuma ruptura encontrada</td></tr>}
               </tbody>
@@ -280,27 +388,25 @@ export default function RupturasPage() {
             <FolderCheck className="w-4 h-4" /><h3 className="font-barlow font-bold">Concluídos ({concluidas.length})</h3>
             {showConcluidos ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
-          <AnimatePresence>
-            {showConcluidos && (
-              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                <div className="card-base overflow-hidden">
-                  <table className="w-full text-sm"><tbody>
-                    {concluidas.map(r => (
-                      <tr key={r.id} className="border-b hover:bg-table-hover">
-                        <td className="p-3 font-mono-data">{r.numero_pedido}</td>
-                        <td className="p-3">{r.produto}</td>
-                        <td className="p-3 font-mono-data text-right">R$ {(r.valor_total || 0).toFixed(2)}</td>
-                        <td className="p-3"><Badge className={cn('text-[10px]', STATUS_COLORS[r.status])}>{STATUS_LABELS[r.status]}</Badge></td>
-                      </tr>
-                    ))}
-                  </tbody></table>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {showConcluidos && (
+            <div className="card-base overflow-hidden">
+              <table className="w-full text-sm"><tbody>
+                {concluidas.map(r => (
+                  <tr key={r.id} className="border-b hover:bg-table-hover">
+                    <td className="p-3 font-mono-data">{r.numero_pedido}</td>
+                    <td className="p-3">{r.produto}</td>
+                    <td className="p-3 font-mono-data text-right">R$ {(r.valor_total || 0).toFixed(2)}</td>
+                    <td className="p-3"><Badge className={cn('text-[10px]', STATUS_COLORS[r.status])}>{STATUS_LABELS[r.status]}</Badge></td>
+                    <td className="p-3 text-xs text-muted-foreground">{r.motivo_cancelamento}</td>
+                  </tr>
+                ))}
+              </tbody></table>
+            </div>
+          )}
         </div>
       )}
 
+      {/* Edit Dialog */}
       <Dialog open={!!editDialog} onOpenChange={() => setEditDialog(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Editar Ruptura — {editDialog?.numero_pedido}</DialogTitle></DialogHeader>
@@ -311,6 +417,8 @@ export default function RupturasPage() {
                 <SelectContent>{[...KANBAN_COLUMNS, 'revertida' as const, 'cancelada' as const].map(s => <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>)}</SelectContent>
               </Select>
             </div>
+            <div><Label>SKU</Label><Input value={editForm.sku || ''} onChange={e => setEditForm((f: any) => ({ ...f, sku: e.target.value }))} className="font-mono" /></div>
+            <div><Label>Canal de Venda</Label><Input value={editForm.canal_venda || ''} onChange={e => setEditForm((f: any) => ({ ...f, canal_venda: e.target.value }))} /></div>
             {editForm.status === 'solicitado_compra' && (
               <>
                 <div><Label>Nº Pedido de Compra</Label><Input value={editForm.pedido_compra || ''} onChange={e => setEditForm((f: any) => ({ ...f, pedido_compra: e.target.value }))} /></div>
@@ -318,7 +426,13 @@ export default function RupturasPage() {
               </>
             )}
             {editForm.status === 'solicitado_transferencia' && <div><Label>Nº da Transferência</Label><Input value={editForm.numero_transferencia || ''} onChange={e => setEditForm((f: any) => ({ ...f, numero_transferencia: e.target.value }))} /></div>}
-            {editForm.status === 'cancelada' && <div><Label>Motivo do Cancelamento *</Label><Input value={editForm.motivo_cancelamento || ''} onChange={e => setEditForm((f: any) => ({ ...f, motivo_cancelamento: e.target.value }))} required /></div>}
+            {editForm.status === 'cancelada' && (
+              <div>
+                <Label>Motivo do Cancelamento *</Label>
+                <Input list="motivos" value={editForm.motivo_cancelamento || ''} onChange={e => setEditForm((f: any) => ({ ...f, motivo_cancelamento: e.target.value }))} required />
+                <datalist id="motivos">{motivosSugeridos.map(m => <option key={m} value={m} />)}</datalist>
+              </div>
+            )}
             <div><Label>Observações</Label><Textarea value={editForm.observacoes || ''} onChange={e => setEditForm((f: any) => ({ ...f, observacoes: e.target.value }))} /></div>
           </div>
           <DialogFooter>
@@ -328,6 +442,7 @@ export default function RupturasPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Obs Dialog */}
       <Dialog open={!!obsDialog} onOpenChange={() => setObsDialog(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Observações</DialogTitle></DialogHeader>
