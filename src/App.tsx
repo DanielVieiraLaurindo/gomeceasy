@@ -176,8 +176,8 @@ const App = () => (
                   <Route path="/ti/logs" element={<PlaceholderPage title="Logs" description="Logs de atividades" />} />
 
                   {/* Settings */}
-                  <Route path="/configuracoes" element={<PlaceholderPage title="Configurações" description="Configurações do sistema" />} />
-                  <Route path="/perfil" element={<PlaceholderPage title="Perfil" description="Seu perfil" />} />
+                  <Route path="/configuracoes" element={<ProfileSettingsPage />} />
+                  <Route path="/perfil" element={<ProfileSettingsPage />} />
                   <Route path="/manual" element={<PlaceholderPage title="Manual" description="Documentação do sistema" />} />
                 </Route>
 
