@@ -389,6 +389,10 @@ export default function GEBackofficeTab() {
                               <CheckSquare className="w-4 h-4 mr-2" />Finalizar
                             </DropdownMenuItem>
                           )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => deleteCase.mutate(c.id)} className="text-destructive">
+                            <Trash2 className="w-4 h-4 mr-2" />Excluir
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
