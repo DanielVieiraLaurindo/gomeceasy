@@ -39,6 +39,7 @@ export default function GEPosVendasTab() {
   const [searchInput, setSearchInput] = useState('');
   const [unitTab, setUnitTab] = useState('SP');
   const [atendenteFilter, setAtendenteFilter] = useState('all');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const { data: cases, isLoading } = useGarantiaCases(filters);
   const createCase = useCreateGarantiaCase();
