@@ -182,6 +182,100 @@ export type Database = {
           },
         ]
       }
+      backoffice_actions: {
+        Row: {
+          action_type: string
+          case_id: string
+          comments: string | null
+          created_at: string
+          created_by: string | null
+          gain_value: number | null
+          id: string
+          loss_value: number | null
+          marketplace: string | null
+          refund_value: number | null
+          result: string
+          ticket_number: string
+          updated_at: string
+        }
+        Insert: {
+          action_type?: string
+          case_id: string
+          comments?: string | null
+          created_at?: string
+          created_by?: string | null
+          gain_value?: number | null
+          id?: string
+          loss_value?: number | null
+          marketplace?: string | null
+          refund_value?: number | null
+          result?: string
+          ticket_number?: string
+          updated_at?: string
+        }
+        Update: {
+          action_type?: string
+          case_id?: string
+          comments?: string | null
+          created_at?: string
+          created_by?: string | null
+          gain_value?: number | null
+          id?: string
+          loss_value?: number | null
+          marketplace?: string | null
+          refund_value?: number | null
+          result?: string
+          ticket_number?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "backoffice_actions_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "return_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      backoffice_documents: {
+        Row: {
+          action_id: string
+          created_at: string
+          file_name: string
+          file_type: string | null
+          file_url: string
+          id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          action_id: string
+          created_at?: string
+          file_name: string
+          file_type?: string | null
+          file_url: string
+          id?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          action_id?: string
+          created_at?: string
+          file_name?: string
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "backoffice_documents_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "backoffice_actions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brands: {
         Row: {
           ativo: boolean | null
@@ -217,6 +311,120 @@ export type Database = {
           telefone?: string | null
         }
         Relationships: []
+      }
+      case_history: {
+        Row: {
+          action: string
+          case_id: string
+          comment: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+        }
+        Insert: {
+          action: string
+          case_id: string
+          comment?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+        }
+        Update: {
+          action?: string
+          case_id?: string
+          comment?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_history_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "return_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_items: {
+        Row: {
+          analysis_reason: string | null
+          case_id: string
+          created_at: string
+          id: string
+          item_condition: string | null
+          item_type: string
+          product_code: string
+        }
+        Insert: {
+          analysis_reason?: string | null
+          case_id: string
+          created_at?: string
+          id?: string
+          item_condition?: string | null
+          item_type?: string
+          product_code?: string
+        }
+        Update: {
+          analysis_reason?: string | null
+          case_id?: string
+          created_at?: string
+          id?: string
+          item_condition?: string | null
+          item_type?: string
+          product_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_items_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "return_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_photos: {
+        Row: {
+          case_id: string
+          created_at: string
+          created_by: string | null
+          file_size: number | null
+          id: string
+          original_name: string | null
+          photo_type: string
+          photo_url: string
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          created_by?: string | null
+          file_size?: number | null
+          id?: string
+          original_name?: string | null
+          photo_type?: string
+          photo_url: string
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          created_by?: string | null
+          file_size?: number | null
+          id?: string
+          original_name?: string | null
+          photo_type?: string
+          photo_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_photos_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "return_cases"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       casos_garantia: {
         Row: {
@@ -2067,12 +2275,15 @@ export type Database = {
       }
       return_cases: {
         Row: {
+          analysis_reason: string | null
+          analyst_name: string | null
           business_unit: string | null
           business_unit_cnpj: string | null
           case_number: number
           case_type: string
           chave_pix_tipo: string | null
           chave_pix_valor: string | null
+          client_document: string | null
           client_name: string | null
           created_at: string | null
           created_by: string | null
@@ -2083,10 +2294,18 @@ export type Database = {
           entry_date: string | null
           final_destination: string | null
           finalized_at: string | null
+          fullfilment_tracking: string | null
           id: string
+          is_company: boolean | null
+          is_full: boolean | null
+          item_condition: string | null
           marketplace: string | null
+          marketplace_account: string | null
+          mediator_name: string | null
           metodo_pagamento: string | null
           nf_entrada: string | null
+          nf_notes: string | null
+          nf_requested: boolean | null
           nf_saida: string | null
           not_found_erp: boolean | null
           numero_antecipacao: string | null
@@ -2099,9 +2318,13 @@ export type Database = {
           photo_product_1: string | null
           photo_product_2: string | null
           photo_product_3: string | null
+          product_code: string | null
+          product_codes: string[] | null
           product_description: string | null
           product_sku: string | null
+          protocol_number: string | null
           quantity: number | null
+          reimbursed: boolean | null
           reimbursement_value: number | null
           sale_number: string | null
           sent_to_backoffice: boolean | null
@@ -2116,12 +2339,15 @@ export type Database = {
           whatsapp_observacoes: string | null
         }
         Insert: {
+          analysis_reason?: string | null
+          analyst_name?: string | null
           business_unit?: string | null
           business_unit_cnpj?: string | null
           case_number?: number
           case_type?: string
           chave_pix_tipo?: string | null
           chave_pix_valor?: string | null
+          client_document?: string | null
           client_name?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -2132,10 +2358,18 @@ export type Database = {
           entry_date?: string | null
           final_destination?: string | null
           finalized_at?: string | null
+          fullfilment_tracking?: string | null
           id?: string
+          is_company?: boolean | null
+          is_full?: boolean | null
+          item_condition?: string | null
           marketplace?: string | null
+          marketplace_account?: string | null
+          mediator_name?: string | null
           metodo_pagamento?: string | null
           nf_entrada?: string | null
+          nf_notes?: string | null
+          nf_requested?: boolean | null
           nf_saida?: string | null
           not_found_erp?: boolean | null
           numero_antecipacao?: string | null
@@ -2148,9 +2382,13 @@ export type Database = {
           photo_product_1?: string | null
           photo_product_2?: string | null
           photo_product_3?: string | null
+          product_code?: string | null
+          product_codes?: string[] | null
           product_description?: string | null
           product_sku?: string | null
+          protocol_number?: string | null
           quantity?: number | null
+          reimbursed?: boolean | null
           reimbursement_value?: number | null
           sale_number?: string | null
           sent_to_backoffice?: boolean | null
@@ -2165,12 +2403,15 @@ export type Database = {
           whatsapp_observacoes?: string | null
         }
         Update: {
+          analysis_reason?: string | null
+          analyst_name?: string | null
           business_unit?: string | null
           business_unit_cnpj?: string | null
           case_number?: number
           case_type?: string
           chave_pix_tipo?: string | null
           chave_pix_valor?: string | null
+          client_document?: string | null
           client_name?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -2181,10 +2422,18 @@ export type Database = {
           entry_date?: string | null
           final_destination?: string | null
           finalized_at?: string | null
+          fullfilment_tracking?: string | null
           id?: string
+          is_company?: boolean | null
+          is_full?: boolean | null
+          item_condition?: string | null
           marketplace?: string | null
+          marketplace_account?: string | null
+          mediator_name?: string | null
           metodo_pagamento?: string | null
           nf_entrada?: string | null
+          nf_notes?: string | null
+          nf_requested?: boolean | null
           nf_saida?: string | null
           not_found_erp?: boolean | null
           numero_antecipacao?: string | null
@@ -2197,9 +2446,13 @@ export type Database = {
           photo_product_1?: string | null
           photo_product_2?: string | null
           photo_product_3?: string | null
+          product_code?: string | null
+          product_codes?: string[] | null
           product_description?: string | null
           product_sku?: string | null
+          protocol_number?: string | null
           quantity?: number | null
+          reimbursed?: boolean | null
           reimbursement_value?: number | null
           sale_number?: string | null
           sent_to_backoffice?: boolean | null
