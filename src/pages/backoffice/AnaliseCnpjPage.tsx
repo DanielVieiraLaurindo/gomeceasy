@@ -209,7 +209,7 @@ export default function AnaliseCnpjPage() {
         </div>
         <div>
           <input ref={importRef} type="file" accept=".pdf" className="hidden" onChange={handlePdfImport} />
-          <Button onClick={() => importRef.current?.click()} disabled={importing} className="bg-orange-600 hover:bg-orange-700">
+          <Button onClick={() => importRef.current?.click()} disabled={importing} variant="default">
             {importing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
             {importing ? 'Processando...' : 'Importar PDF'}
           </Button>
