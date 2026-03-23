@@ -110,9 +110,12 @@ export default function NovaRupturaPage() {
 
   const downloadTemplate = () => {
     const ws = XLSX.utils.json_to_sheet([{
-      'Pedido': '', 'Canal': '', 'Marketplace': '', 'Unidade': 'GAP-Virtual',
-      'SKU': '', 'Produto': '', 'Quantidade': 1, 'Valor': 0,
-      'Comprador': '', 'Transportadora': '', 'Observações': '',
+      'Pedido - ID': '', 'Unidade de negócio': 'GAP - VIRTUAL', 'Nro do Pedido': '',
+      'Canal de venda': '', 'Parceiro - Razão Social': '', 'Status': '',
+      'Produto - Código': '', 'Produto - Nome': '', 'Qtd Pedida': 1,
+      'Qtd Reservada': 0, 'Saldo a atender': 1, 'Preço Bruto': 0,
+      'Preço Líquido': 0, 'Produto - Total bruto (pedido)': 0,
+      'Produto - Total líquido (pedido)': 0, 'Cadastro': '', 'Transportadora': '',
     }]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Rupturas');

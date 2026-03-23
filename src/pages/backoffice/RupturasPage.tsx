@@ -54,6 +54,10 @@ export default function RupturasPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [canalFilter, setCanalFilter] = useState<string>('all');
   const [unidadeFilter, setUnidadeFilter] = useState<string>('all');
+  const [skuFilter, setSkuFilter] = useState<string>('all');
+  const [produtoFilter, setProdutoFilter] = useState<string>('all');
+  const [compradorFilter, setCompradorFilter] = useState<string>('all');
+  const [transportadoraFilter, setTransportadoraFilter] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [showFilters, setShowFilters] = useState(false);
