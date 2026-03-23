@@ -91,14 +91,18 @@ export default function RupturasPage() {
     const toDate = dateTo ? new Date(dateTo + 'T23:59:59') : null;
 
     let items = abertas.filter(r => {
-      const matchSearch = !debouncedSearch || [r.numero_pedido, r.sku, r.produto, r.comprador || '', r.observacoes || '']
+      const matchSearch = !debouncedSearch || [r.numero_pedido, r.sku, r.produto, r.comprador || '', r.observacoes || '', r.transportadora || '']
         .some(f => f.toLowerCase().includes(debouncedSearch.toLowerCase()));
       const matchStatus = statusFilter === 'all' || r.status === statusFilter;
       const matchCanal = canalFilter === 'all' || r.canal_venda === canalFilter;
       const matchUnidade = unidadeFilter === 'all' || r.unidade_negocio === unidadeFilter;
+      const matchSku = skuFilter === 'all' || r.sku === skuFilter;
+      const matchProduto = produtoFilter === 'all' || r.produto === produtoFilter;
+      const matchComprador = compradorFilter === 'all' || r.comprador === compradorFilter;
+      const matchTransp = transportadoraFilter === 'all' || r.transportadora === transportadoraFilter;
       const matchFrom = !fromDate || new Date(r.created_at || '') >= fromDate;
       const matchTo = !toDate || new Date(r.created_at || '') <= toDate;
-      return matchSearch && matchStatus && matchCanal && matchUnidade && matchFrom && matchTo;
+      return matchSearch && matchStatus && matchCanal && matchUnidade && matchSku && matchProduto && matchComprador && matchTransp && matchFrom && matchTo;
     });
     items.sort((a: any, b: any) => {
       const av = a[sortField]; const bv = b[sortField];
