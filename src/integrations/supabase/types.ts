@@ -292,6 +292,149 @@ export type Database = {
         }
         Relationships: []
       }
+      clientes_prazo: {
+        Row: {
+          autorizacao_url: string | null
+          autorizado_por: string | null
+          cod_vendedor: string | null
+          codigo_cliente: string | null
+          created_at: string
+          created_by: string | null
+          data_hora_lancamento: string
+          foto_requisicao_url: string | null
+          id: string
+          motivo_prazo: string | null
+          nome_cliente: string
+          nome_vendedor: string | null
+          observacao: string | null
+          prazo_cobrar: string | null
+          requisicao: string
+          status: string
+          updated_at: string
+          valor: number
+          valor_pago: number
+        }
+        Insert: {
+          autorizacao_url?: string | null
+          autorizado_por?: string | null
+          cod_vendedor?: string | null
+          codigo_cliente?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_hora_lancamento?: string
+          foto_requisicao_url?: string | null
+          id?: string
+          motivo_prazo?: string | null
+          nome_cliente: string
+          nome_vendedor?: string | null
+          observacao?: string | null
+          prazo_cobrar?: string | null
+          requisicao: string
+          status?: string
+          updated_at?: string
+          valor?: number
+          valor_pago?: number
+        }
+        Update: {
+          autorizacao_url?: string | null
+          autorizado_por?: string | null
+          cod_vendedor?: string | null
+          codigo_cliente?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_hora_lancamento?: string
+          foto_requisicao_url?: string | null
+          id?: string
+          motivo_prazo?: string | null
+          nome_cliente?: string
+          nome_vendedor?: string | null
+          observacao?: string | null
+          prazo_cobrar?: string | null
+          requisicao?: string
+          status?: string
+          updated_at?: string
+          valor?: number
+          valor_pago?: number
+        }
+        Relationships: []
+      }
+      clientes_prazo_pagamentos: {
+        Row: {
+          cliente_prazo_id: string
+          created_at: string
+          data_pagamento: string
+          id: string
+          observacao: string | null
+          registrado_por: string | null
+          valor_pago: number
+        }
+        Insert: {
+          cliente_prazo_id: string
+          created_at?: string
+          data_pagamento?: string
+          id?: string
+          observacao?: string | null
+          registrado_por?: string | null
+          valor_pago?: number
+        }
+        Update: {
+          cliente_prazo_id?: string
+          created_at?: string
+          data_pagamento?: string
+          id?: string
+          observacao?: string | null
+          registrado_por?: string | null
+          valor_pago?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clientes_prazo_pagamentos_cliente_prazo_id_fkey"
+            columns: ["cliente_prazo_id"]
+            isOneToOne: false
+            referencedRelation: "clientes_prazo"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      creditos_clientes: {
+        Row: {
+          atualizado_por: string | null
+          codigo_cliente: string
+          created_at: string
+          credito_utilizado: number
+          id: string
+          limite_credito: number
+          nome_cliente: string
+          observacoes: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          atualizado_por?: string | null
+          codigo_cliente: string
+          created_at?: string
+          credito_utilizado?: number
+          id?: string
+          limite_credito?: number
+          nome_cliente: string
+          observacoes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          atualizado_por?: string | null
+          codigo_cliente?: string
+          created_at?: string
+          credito_utilizado?: number
+          id?: string
+          limite_credito?: number
+          nome_cliente?: string
+          observacoes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       creditos_garantia: {
         Row: {
           caso_vinculado: string | null
