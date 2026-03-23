@@ -1,17 +1,23 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { MetricCard } from '@/components/MetricCard';
-import { Clock, DollarSign, AlertTriangle, CheckCircle, Search, Download, Plus } from 'lucide-react';
+import { Clock, DollarSign, AlertTriangle, CheckCircle, Search, Download, Plus, X, Upload } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 const statusLabels: Record<string, string> = {
   aberto: 'Aberto',
@@ -40,9 +46,151 @@ const MOCK_REQUISICOES = [
   { id: '12', requisicao: '2915998', cliente: 'ELISEU DE JESUS PEREIRA', vendedor: 'JULIA FRATUCCI DOS REIS DA SILVA', valor: 6.93, cobrar_em: null, dias: '1D', status: 'aberto' },
 ];
 
+function NovaRequisicaoDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const now = new Date();
+  const defaultDateTime = `${now.toLocaleDateString('pt-BR')} ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+
+  const [form, setForm] = useState({
+    requisicao: '',
+    valor: '',
+    dataHora: defaultDateTime,
+    prazoCobrar: '',
+    motivoPrazo: '',
+    codigoCliente: '',
+    nomeCliente: '',
+    codVendedor: '',
+    nomeVendedor: '',
+    autorizadoPor: '',
+    observacao: '',
+  });
+  const [fotoRequisicao, setFotoRequisicao] = useState<File | null>(null);
+  const [autorizacao, setAutorizacao] = useState<File | null>(null);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.requisicao || !form.valor || !form.prazoCobrar || !form.codigoCliente || !form.nomeCliente || !form.autorizadoPor) {
+      toast.error('Preencha todos os campos obrigatórios (*)');
+      return;
+    }
+    toast.success(`Requisição ${form.requisicao} criada com sucesso!`);
+    onOpenChange(false);
+  };
+
+  const update = (key: string, val: string) => setForm(prev => ({ ...prev, [key]: val }));
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-[700px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-lg font-barlow">Nova Requisição — Pagamento Posterior</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+          {/* Row 1 */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase text-muted-foreground">Nº Requisição *</Label>
+              <Input value={form.requisicao} onChange={e => update('requisicao', e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase text-muted-foreground">Valor (R$) *</Label>
+              <Input type="number" step="0.01" value={form.valor} onChange={e => update('valor', e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase text-muted-foreground">Data/Hora Lançamento *</Label>
+              <Input value={form.dataHora} readOnly className="bg-muted" />
+            </div>
+          </div>
+
+          {/* Row 2 */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase text-muted-foreground">Prazo para Cobrar *</Label>
+              <Input type="date" value={form.prazoCobrar} onChange={e => update('prazoCobrar', e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase text-muted-foreground">Motivo do Prazo *</Label>
+              <Input value={form.motivoPrazo} onChange={e => update('motivoPrazo', e.target.value)} />
+            </div>
+          </div>
+
+          {/* Row 3 */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase text-muted-foreground">Código do Cliente *</Label>
+              <Input value={form.codigoCliente} onChange={e => update('codigoCliente', e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase text-muted-foreground">Nome do Cliente *</Label>
+              <Input value={form.nomeCliente} onChange={e => update('nomeCliente', e.target.value)} />
+            </div>
+          </div>
+
+          {/* Row 4 */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase text-muted-foreground">Cód. Vendedor</Label>
+              <Input value={form.codVendedor} onChange={e => update('codVendedor', e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase text-muted-foreground">Nome Vendedor</Label>
+              <Input value={form.nomeVendedor} onChange={e => update('nomeVendedor', e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase text-muted-foreground">Autorizado Por *</Label>
+              <Input value={form.autorizadoPor} onChange={e => update('autorizadoPor', e.target.value)} />
+            </div>
+          </div>
+
+          {/* File uploads */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase text-muted-foreground">Foto da Requisição</Label>
+              <div className="flex items-center gap-2">
+                <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 border rounded-md text-sm hover:bg-accent transition-colors">
+                  <Upload className="w-4 h-4" />
+                  Escolher ficheiro
+                  <input type="file" accept="image/*,.pdf" className="hidden" onChange={e => setFotoRequisicao(e.target.files?.[0] || null)} />
+                </label>
+                <span className="text-xs text-muted-foreground truncate max-w-[150px]">
+                  {fotoRequisicao ? fotoRequisicao.name : 'Nenhum ficheiro selecionado'}
+                </span>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase text-muted-foreground">Autorização do Responsável</Label>
+              <div className="flex items-center gap-2">
+                <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 border rounded-md text-sm hover:bg-accent transition-colors">
+                  <Upload className="w-4 h-4" />
+                  Escolher ficheiro
+                  <input type="file" accept="image/*,.pdf" className="hidden" onChange={e => setAutorizacao(e.target.files?.[0] || null)} />
+                </label>
+                <span className="text-xs text-muted-foreground truncate max-w-[150px]">
+                  {autorizacao ? autorizacao.name : 'Nenhum ficheiro selecionado'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Observação */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold uppercase text-muted-foreground">Observação</Label>
+            <Textarea rows={3} value={form.observacao} onChange={e => update('observacao', e.target.value)} />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+            <Button type="submit">Salvar Requisição</Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function ClientesPrazoPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [novaOpen, setNovaOpen] = useState(false);
 
   const filtered = MOCK_REQUISICOES.filter(r => {
     const matchSearch = !search ||
@@ -79,7 +227,7 @@ export default function ClientesPrazoPage() {
           </h3>
           <div className="flex gap-2">
             <Button variant="outline" size="sm"><Download className="w-4 h-4 mr-2" />Importar Planilha</Button>
-            <Button size="sm"><Plus className="w-4 h-4 mr-2" />Nova Requisição</Button>
+            <Button size="sm" onClick={() => setNovaOpen(true)}><Plus className="w-4 h-4 mr-2" />Nova Requisição</Button>
           </div>
         </div>
 
@@ -155,6 +303,8 @@ export default function ClientesPrazoPage() {
           </Table>
         </div>
       </div>
+
+      <NovaRequisicaoDialog open={novaOpen} onOpenChange={setNovaOpen} />
     </div>
   );
 }
