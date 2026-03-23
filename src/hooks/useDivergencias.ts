@@ -7,7 +7,7 @@ export function useDivergencias(statusFilter?: StatusDivergencia[] | "finalizado
     queryKey: ["divergencias", statusFilter],
     queryFn: async () => {
       let query = supabase
-        .from("divergencias" as any)
+        .from("divergencias")
         .select("*")
         .order("created_at", { ascending: false });
 
@@ -30,19 +30,19 @@ export function useDivergencia(id: string | undefined) {
     enabled: !!id,
     queryFn: async () => {
       const [divRes, itensRes, histRes, anexosRes] = await Promise.all([
-        supabase.from("divergencias" as any).select("*").eq("id", id!).single(),
+        supabase.from("divergencias").select("*").eq("id", id!).single(),
         supabase
-          .from("divergencia_itens" as any)
+          .from("divergencia_itens")
           .select("*")
           .eq("divergencia_id", id!)
           .order("created_at", { ascending: true }),
         supabase
-          .from("divergencia_historico" as any)
+          .from("divergencia_historico")
           .select("*")
           .eq("divergencia_id", id!)
           .order("created_at", { ascending: true }),
         supabase
-          .from("divergencia_anexos" as any)
+          .from("divergencia_anexos")
           .select("*")
           .eq("divergencia_id", id!)
           .order("created_at", { ascending: true }),

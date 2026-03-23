@@ -198,3 +198,15 @@ export function canExecuteAction(
 ): boolean {
   return action.allowedRoles.includes(userRole) || action.allowedRoles.includes("master");
 }
+
+export function getFollowUpDays(
+  ocorrencia: TipoOcorrencia,
+  status: StatusDivergencia
+): number | null {
+  if (status === "Aguardando Coleta") {
+    if (ocorrencia === "Falta") return 3;
+    if (ocorrencia === "Sobra") return 7;
+  }
+  if (status !== "Finalizado") return 5;
+  return null;
+}
