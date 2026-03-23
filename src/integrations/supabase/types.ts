@@ -41,6 +41,84 @@ export type Database = {
         }
         Relationships: []
       }
+      analise_cnpj: {
+        Row: {
+          atualizado_em: string
+          bloqueio_credito: string | null
+          bloqueio_sistema: string | null
+          cliente: string | null
+          cnpj_cpf: string
+          condicao_pagamento: string | null
+          criado_em: string
+          data_pedido: string | null
+          forma_pagamento: string | null
+          grupo_cliente: string | null
+          id: string
+          id_cliente: string | null
+          inscricao: string | null
+          liberado_credito: string | null
+          observacoes: string | null
+          pedido: string
+          percentual: number | null
+          quantidade: number | null
+          responsavel: string | null
+          seq_venda: string | null
+          status: string
+          uf: string | null
+          valor: number | null
+        }
+        Insert: {
+          atualizado_em?: string
+          bloqueio_credito?: string | null
+          bloqueio_sistema?: string | null
+          cliente?: string | null
+          cnpj_cpf?: string
+          condicao_pagamento?: string | null
+          criado_em?: string
+          data_pedido?: string | null
+          forma_pagamento?: string | null
+          grupo_cliente?: string | null
+          id?: string
+          id_cliente?: string | null
+          inscricao?: string | null
+          liberado_credito?: string | null
+          observacoes?: string | null
+          pedido?: string
+          percentual?: number | null
+          quantidade?: number | null
+          responsavel?: string | null
+          seq_venda?: string | null
+          status?: string
+          uf?: string | null
+          valor?: number | null
+        }
+        Update: {
+          atualizado_em?: string
+          bloqueio_credito?: string | null
+          bloqueio_sistema?: string | null
+          cliente?: string | null
+          cnpj_cpf?: string
+          condicao_pagamento?: string | null
+          criado_em?: string
+          data_pedido?: string | null
+          forma_pagamento?: string | null
+          grupo_cliente?: string | null
+          id?: string
+          id_cliente?: string | null
+          inscricao?: string | null
+          liberado_credito?: string | null
+          observacoes?: string | null
+          pedido?: string
+          percentual?: number | null
+          quantidade?: number | null
+          responsavel?: string | null
+          seq_venda?: string | null
+          status?: string
+          uf?: string | null
+          valor?: number | null
+        }
+        Relationships: []
+      }
       analise_fabricante: {
         Row: {
           caso_id: string | null
@@ -723,6 +801,62 @@ export type Database = {
         }
         Relationships: []
       }
+      fiscal_data: {
+        Row: {
+          cest: string | null
+          codigo_jacsys: string | null
+          created_at: string | null
+          created_by: string | null
+          deleted_at: string | null
+          id: string
+          ncm: string | null
+          origem: string | null
+          product_id: string | null
+          sku: string
+          tributacao: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          cest?: string | null
+          codigo_jacsys?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          ncm?: string | null
+          origem?: string | null
+          product_id?: string | null
+          sku: string
+          tributacao?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          cest?: string | null
+          codigo_jacsys?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          ncm?: string | null
+          origem?: string | null
+          product_id?: string | null
+          sku?: string
+          tributacao?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_data_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       garantias_fornecedor: {
         Row: {
           created_at: string | null
@@ -1030,6 +1164,146 @@ export type Database = {
         }
         Relationships: []
       }
+      pedidos_site: {
+        Row: {
+          atualizado_em: string
+          cliente: string | null
+          codigo_rastreio: string | null
+          criado_em: string
+          data_coleta: string | null
+          data_entrega: string | null
+          data_prevista: string | null
+          etiqueta: string | null
+          id: string
+          medidas: string | null
+          nota_fiscal: string | null
+          numero_pedido_site: string
+          observacoes: string | null
+          pedido_id_erp: string
+          peso_kg: number | null
+          pode_faturar: boolean | null
+          status: string
+          unidade_negocio: string | null
+          valor_frete: number | null
+        }
+        Insert: {
+          atualizado_em?: string
+          cliente?: string | null
+          codigo_rastreio?: string | null
+          criado_em?: string
+          data_coleta?: string | null
+          data_entrega?: string | null
+          data_prevista?: string | null
+          etiqueta?: string | null
+          id?: string
+          medidas?: string | null
+          nota_fiscal?: string | null
+          numero_pedido_site?: string
+          observacoes?: string | null
+          pedido_id_erp?: string
+          peso_kg?: number | null
+          pode_faturar?: boolean | null
+          status?: string
+          unidade_negocio?: string | null
+          valor_frete?: number | null
+        }
+        Update: {
+          atualizado_em?: string
+          cliente?: string | null
+          codigo_rastreio?: string | null
+          criado_em?: string
+          data_coleta?: string | null
+          data_entrega?: string | null
+          data_prevista?: string | null
+          etiqueta?: string | null
+          id?: string
+          medidas?: string | null
+          nota_fiscal?: string | null
+          numero_pedido_site?: string
+          observacoes?: string | null
+          pedido_id_erp?: string
+          peso_kg?: number | null
+          pode_faturar?: boolean | null
+          status?: string
+          unidade_negocio?: string | null
+          valor_frete?: number | null
+        }
+        Relationships: []
+      }
+      products: {
+        Row: {
+          ativo: boolean | null
+          codigo_interno: string | null
+          created_at: string | null
+          custo: number | null
+          descricao: string | null
+          estoque_fullfilment: number | null
+          estoque_loja1: number | null
+          estoque_loja3: number | null
+          fornecedor_id: string | null
+          id: string
+          is_star_product: boolean | null
+          mlb: string | null
+          not_suitable_for_sale: number | null
+          on_the_way: number | null
+          sku: string
+          suitable_for_sale: number | null
+          tipo: string | null
+          updated_at: string | null
+          vendas_30_dias: number | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          codigo_interno?: string | null
+          created_at?: string | null
+          custo?: number | null
+          descricao?: string | null
+          estoque_fullfilment?: number | null
+          estoque_loja1?: number | null
+          estoque_loja3?: number | null
+          fornecedor_id?: string | null
+          id?: string
+          is_star_product?: boolean | null
+          mlb?: string | null
+          not_suitable_for_sale?: number | null
+          on_the_way?: number | null
+          sku: string
+          suitable_for_sale?: number | null
+          tipo?: string | null
+          updated_at?: string | null
+          vendas_30_dias?: number | null
+        }
+        Update: {
+          ativo?: boolean | null
+          codigo_interno?: string | null
+          created_at?: string | null
+          custo?: number | null
+          descricao?: string | null
+          estoque_fullfilment?: number | null
+          estoque_loja1?: number | null
+          estoque_loja3?: number | null
+          fornecedor_id?: string | null
+          id?: string
+          is_star_product?: boolean | null
+          mlb?: string | null
+          not_suitable_for_sale?: number | null
+          on_the_way?: number | null
+          sku?: string
+          suitable_for_sale?: number | null
+          tipo?: string | null
+          updated_at?: string | null
+          vendas_30_dias?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_fornecedor_id_fkey"
+            columns: ["fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           ativo: boolean
@@ -1206,6 +1480,63 @@ export type Database = {
           store?: string | null
           supplier_delivery_estimate?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      purchases_full: {
+        Row: {
+          codigo_interno: string | null
+          comprador_atribuido: string | null
+          created_at: string | null
+          custo: number | null
+          data_atribuicao: string | null
+          fornecedor: string
+          id: string
+          mlb: string | null
+          observacoes: string | null
+          previsao_entrega: string | null
+          prioridade: string | null
+          quantidade: number | null
+          sku: string
+          status: string
+          tipo: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          codigo_interno?: string | null
+          comprador_atribuido?: string | null
+          created_at?: string | null
+          custo?: number | null
+          data_atribuicao?: string | null
+          fornecedor?: string
+          id?: string
+          mlb?: string | null
+          observacoes?: string | null
+          previsao_entrega?: string | null
+          prioridade?: string | null
+          quantidade?: number | null
+          sku: string
+          status?: string
+          tipo?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          codigo_interno?: string | null
+          comprador_atribuido?: string | null
+          created_at?: string | null
+          custo?: number | null
+          data_atribuicao?: string | null
+          fornecedor?: string
+          id?: string
+          mlb?: string | null
+          observacoes?: string | null
+          previsao_entrega?: string | null
+          prioridade?: string | null
+          quantidade?: number | null
+          sku?: string
+          status?: string
+          tipo?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
