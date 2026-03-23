@@ -133,11 +133,12 @@ const App = () => (
 
                   {/* Garantia Ecommerce */}
                   <Route path="/garantia-ecommerce" element={<GarantiaEcommerceDashboard />} />
-                  <Route path="/garantia-ecommerce/casos" element={<PlaceholderPage title="Todos os Casos" description="Casos de garantia ecommerce" />} />
-                  <Route path="/garantia-ecommerce/devolucoes-recebidas" element={<PlaceholderPage title="Devoluções Recebidas" description="Devoluções recebidas do Pós-Vendas" />} />
-                  <Route path="/garantia-ecommerce/fornecedor" element={<PlaceholderPage title="Garantias Fornecedor" description="Garantias junto a fornecedores" />} />
-                  <Route path="/garantia-ecommerce/descartes" element={<PlaceholderPage title="Descartes" description="Gestão de descartes" />} />
-                  <Route path="/garantia-ecommerce/creditos" element={<PlaceholderPage title="Créditos de Garantia" description="Créditos recebidos de fornecedores" />} />
+                  <Route path="/garantia-ecommerce/backoffice" element={<GEBackofficeTab />} />
+                  <Route path="/garantia-ecommerce/pos-vendas" element={<GEPosVendasTab />} />
+                  <Route path="/garantia-ecommerce/financeiro" element={<GEFinanceiroTab />} />
+                  <Route path="/garantia-ecommerce/galeria" element={<GEGaleriaTab />} />
+                  <Route path="/garantia-ecommerce/relatorios" element={<GERelatoriosTab />} />
+                  <Route path="/garantia-ecommerce/configuracoes" element={<GEConfiguracoesTab />} />
 
                   {/* Legacy garantia redirects */}
                   <Route path="/garantia" element={<Navigate to="/garantia-ecommerce" replace />} />
