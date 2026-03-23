@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, Headphones, Headset, Camera, BarChart3, Settings } from 'lucide-react';
+import { LayoutDashboard, Headphones, Headset, Camera, BarChart3, Settings, DollarSign } from 'lucide-react';
 import GEDashboardTab from './ge/GEDashboardTab';
 import GEBackofficeTab from './ge/GEBackofficeTab';
 import GEPosVendasTab from './ge/GEPosVendasTab';
 import GERelatoriosTab from './ge/GERelatoriosTab';
+import GEFinanceiroTab from './ge/GEFinanceiroTab';
 
 const MENU_ITEMS = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { key: 'backoffice', label: 'BackOffice', icon: Headphones },
   { key: 'pos-vendas', label: 'Pós Vendas', icon: Headset },
+  { key: 'financeiro', label: 'Financeiro', icon: DollarSign },
   { key: 'galeria', label: 'Galeria de Fotos', icon: Camera },
   { key: 'relatorios', label: 'Relatórios', icon: BarChart3 },
   { key: 'configuracoes', label: 'Configurações', icon: Settings },
@@ -23,6 +25,7 @@ export default function GarantiaEcommerceDashboard() {
       case 'dashboard': return <GEDashboardTab />;
       case 'backoffice': return <GEBackofficeTab />;
       case 'pos-vendas': return <GEPosVendasTab />;
+      case 'financeiro': return <GEFinanceiroTab />;
       case 'relatorios': return <GERelatoriosTab />;
       case 'galeria': return <div className="text-center py-12 text-muted-foreground">Galeria de Fotos — em desenvolvimento</div>;
       case 'configuracoes': return <div className="text-center py-12 text-muted-foreground">Configurações — em desenvolvimento</div>;
@@ -32,7 +35,6 @@ export default function GarantiaEcommerceDashboard() {
 
   return (
     <div className="flex h-full -m-6">
-      {/* Sidebar */}
       <aside className="w-56 border-r bg-card flex flex-col shrink-0">
         <div className="p-4 border-b">
           <h2 className="font-barlow font-bold text-sm text-foreground">Controle Devoluções</h2>
@@ -55,8 +57,6 @@ export default function GarantiaEcommerceDashboard() {
           ))}
         </nav>
       </aside>
-
-      {/* Content */}
       <main className="flex-1 overflow-y-auto p-6">
         {renderContent()}
       </main>
