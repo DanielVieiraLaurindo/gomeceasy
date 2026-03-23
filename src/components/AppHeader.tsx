@@ -58,9 +58,13 @@ export function AppHeader() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="h-9 gap-2 px-2">
-              <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
-                <User className="w-4 h-4 text-primary" />
-              </div>
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt="" className="w-7 h-7 rounded-full object-cover" />
+              ) : (
+                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
+                  <User className="w-4 h-4 text-primary" />
+                </div>
+              )}
               <div className="text-left hidden md:block">
                 <div className="text-sm font-medium leading-none">{profile?.nome || 'Usuário'}</div>
                 <div className="text-xs text-muted-foreground">{displaySetor}{displayRole ? ` · ${displayRole}` : ''}</div>

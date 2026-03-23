@@ -39,6 +39,7 @@ const SomatorioPage = React.lazy(() => import("@/pages/expedicao/SomatorioPage")
 const PlaceholderPage = React.lazy(() => import("@/components/PlaceholderPage"));
 const PrecificacaoPage = React.lazy(() => import("@/pages/compras/PrecificacaoPage"));
 const UserManagementPage = React.lazy(() => import("@/pages/ti/UserManagementPage"));
+const ProfileSettingsPage = React.lazy(() => import("@/pages/ProfileSettingsPage"));
 const UsoConsumoDashboard = React.lazy(() => import("@/pages/compras/UsoConsumoDashboard"));
 const UsoConsumoNovaPage = React.lazy(() => import("@/pages/compras/UsoConsumoNovaPage"));
 const UsoConsumoDetalhePage = React.lazy(() => import("@/pages/compras/UsoConsumoDetalhePage"));
@@ -175,8 +176,8 @@ const App = () => (
                   <Route path="/ti/logs" element={<PlaceholderPage title="Logs" description="Logs de atividades" />} />
 
                   {/* Settings */}
-                  <Route path="/configuracoes" element={<PlaceholderPage title="Configurações" description="Configurações do sistema" />} />
-                  <Route path="/perfil" element={<PlaceholderPage title="Perfil" description="Seu perfil" />} />
+                  <Route path="/configuracoes" element={<ProfileSettingsPage />} />
+                  <Route path="/perfil" element={<ProfileSettingsPage />} />
                   <Route path="/manual" element={<PlaceholderPage title="Manual" description="Documentação do sistema" />} />
                 </Route>
 

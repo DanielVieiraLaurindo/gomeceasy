@@ -1976,6 +1976,33 @@ export type Database = {
         }
         Relationships: []
       }
+      user_tab_preferences: {
+        Row: {
+          created_at: string
+          favorite_tabs: string[] | null
+          id: string
+          updated_at: string
+          user_id: string
+          visible_tabs: string[] | null
+        }
+        Insert: {
+          created_at?: string
+          favorite_tabs?: string[] | null
+          id?: string
+          updated_at?: string
+          user_id: string
+          visible_tabs?: string[] | null
+        }
+        Update: {
+          created_at?: string
+          favorite_tabs?: string[] | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+          visible_tabs?: string[] | null
+        }
+        Relationships: []
+      }
       volume_groups: {
         Row: {
           altura_cm: number | null
