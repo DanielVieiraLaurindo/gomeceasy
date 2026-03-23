@@ -137,6 +137,7 @@ const App = () => (
                   <Route path="/compras/divergencias/:id" element={<DetalheDivergenciaPage />} />
                   <Route path="/compras/solicitacoes" element={<PlaceholderPage title="Solicitações de Reposição" description="Solicitações recebidas do BackOffice" />} />
                   <Route path="/compras/pedidos" element={<PlaceholderPage title="Pedidos de Compra" description="Pedidos de compra" />} />
+                  <Route path="/compras/precificacao" element={<PrecificacaoPage />} />
                   <Route path="/compras/marcas" element={<PlaceholderPage title="Marcas" description="Marcas e fornecedores" />} />
                   <Route path="/compras/minhas-marcas" element={<PlaceholderPage title="Minhas Marcas" description="Marcas atribuídas a você" />} />
 
