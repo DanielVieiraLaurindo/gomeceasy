@@ -39,12 +39,7 @@ export const SIDEBAR_ITEMS: Record<AppSetor, SidebarItem[]> = {
     { path: '/garantia-loja/casos', label: 'Casos', icon: FolderOpen },
   ],
   garantia_ecommerce: [
-    { path: '/garantia-ecommerce', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/garantia-ecommerce/casos', label: 'Todos os Casos', icon: FolderOpen },
-    { path: '/garantia-ecommerce/devolucoes-recebidas', label: 'Devoluções Recebidas', icon: RefreshCw },
-    { path: '/garantia-ecommerce/fornecedor', label: 'Garantias Fornecedor', icon: Building2 },
-    { path: '/garantia-ecommerce/descartes', label: 'Descartes', icon: Archive },
-    { path: '/garantia-ecommerce/creditos', label: 'Créditos', icon: CreditCard },
+    { path: '/garantia-ecommerce', label: 'Controle Devoluções', icon: Shield },
   ],
   financeiro_fiscal: [
     { path: '/financeiro', label: 'Dashboard', icon: LayoutDashboard },
