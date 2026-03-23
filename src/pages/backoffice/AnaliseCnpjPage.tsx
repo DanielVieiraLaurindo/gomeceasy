@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Search, FileText, Clock, CheckCircle2, AlertCircle, Eye, Filter, Download, Loader2 } from 'lucide-react';
+import { Search, FileText, Clock, CheckCircle2, AlertCircle, Eye, Filter, Download, Loader2, Trash2, Wrench } from 'lucide-react';
 import { format } from 'date-fns';
 import * as pdfjsLib from 'pdfjs-dist';
 
