@@ -36,6 +36,8 @@ const OperacaoInternaPage = React.lazy(() => import("@/pages/expedicao/OperacaoI
 const ResumoOperacaoPage = React.lazy(() => import("@/pages/expedicao/ResumoOperacaoPage"));
 const SomatorioPage = React.lazy(() => import("@/pages/expedicao/SomatorioPage"));
 const PlaceholderPage = React.lazy(() => import("@/components/PlaceholderPage"));
+const PrecificacaoPage = React.lazy(() => import("@/pages/compras/PrecificacaoPage"));
+const UserManagementPage = React.lazy(() => import("@/pages/ti/UserManagementPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -135,6 +137,7 @@ const App = () => (
                   <Route path="/compras/divergencias/:id" element={<DetalheDivergenciaPage />} />
                   <Route path="/compras/solicitacoes" element={<PlaceholderPage title="Solicitações de Reposição" description="Solicitações recebidas do BackOffice" />} />
                   <Route path="/compras/pedidos" element={<PlaceholderPage title="Pedidos de Compra" description="Pedidos de compra" />} />
+                  <Route path="/compras/precificacao" element={<PrecificacaoPage />} />
                   <Route path="/compras/marcas" element={<PlaceholderPage title="Marcas" description="Marcas e fornecedores" />} />
                   <Route path="/compras/minhas-marcas" element={<PlaceholderPage title="Minhas Marcas" description="Marcas atribuídas a você" />} />
 
@@ -152,7 +155,7 @@ const App = () => (
 
                   {/* TI */}
                   <Route path="/ti" element={<TIDashboard />} />
-                  <Route path="/ti/usuarios" element={<PlaceholderPage title="Usuários" description="Gestão de usuários" />} />
+                  <Route path="/ti/usuarios" element={<UserManagementPage />} />
                   <Route path="/ti/chamados" element={<PlaceholderPage title="Chamados" description="Chamados internos de TI" />} />
                   <Route path="/ti/logs" element={<PlaceholderPage title="Logs" description="Logs de atividades" />} />
 
