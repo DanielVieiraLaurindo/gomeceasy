@@ -16,7 +16,7 @@ import {
 import { Upload, Loader2, ShieldCheck, FileText, Printer, ArrowRightLeft, Send, RefreshCw, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import type { DivergenciaDB, DivergenciaItem, TipoOcorrencia, StatusDivergencia, AcaoDivergencia } from "@/types/divergencia";
-import { getAvailableActions, canExecuteAction, type WorkflowAction } from "@/lib/workflow-rules";
+import { getAvailableActions, canExecuteAction, getWorkflowRoles, type WorkflowAction } from "@/lib/workflow-rules";
 import { gerarComunicadoDefeito } from "@/components/divergencias/ComunicadoDefeito";
 import { gerarComunicadoFalta } from "@/components/divergencias/ComunicadoFalta";
 import { gerarComunicadoDevolucao } from "@/components/divergencias/ComunicadoDevolucao";
@@ -39,7 +39,7 @@ interface WorkflowActionsProps {
 }
 
 export default function WorkflowActions({ divergencia, itens }: WorkflowActionsProps) {
-  const { user, role } = useAuth();
+  const { user, role, setor } = useAuth();
   const queryClient = useQueryClient();
   const [executing, setExecuting] = useState(false);
   const [observacao, setObservacao] = useState("");
@@ -59,8 +59,9 @@ export default function WorkflowActions({ divergencia, itens }: WorkflowActionsP
   const [refreshing, setRefreshing] = useState(false);
 
   const d = divergencia;
+  const workflowRoles = getWorkflowRoles(role, setor);
   const actions = getAvailableActions(d.ocorrencia as TipoOcorrencia, d.status as StatusDivergencia, d.acao as AcaoDivergencia);
-  const userActions = actions.filter((a) => canExecuteAction(a, role || ""));
+  const userActions = actions.filter((a) => canExecuteAction(a, workflowRoles));
   const isMaster = role === "master";
 
   const executeAction = async (action: WorkflowAction) => {
@@ -360,7 +361,7 @@ Observações: ${d.anotacoes || "—"}
           </DialogContent>
         </Dialog>
 
-        {(isMaster || (role as string) === "compras") && (
+        {(isMaster || setor === "compras") && (
           <Dialog open={manualOpen} onOpenChange={setManualOpen}>
             <DialogTrigger asChild><Button variant="outline" size="sm" className="w-full gap-2"><ArrowRightLeft className="h-4 w-4" /> Alterar Status Manualmente</Button></DialogTrigger>
             <DialogContent>
