@@ -52,11 +52,20 @@ Return valid JSON only, no markdown.`
       }),
     });
 
-    const data = await response.json();
+    const rawText = await response.text();
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      throw new Error("AI API returned invalid JSON response: " + rawText.substring(0, 200));
+    }
     const content = data.choices?.[0]?.message?.content || "[]";
     
-    // Clean potential markdown wrapping
-    const cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    // Clean potential markdown wrapping and extract JSON array
+    let cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    // Extract first JSON array if there's extra text
+    const arrayMatch = cleaned.match(/\[[\s\S]*\]/);
+    if (arrayMatch) cleaned = arrayMatch[0];
     const rows = JSON.parse(cleaned);
 
     return new Response(JSON.stringify({ rows }), {
