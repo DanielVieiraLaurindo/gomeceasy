@@ -17,6 +17,7 @@ const MasterDashboard = React.lazy(() => import("@/pages/master/MasterDashboard"
 const BackOfficeDashboard = React.lazy(() => import("@/pages/backoffice/BackOfficeDashboard"));
 const FulfillmentPage = React.lazy(() => import("@/pages/backoffice/FulfillmentPage"));
 const RupturasPage = React.lazy(() => import("@/pages/backoffice/RupturasPage"));
+const RupturasRelatoriosPage = React.lazy(() => import("@/pages/backoffice/RupturasRelatoriosPage"));
 const PosVendasDashboard = React.lazy(() => import("@/pages/pos-vendas/PosVendasDashboard"));
 const CasosPage = React.lazy(() => import("@/pages/pos-vendas/CasosPage"));
 const GarantiaLojaDashboard = React.lazy(() => import("@/pages/garantia/GarantiaLojaDashboard"));
@@ -87,6 +88,7 @@ const App = () => (
                   <Route path="/backoffice/fulfillment" element={<FulfillmentPage />} />
                   <Route path="/backoffice/rupturas" element={<RupturasPage />} />
                   <Route path="/backoffice/rupturas/nova" element={<NovaRupturaPage />} />
+                  <Route path="/backoffice/rupturas/relatorios" element={<RupturasRelatoriosPage />} />
                   <Route path="/backoffice/pedidos-site" element={<PedidosSitePage />} />
                   <Route path="/backoffice/precificacao" element={<PrecificacaoPage />} />
                   <Route path="/backoffice/cnpjs" element={<AnaliseCnpjPage />} />
