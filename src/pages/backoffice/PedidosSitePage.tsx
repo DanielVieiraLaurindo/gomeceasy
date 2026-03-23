@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,11 +11,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { exportToExcel } from '@/lib/export-utils';
 import {
   Plus, Search, Package, Clock, Truck, CheckCircle2, XCircle,
-  AlertTriangle, RotateCcw, Edit, Filter, Download,
+  AlertTriangle, RotateCcw, Edit, Download, Upload, FileUp,
 } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
+import * as XLSX from 'xlsx';
 
 type PedidoStatus = 'pendente' | 'em_transporte' | 'entregue' | 'cancelado' | 'extraviado' | 'em_devolucao' | 'devolvido';
 
@@ -51,17 +53,20 @@ const STATUS_CONFIG: Record<PedidoStatus, { label: string; color: string; icon: 
   devolvido: { label: 'Devolvido', color: 'bg-gray-500/10 text-gray-600 border-gray-500/20', icon: Package },
 };
 
-const UNIDADES = ['GAP-Virtual', 'GAP-ES', 'GAP'];
+const TRANSPORTADORAS = [
+  'BRASPRESS', 'JADLOG', 'LOGGI', 'RODONAVES', 'UBER',
+  'TOTAL POINTS', 'PAC', 'SEDEX', 'FLEX', 'RETIRA EM LOJA'
+];
 
 export default function PedidosSitePage() {
   const [pedidos, setPedidos] = useState<PedidoSite[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('todos');
-  const [filterUnidade, setFilterUnidade] = useState<string>('todos');
   const [editDialog, setEditDialog] = useState<PedidoSite | null>(null);
   const [newDialog, setNewDialog] = useState(false);
   const [formData, setFormData] = useState<Partial<PedidoSite>>({});
+  const importRef = useRef<HTMLInputElement>(null);
 
   const fetchPedidos = useCallback(async () => {
     setLoading(true);
@@ -69,7 +74,7 @@ export default function PedidosSitePage() {
       .from('pedidos_site')
       .select('*')
       .order('criado_em', { ascending: false });
-    if (error) { toast.error('Erro ao carregar pedidos'); }
+    if (error) toast.error('Erro ao carregar pedidos');
     setPedidos((data || []) as PedidoSite[]);
     setLoading(false);
   }, []);
@@ -97,9 +102,8 @@ export default function PedidosSitePage() {
       p.cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (p.codigo_rastreio || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchStatus = filterStatus === 'todos' || p.status === filterStatus;
-    const matchUnidade = filterUnidade === 'todos' || p.unidade_negocio === filterUnidade;
-    return matchSearch && matchStatus && matchUnidade;
-  }), [pedidos, searchTerm, filterStatus, filterUnidade]);
+    return matchSearch && matchStatus;
+  }), [pedidos, searchTerm, filterStatus]);
 
   const isEntregaAtrasada = (p: PedidoSite) => {
     if (['entregue', 'cancelado', 'devolvido'].includes(p.status)) return false;
@@ -107,21 +111,19 @@ export default function PedidosSitePage() {
     return isPast(new Date(p.data_prevista)) && !isToday(new Date(p.data_prevista));
   };
 
-  const openNew = () => {
-    setFormData({
-      numero_pedido_site: '', pedido_id_erp: '', pode_faturar: false, cliente: '',
-      medidas: '', peso_kg: 0, etiqueta: '', nota_fiscal: '', codigo_rastreio: '',
-      status: 'pendente', unidade_negocio: 'GAP-Virtual', data_coleta: null, data_prevista: null,
-      data_entrega: null, valor_frete: 0, observacoes: '',
-    });
-    setNewDialog(true);
-  };
+  const emptyForm = (): Partial<PedidoSite> => ({
+    numero_pedido_site: '', pedido_id_erp: '', pode_faturar: false, cliente: '',
+    medidas: '', peso_kg: 0, etiqueta: '', nota_fiscal: '', codigo_rastreio: '',
+    status: 'pendente', unidade_negocio: '', data_coleta: null, data_prevista: null,
+    data_entrega: null, valor_frete: 0, observacoes: '',
+  });
 
+  const openNew = () => { setFormData(emptyForm()); setNewDialog(true); };
   const openEdit = (p: PedidoSite) => { setFormData({ ...p }); setEditDialog(p); };
 
   const handleSaveNew = async () => {
     if (!formData.numero_pedido_site || !formData.pedido_id_erp) {
-      toast.error('Preencha o número do pedido e ID ERP'); return;
+      toast.error('Preencha ID Site e ID Signus'); return;
     }
     const { error } = await (supabase as any).from('pedidos_site').insert({
       numero_pedido_site: formData.numero_pedido_site,
@@ -180,37 +182,99 @@ export default function PedidosSitePage() {
     fetchPedidos();
   };
 
+  const handleExport = () => {
+    exportToExcel(filtered.map(p => ({
+      'ID Site': p.numero_pedido_site,
+      'ID Signus': p.pedido_id_erp,
+      'Faturar': p.pode_faturar ? 'Sim' : 'Não',
+      'Cliente': p.cliente,
+      'Medidas': p.medidas,
+      'Peso (kg)': p.peso_kg,
+      'Nota Fiscal': p.nota_fiscal,
+      'Etiqueta': p.etiqueta,
+      'Transportadora': p.unidade_negocio,
+      'Código Rastreio': p.codigo_rastreio || '',
+      'Status': STATUS_CONFIG[p.status as PedidoStatus]?.label || p.status,
+      'Data Coleta': p.data_coleta ? format(new Date(p.data_coleta), 'dd/MM/yyyy') : '',
+      'Data Prevista': p.data_prevista ? format(new Date(p.data_prevista), 'dd/MM/yyyy') : '',
+      'Data Entrega': p.data_entrega ? format(new Date(p.data_entrega), 'dd/MM/yyyy') : '',
+      'Frete Pago': p.valor_frete,
+    })), 'pedidos_site');
+    toast.success('Exportação iniciada');
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const data = await file.arrayBuffer();
+      const wb = XLSX.read(data);
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows: any[] = XLSX.utils.sheet_to_json(ws);
+      if (!rows.length) { toast.error('Arquivo vazio'); return; }
+
+      const mapped = rows.map(r => ({
+        numero_pedido_site: String(r['ID Site'] || r['numero_pedido_site'] || ''),
+        pedido_id_erp: String(r['ID Signus'] || r['pedido_id_erp'] || ''),
+        pode_faturar: r['Faturar'] === 'Sim' || r['pode_faturar'] === true,
+        cliente: String(r['Cliente'] || r['cliente'] || ''),
+        medidas: String(r['Medidas'] || r['medidas'] || ''),
+        peso_kg: Number(r['Peso (kg)'] || r['peso_kg'] || 0),
+        nota_fiscal: String(r['Nota Fiscal'] || r['nota_fiscal'] || ''),
+        etiqueta: String(r['Etiqueta'] || r['etiqueta'] || ''),
+        unidade_negocio: String(r['Transportadora'] || r['unidade_negocio'] || ''),
+        codigo_rastreio: r['Código Rastreio'] || r['codigo_rastreio'] || null,
+        status: 'pendente' as const,
+        valor_frete: Number(r['Frete Pago'] || r['valor_frete'] || 0),
+        observacoes: String(r['Observações'] || r['observacoes'] || ''),
+      })).filter(r => r.numero_pedido_site);
+
+      const { error } = await (supabase as any).from('pedidos_site').insert(mapped);
+      if (error) { toast.error('Erro ao importar: ' + error.message); return; }
+      toast.success(`${mapped.length} pedidos importados`);
+      fetchPedidos();
+    } catch {
+      toast.error('Erro ao ler arquivo');
+    }
+    e.target.value = '';
+  };
+
+  const getRastreioLink = (codigo: string | null) => {
+    if (!codigo) return null;
+    const c = codigo.trim().toUpperCase();
+    if (/^[A-Z]{2}\d{9}[A-Z]{2}$/.test(c)) return `https://www.linkcorreios.com.br/?id=${c}`;
+    return `https://www.google.com/search?q=rastreio+${c}`;
+  };
+
   const FormFields = () => (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
-        <div><Label>Nº Pedido Site *</Label><Input value={formData.numero_pedido_site || ''} onChange={e => setFormData(p => ({ ...p, numero_pedido_site: e.target.value }))} /></div>
-        <div><Label>ID Pedido ERP *</Label><Input value={formData.pedido_id_erp || ''} onChange={e => setFormData(p => ({ ...p, pedido_id_erp: e.target.value }))} /></div>
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div><Label>Cliente</Label><Input value={formData.cliente || ''} onChange={e => setFormData(p => ({ ...p, cliente: e.target.value }))} /></div>
-        <div>
-          <Label>Unidade de Negócio</Label>
-          <Select value={formData.unidade_negocio || 'GAP-Virtual'} onValueChange={v => setFormData(p => ({ ...p, unidade_negocio: v }))}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>{UNIDADES.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
+        <div><Label>ID Site *</Label><Input value={formData.numero_pedido_site || ''} onChange={e => setFormData(p => ({ ...p, numero_pedido_site: e.target.value }))} /></div>
+        <div><Label>ID Signus *</Label><Input value={formData.pedido_id_erp || ''} onChange={e => setFormData(p => ({ ...p, pedido_id_erp: e.target.value }))} /></div>
       </div>
       <div className="flex items-center gap-2">
         <Checkbox checked={formData.pode_faturar ?? false} onCheckedChange={v => setFormData(p => ({ ...p, pode_faturar: !!v }))} />
-        <Label>Pode Faturar</Label>
+        <Label>Faturar?</Label>
       </div>
+      <div><Label>Nome do Cliente</Label><Input value={formData.cliente || ''} onChange={e => setFormData(p => ({ ...p, cliente: e.target.value }))} /></div>
       <div className="grid grid-cols-2 gap-4">
-        <div><Label>Medidas</Label><Input placeholder="Ex: 30x20x15 cm" value={formData.medidas || ''} onChange={e => setFormData(p => ({ ...p, medidas: e.target.value }))} /></div>
+        <div><Label>Medidas (Expedição)</Label><Input placeholder="Ex: 30x20x15 cm" value={formData.medidas || ''} onChange={e => setFormData(p => ({ ...p, medidas: e.target.value }))} /></div>
         <div><Label>Peso (kg)</Label><Input type="number" step="0.01" value={formData.peso_kg || ''} onChange={e => setFormData(p => ({ ...p, peso_kg: parseFloat(e.target.value) || 0 }))} /></div>
       </div>
       <div className="grid grid-cols-2 gap-4">
-        <div><Label>Etiqueta</Label><Input value={formData.etiqueta || ''} onChange={e => setFormData(p => ({ ...p, etiqueta: e.target.value }))} /></div>
-        <div><Label>Nota Fiscal</Label><Input value={formData.nota_fiscal || ''} onChange={e => setFormData(p => ({ ...p, nota_fiscal: e.target.value }))} /></div>
+        <div><Label>Nota Fiscal</Label><Input placeholder="Número da NF" value={formData.nota_fiscal || ''} onChange={e => setFormData(p => ({ ...p, nota_fiscal: e.target.value }))} /></div>
+        <div><Label>Etiqueta</Label><Input placeholder="Código da etiqueta" value={formData.etiqueta || ''} onChange={e => setFormData(p => ({ ...p, etiqueta: e.target.value }))} /></div>
+      </div>
+      <div>
+        <Label>Transportadora</Label>
+        <Select value={formData.unidade_negocio || ''} onValueChange={v => setFormData(p => ({ ...p, unidade_negocio: v }))}>
+          <SelectTrigger><SelectValue placeholder="Selecione a transportadora" /></SelectTrigger>
+          <SelectContent>{TRANSPORTADORAS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+        </Select>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div><Label>Código de Rastreio</Label><Input value={formData.codigo_rastreio || ''} onChange={e => setFormData(p => ({ ...p, codigo_rastreio: e.target.value }))} /></div>
-        <div><Label>Valor do Frete (R$)</Label><Input type="number" step="0.01" value={formData.valor_frete || ''} onChange={e => setFormData(p => ({ ...p, valor_frete: parseFloat(e.target.value) || 0 }))} /></div>
+        <div><Label>Frete Pago (R$)</Label><Input type="number" step="0.01" value={formData.valor_frete || ''} onChange={e => setFormData(p => ({ ...p, valor_frete: parseFloat(e.target.value) || 0 }))} /></div>
       </div>
       <div>
         <Label>Status</Label>
@@ -220,9 +284,9 @@ export default function PedidosSitePage() {
         </Select>
       </div>
       <div className="grid grid-cols-3 gap-4">
-        <div><Label>Data Coleta</Label><Input type="date" value={formData.data_coleta ? String(formData.data_coleta).split('T')[0] : ''} onChange={e => setFormData(p => ({ ...p, data_coleta: e.target.value ? new Date(e.target.value).toISOString() : null }))} /></div>
-        <div><Label>Data Prevista</Label><Input type="date" value={formData.data_prevista ? String(formData.data_prevista).split('T')[0] : ''} onChange={e => setFormData(p => ({ ...p, data_prevista: e.target.value ? new Date(e.target.value).toISOString() : null }))} /></div>
-        <div><Label>Data Entrega</Label><Input type="date" value={formData.data_entrega ? String(formData.data_entrega).split('T')[0] : ''} onChange={e => setFormData(p => ({ ...p, data_entrega: e.target.value ? new Date(e.target.value).toISOString() : null }))} /></div>
+        <div><Label>Data Coleta</Label><Input type="date" value={formData.data_coleta ? String(formData.data_coleta).split('T')[0] : ''} onChange={e => setFormData(p => ({ ...p, data_coleta: e.target.value || null }))} /></div>
+        <div><Label>Data Prevista</Label><Input type="date" value={formData.data_prevista ? String(formData.data_prevista).split('T')[0] : ''} onChange={e => setFormData(p => ({ ...p, data_prevista: e.target.value || null }))} /></div>
+        <div><Label>Data Entrega</Label><Input type="date" value={formData.data_entrega ? String(formData.data_entrega).split('T')[0] : ''} onChange={e => setFormData(p => ({ ...p, data_entrega: e.target.value || null }))} /></div>
       </div>
       <div><Label>Observações</Label><Textarea value={formData.observacoes || ''} onChange={e => setFormData(p => ({ ...p, observacoes: e.target.value }))} /></div>
     </div>
@@ -232,10 +296,15 @@ export default function PedidosSitePage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-barlow font-bold">Pedidos Site</h1>
-          <p className="text-muted-foreground text-sm">Controle de pedidos do site e logística</p>
+          <h1 className="text-2xl font-barlow font-bold">Pedidos do Site</h1>
+          <p className="text-muted-foreground text-sm">Controle de pedidos do e-commerce e logística</p>
         </div>
-        <Button onClick={openNew} className="gap-2"><Plus className="w-4 h-4" />Novo Pedido</Button>
+        <div className="flex gap-2">
+          <input ref={importRef} type="file" accept=".xls,.xlsx,.csv" className="hidden" onChange={handleImport} />
+          <Button variant="outline" size="sm" onClick={() => importRef.current?.click()}><Upload className="w-4 h-4 mr-2" />Importar</Button>
+          <Button variant="outline" size="sm" onClick={handleExport}><Download className="w-4 h-4 mr-2" />Exportar</Button>
+          <Button onClick={openNew} className="gap-2"><Plus className="w-4 h-4" />Novo Pedido</Button>
+        </div>
       </div>
 
       {/* Status Cards */}
@@ -262,20 +331,13 @@ export default function PedidosSitePage() {
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input placeholder="Buscar por pedido, cliente ou rastreio..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9" />
+              <Input placeholder="Buscar por ID, cliente ou rastreio..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9" />
             </div>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-full sm:w-[180px]"><Filter className="w-4 h-4 mr-2" /><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[180px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos os Status</SelectItem>
                 {Object.entries(STATUS_CONFIG).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={filterUnidade} onValueChange={setFilterUnidade}>
-              <SelectTrigger className="w-full sm:w-[160px]"><SelectValue placeholder="Unidade" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todas Unidades</SelectItem>
-                {UNIDADES.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -292,36 +354,56 @@ export default function PedidosSitePage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Pedido Site</TableHead>
-                  <TableHead>ID ERP</TableHead>
-                  <TableHead>Faturar</TableHead>
+                  <TableHead>ID Site</TableHead>
+                  <TableHead>ID Signus</TableHead>
+                  <TableHead>Faturar?</TableHead>
                   <TableHead>Cliente</TableHead>
-                  <TableHead>Unidade</TableHead>
+                  <TableHead>Medidas / Peso</TableHead>
+                  <TableHead>NF</TableHead>
+                  <TableHead>Etiqueta</TableHead>
+                  <TableHead>Transportadora</TableHead>
                   <TableHead>Rastreio</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Data Coleta</TableHead>
                   <TableHead>Data Prevista</TableHead>
                   <TableHead>Data Entrega</TableHead>
-                  <TableHead>Frete</TableHead>
+                  <TableHead>Frete Pago</TableHead>
                   <TableHead>Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={12} className="text-center py-8 text-muted-foreground">Carregando...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={15} className="text-center py-8 text-muted-foreground">Carregando...</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={12} className="text-center py-8 text-muted-foreground">Nenhum pedido encontrado</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={15} className="text-center py-8 text-muted-foreground">Nenhum pedido encontrado</TableCell></TableRow>
                 ) : filtered.map(p => {
                   const statusConf = STATUS_CONFIG[p.status as PedidoStatus] || STATUS_CONFIG.pendente;
                   const atrasado = isEntregaAtrasada(p);
+                  const rastreioLink = getRastreioLink(p.codigo_rastreio);
                   return (
                     <TableRow key={p.id} className={`cursor-pointer hover:bg-muted/50 ${atrasado ? 'bg-destructive/5' : ''}`} onClick={() => openEdit(p)}>
                       <TableCell className="font-mono text-xs">{p.numero_pedido_site}</TableCell>
                       <TableCell className="font-mono text-xs">{p.pedido_id_erp}</TableCell>
-                      <TableCell><Badge variant={p.pode_faturar ? 'default' : 'secondary'} className="text-xs">{p.pode_faturar ? 'Sim' : 'Não'}</Badge></TableCell>
+                      <TableCell>
+                        <Badge variant={p.pode_faturar ? 'default' : 'secondary'} className="text-xs">
+                          {p.pode_faturar ? '✓ Sim' : 'Não'}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="max-w-[150px] truncate text-sm">{p.cliente}</TableCell>
-                      <TableCell><Badge variant="outline" className="text-xs">{p.unidade_negocio}</Badge></TableCell>
-                      <TableCell className="font-mono text-xs">{p.codigo_rastreio || '-'}</TableCell>
+                      <TableCell className="text-xs">
+                        <div>{p.medidas || '-'}</div>
+                        <div className="text-muted-foreground">{p.peso_kg ? `${p.peso_kg} kg` : ''}</div>
+                      </TableCell>
+                      <TableCell className="text-xs">{p.nota_fiscal || '-'}</TableCell>
+                      <TableCell className="text-xs">{p.etiqueta || '-'}</TableCell>
+                      <TableCell><Badge variant="outline" className="text-xs">{p.unidade_negocio || '-'}</Badge></TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {p.codigo_rastreio ? (
+                          <a href={rastreioLink || '#'} target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80" onClick={e => e.stopPropagation()}>
+                            {p.codigo_rastreio}
+                          </a>
+                        ) : '-'}
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <Badge className={`${statusConf.color} border text-xs`}>{statusConf.label}</Badge>
@@ -331,7 +413,7 @@ export default function PedidosSitePage() {
                       <TableCell className="text-xs">{p.data_coleta ? format(new Date(p.data_coleta), 'dd/MM/yyyy') : '-'}</TableCell>
                       <TableCell className={`text-xs ${atrasado ? 'text-destructive font-bold' : ''}`}>{p.data_prevista ? format(new Date(p.data_prevista), 'dd/MM/yyyy') : '-'}</TableCell>
                       <TableCell className="text-xs">{p.data_entrega ? format(new Date(p.data_entrega), 'dd/MM/yyyy') : '-'}</TableCell>
-                      <TableCell className="text-sm">{p.valor_frete.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
+                      <TableCell className="text-sm">{(p.valor_frete || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
                       <TableCell><Button size="sm" variant="ghost" onClick={e => { e.stopPropagation(); openEdit(p); }}><Edit className="w-4 h-4" /></Button></TableCell>
                     </TableRow>
                   );

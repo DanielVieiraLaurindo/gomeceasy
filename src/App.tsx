@@ -43,6 +43,9 @@ const ProfileSettingsPage = React.lazy(() => import("@/pages/ProfileSettingsPage
 const UsoConsumoDashboard = React.lazy(() => import("@/pages/compras/UsoConsumoDashboard"));
 const UsoConsumoNovaPage = React.lazy(() => import("@/pages/compras/UsoConsumoNovaPage"));
 const UsoConsumoDetalhePage = React.lazy(() => import("@/pages/compras/UsoConsumoDetalhePage"));
+const PedidosSitePage = React.lazy(() => import("@/pages/backoffice/PedidosSitePage"));
+const AnaliseCnpjPage = React.lazy(() => import("@/pages/backoffice/AnaliseCnpjPage"));
+const NovaRupturaPage = React.lazy(() => import("@/pages/backoffice/NovaRupturaPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -83,10 +86,10 @@ const App = () => (
                   <Route path="/backoffice" element={<BackOfficeDashboard />} />
                   <Route path="/backoffice/fulfillment" element={<FulfillmentPage />} />
                   <Route path="/backoffice/rupturas" element={<RupturasPage />} />
-                  <Route path="/backoffice/rupturas/nova" element={<PlaceholderPage title="Nova Ruptura" description="Registrar nova ruptura de estoque" />} />
-                  <Route path="/backoffice/pedidos-site" element={<PlaceholderPage title="Pedidos do Site" description="Gestão de pedidos do e-commerce" />} />
+                  <Route path="/backoffice/rupturas/nova" element={<NovaRupturaPage />} />
+                  <Route path="/backoffice/pedidos-site" element={<PedidosSitePage />} />
                   <Route path="/backoffice/precificacao" element={<PrecificacaoPage />} />
-                  <Route path="/backoffice/cnpjs" element={<PlaceholderPage title="Análise de CNPJs" description="Consulta e validação de CNPJs" />} />
+                  <Route path="/backoffice/cnpjs" element={<AnaliseCnpjPage />} />
 
                   {/* Expedição Loja */}
                   <Route path="/expedicao-loja" element={<ExpedicaoLojaDashboard />} />
