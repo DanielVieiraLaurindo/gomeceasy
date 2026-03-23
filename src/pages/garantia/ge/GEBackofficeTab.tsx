@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Search, X, Store, Building2, Zap, MoreHorizontal, Eye, DollarSign, CheckSquare, Headphones, Plus, Download, Upload, ArrowRight, ListChecks } from 'lucide-react';
+import { Search, X, Store, Building2, Zap, MoreHorizontal, Eye, DollarSign, CheckSquare, Headphones, Plus, Download, Upload, ArrowRight, ListChecks, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -49,6 +49,7 @@ export default function GEBackofficeTab() {
   const { data: allCases, isLoading } = useGarantiaCases(filters);
   const updateCase = useUpdateGarantiaCase();
   const createCase = useCreateGarantiaCase();
+  const deleteCase = useDeleteGarantiaCase();
 
   // New case form
   const [formData, setFormData] = useState({
@@ -254,6 +255,10 @@ export default function GEBackofficeTab() {
           {bulkAction && bulkValue && (
             <Button size="sm" onClick={handleBulkApply} disabled={updateCase.isPending}>Aplicar</Button>
           )}
+          <Button variant="destructive" size="sm" onClick={async () => {
+            for (const id of selectedIds) await deleteCase.mutateAsync(id);
+            setSelectedIds(new Set()); toast.success(`${selectedIds.size} casos excluídos`);
+          }}><Trash2 className="w-4 h-4 mr-1" />Excluir</Button>
           <Button variant="ghost" size="sm" onClick={() => { setSelectedIds(new Set()); setBulkAction(null); }}><X className="w-4 h-4" /></Button>
         </div>
       )}
@@ -384,6 +389,10 @@ export default function GEBackofficeTab() {
                               <CheckSquare className="w-4 h-4 mr-2" />Finalizar
                             </DropdownMenuItem>
                           )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => deleteCase.mutate(c.id)} className="text-destructive">
+                            <Trash2 className="w-4 h-4 mr-2" />Excluir
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

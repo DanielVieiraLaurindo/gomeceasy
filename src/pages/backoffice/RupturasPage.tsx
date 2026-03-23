@@ -23,7 +23,7 @@ import { useNavigate } from 'react-router-dom';
 import { useRupturas } from '@/hooks/useRupturas';
 import { supabase } from '@/integrations/supabase/client';
 import { exportToExcel } from '@/lib/export-utils';
-import { formatSlaTime } from '@/lib/business-hours';
+import { formatSlaTime, businessMillisecondsBetween } from '@/lib/business-hours';
 import { toast } from 'sonner';
 import { format, isToday, isYesterday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -47,7 +47,7 @@ function getDateLabel(dateStr: string | null) {
 function getStatusSla(r: any): string {
   const start = r.status_alterado_em || r.created_at;
   if (!start) return '—';
-  const elapsed = Date.now() - new Date(start).getTime();
+  const elapsed = businessMillisecondsBetween(new Date(start), new Date());
   return formatSlaTime(elapsed);
 }
 
@@ -68,20 +68,22 @@ function isEmAtraso(r: any): boolean {
   return new Date() > fimDoDia;
 }
 
-// SLA Notification hook
+// SLA Notification hook — also persists delay notifications to DB
 function useSlaNotifications(rupturas: any[]) {
   const flexNotifiedRef = useRef(false);
   const normalNotifiedRef = useRef(false);
   const lastCheckDateRef = useRef('');
+  const dbNotifiedRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    const check = () => {
+    const check = async () => {
       const now = new Date();
       const hour = new Date(now.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' })).getHours();
       const today = now.toDateString();
       if (lastCheckDateRef.current !== today) {
         flexNotifiedRef.current = false;
         normalNotifiedRef.current = false;
+        dbNotifiedRef.current = new Set();
         lastCheckDateRef.current = today;
       }
       const active = rupturas.filter(r => r.status === 'aguardando_compras' || r.status === 'ruptura_identificada');
@@ -101,6 +103,19 @@ function useSlaNotifications(rupturas: any[]) {
         if ('Notification' in window && Notification.permission === 'granted') {
           new Notification(`⚠️ ${normalPedidos.length} pedidos pendentes — Informar atraso`);
         }
+      }
+
+      // Persist delay notifications to DB for items not updated same day
+      const delayed = rupturas.filter(r => isEmAtraso(r) && !dbNotifiedRef.current.has(r.id));
+      for (const r of delayed) {
+        dbNotifiedRef.current.add(r.id);
+        await supabase.from('notificacoes').insert({
+          mensagem: `Ruptura #${r.numero_pedido} (${r.produto}) em atraso — sem alteração de status no mesmo dia`,
+          tipo: 'ruptura_atraso',
+          referencia_id: r.id,
+          referencia_tabela: 'rupturas',
+          setor_destino: 'backoffice',
+        } as any).then(() => {});
       }
     };
     if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();

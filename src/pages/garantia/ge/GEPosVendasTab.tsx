@@ -39,6 +39,7 @@ export default function GEPosVendasTab() {
   const [searchInput, setSearchInput] = useState('');
   const [unitTab, setUnitTab] = useState('SP');
   const [atendenteFilter, setAtendenteFilter] = useState('all');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const { data: cases, isLoading } = useGarantiaCases(filters);
   const createCase = useCreateGarantiaCase();
@@ -137,7 +138,16 @@ export default function GEPosVendasTab() {
             <p className="text-sm text-muted-foreground">{activeCases.length} casos ativos</p>
           </div>
         </div>
-        <Button onClick={() => setIsFormOpen(true)}><Plus className="w-4 h-4 mr-2" />Novo Caso</Button>
+        <div className="flex items-center gap-2">
+          {selectedIds.size > 0 && (
+            <Button variant="destructive" size="sm" onClick={async () => {
+              for (const id of selectedIds) await deleteCase.mutateAsync(id);
+              setSelectedIds(new Set());
+              toast.success(`${selectedIds.size} casos excluídos`);
+            }}><Trash2 className="w-4 h-4 mr-1" />Excluir {selectedIds.size}</Button>
+          )}
+          <Button onClick={() => setIsFormOpen(true)}><Plus className="w-4 h-4 mr-2" />Novo Caso</Button>
+        </div>
       </div>
 
       <Tabs value={unitTab} onValueChange={setUnitTab}>
@@ -172,9 +182,12 @@ export default function GEPosVendasTab() {
           ) : (
             <div className="grid gap-4 mt-4">
               {activeCases.map(c => (
-                <Card key={c.id} className="hover:shadow-md transition-shadow border-l-4 border-l-primary/30">
+                <Card key={c.id} className={cn("hover:shadow-md transition-shadow border-l-4 border-l-primary/30", selectedIds.has(c.id) && "ring-2 ring-primary/30")}>
                   <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-3">
+                      <Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => {
+                        setSelectedIds(prev => { const n = new Set(prev); n.has(c.id) ? n.delete(c.id) : n.add(c.id); return n; });
+                      }} className="mt-1" />
                       <div className="flex-1 space-y-3">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-bold text-lg">#{c.case_number}</span>
