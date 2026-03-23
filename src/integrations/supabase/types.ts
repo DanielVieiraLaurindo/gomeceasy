@@ -2144,6 +2144,107 @@ export type Database = {
         }
         Relationships: []
       }
+      shipment_items_full: {
+        Row: {
+          created_at: string | null
+          descricao: string | null
+          foto_url: string | null
+          id: string
+          mlb: string | null
+          quantidade: number
+          requisicao_venda: boolean | null
+          shipment_id: string
+          sku: string
+        }
+        Insert: {
+          created_at?: string | null
+          descricao?: string | null
+          foto_url?: string | null
+          id?: string
+          mlb?: string | null
+          quantidade?: number
+          requisicao_venda?: boolean | null
+          shipment_id: string
+          sku: string
+        }
+        Update: {
+          created_at?: string | null
+          descricao?: string | null
+          foto_url?: string | null
+          id?: string
+          mlb?: string | null
+          quantidade?: number
+          requisicao_venda?: boolean | null
+          shipment_id?: string
+          sku?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipment_items_full_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments_full"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shipments_full: {
+        Row: {
+          autorizacao_postagem_url: string | null
+          cd_destino: string
+          created_at: string | null
+          data_chegada: string
+          deleted_at: string | null
+          etiqueta_produto_url: string | null
+          etiqueta_volume_url: string | null
+          id: string
+          nf_url: string | null
+          numero: string
+          observacoes: string | null
+          quantidade_itens: number
+          status: string
+          unidades_totais: number
+          updated_at: string | null
+          valor_estimado: number
+        }
+        Insert: {
+          autorizacao_postagem_url?: string | null
+          cd_destino?: string
+          created_at?: string | null
+          data_chegada?: string
+          deleted_at?: string | null
+          etiqueta_produto_url?: string | null
+          etiqueta_volume_url?: string | null
+          id?: string
+          nf_url?: string | null
+          numero: string
+          observacoes?: string | null
+          quantidade_itens?: number
+          status?: string
+          unidades_totais?: number
+          updated_at?: string | null
+          valor_estimado?: number
+        }
+        Update: {
+          autorizacao_postagem_url?: string | null
+          cd_destino?: string
+          created_at?: string | null
+          data_chegada?: string
+          deleted_at?: string | null
+          etiqueta_produto_url?: string | null
+          etiqueta_volume_url?: string | null
+          id?: string
+          nf_url?: string | null
+          numero?: string
+          observacoes?: string | null
+          quantidade_itens?: number
+          status?: string
+          unidades_totais?: number
+          updated_at?: string | null
+          valor_estimado?: number
+        }
+        Relationships: []
+      }
       solicitacoes_compra: {
         Row: {
           created_at: string | null
