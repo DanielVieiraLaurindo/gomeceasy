@@ -36,7 +36,6 @@ const SECTOR_OPTIONS = [
   { value: 'pos_vendas', label: 'Pós-Vendas' },
   { value: 'financeiro', label: 'Financeiro' },
   { value: 'expedicao', label: 'Expedição' },
-  { value: 'logistica', label: 'Logística' },
   { value: 'pre_vendas', label: 'Pré-Vendas' },
 ];
 
@@ -55,15 +54,15 @@ export default function MasterDashboard() {
   ];
 
   const OTHER_MODULES: ModuleCard[] = [
-    { label: 'Expedição', path: '/expedicao', icon: Boxes, kpis: [{ label: 'Em Separação', val: metrics.expedicao.emSeparacao }, { label: 'Saiu Onda', val: metrics.expedicao.saiuOnda }], status: 'ok' },
-    { label: 'Logística', path: '/logistica', icon: MapPin, kpis: [{ label: 'Em Trânsito', val: metrics.logistica.emTransito }, { label: 'Ocorrências', val: metrics.logistica.ocorrencias }], status: metrics.logistica.ocorrencias > 5 ? 'warning' : 'ok' },
-    { label: 'Garantia', path: '/garantia', icon: Shield, kpis: [{ label: 'Casos Ativos', val: metrics.posVendas.garantias }, { label: 'Devoluções', val: metrics.posVendas.devolucoes }], status: 'ok' },
+    { label: 'Expedição Loja', path: '/expedicao-loja', icon: Truck, kpis: [{ label: 'Rastreamento', val: '—' }, { label: 'Transportadoras', val: '—' }], status: 'ok' },
+    { label: 'Expedição Ecommerce', path: '/expedicao-ecommerce', icon: Boxes, kpis: [{ label: 'Em Separação', val: metrics.expedicao.emSeparacao }, { label: 'Despachados', val: metrics.expedicao.saiuOnda }], status: 'ok' },
+    { label: 'Garantia Loja', path: '/garantia-loja', icon: Shield, kpis: [{ label: 'Casos', val: '—' }, { label: 'Pendentes', val: '—' }], status: 'ok' },
+    { label: 'Garantia Ecommerce', path: '/garantia-ecommerce', icon: Shield, kpis: [{ label: 'Casos Ativos', val: metrics.posVendas.garantias }, { label: 'Devoluções', val: metrics.posVendas.devolucoes }], status: 'ok' },
     { label: 'Financeiro', path: '/financeiro', icon: CreditCard, kpis: [{ label: 'Pendente', val: `R$ ${(metrics.financeiro.totalPendente / 1000).toFixed(1)}k` }, { label: 'Pago', val: `R$ ${(metrics.financeiro.totalPago / 1000).toFixed(1)}k` }], status: metrics.financeiro.totalPendente > 10000 ? 'warning' : 'ok' },
     { label: 'Compras', path: '/compras', icon: ShoppingCart, kpis: [{ label: 'Solicitações', val: 0 }, { label: 'Pedidos', val: 0 }], status: 'ok' },
     { label: 'TI', path: '/ti', icon: Monitor, kpis: [{ label: 'Chamados', val: 0 }, { label: 'Usuários', val: 0 }], status: 'ok' },
   ];
 
-  // Sector-specific chart data
   const getChartForSector = () => {
     const cd = metrics.chartData || [];
     if (selectedSector === 'all') {
@@ -71,7 +70,7 @@ export default function MasterDashboard() {
     }
     if (selectedSector === 'backoffice') return cd.map((d: any) => ({ date: d.date, rupturas: d.rupturas }));
     if (selectedSector === 'pos_vendas') return cd.map((d: any) => ({ date: d.date, casos: d.casos }));
-    if (selectedSector === 'expedicao' || selectedSector === 'logistica') return cd.map((d: any) => ({ date: d.date, envios: d.envios }));
+    if (selectedSector === 'expedicao') return cd.map((d: any) => ({ date: d.date, envios: d.envios }));
     return cd;
   };
 
@@ -81,7 +80,6 @@ export default function MasterDashboard() {
     { name: 'Rupturas', value: metrics.backoffice.rupturasAbertas },
     { name: 'Casos PV', value: metrics.posVendas.casosAbertos },
     { name: 'Envios Pend.', value: metrics.backoffice.enviosPendentes },
-    { name: 'Ocorrências', value: metrics.logistica.ocorrencias },
   ].filter(d => d.value > 0);
 
   return (
@@ -90,7 +88,6 @@ export default function MasterDashboard() {
         <div><h1 className="text-2xl font-barlow font-bold">Dashboard Master</h1><p className="text-muted-foreground text-sm">Visão unificada de todos os módulos</p></div>
       </div>
 
-      {/* Alert bar */}
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="card-base bg-destructive/5 border-destructive/20 p-4 flex items-center gap-4">
         <AlertTriangle className="w-5 h-5 text-destructive shrink-0" />
         <div className="flex-1">
@@ -100,7 +97,6 @@ export default function MasterDashboard() {
         <span className="bg-destructive text-destructive-foreground text-xs font-bold rounded-full px-2 py-0.5">{metrics.backoffice.rupturasAbertas + metrics.posVendas.casosAbertos}</span>
       </motion.div>
 
-      {/* Global KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard title="Rupturas Abertas" value={metrics.backoffice.rupturasAbertas} icon={AlertTriangle} variant="danger" delay={0} />
         <MetricCard title="Casos Pós-Vendas" value={metrics.posVendas.casosAbertos} icon={FolderOpen} variant="warning" delay={0.08} />
@@ -108,7 +104,6 @@ export default function MasterDashboard() {
         <MetricCard title="Valor Pago" value={`R$ ${metrics.financeiro.totalPago.toFixed(0)}`} icon={TrendingUp} variant="success" delay={0.24} />
       </div>
 
-      {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="card-base p-5 lg:col-span-2">
           <div className="flex items-center justify-between mb-4">
@@ -128,7 +123,7 @@ export default function MasterDashboard() {
               {selectedSector === 'all' && <Line type="monotone" dataKey="total" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />}
               {(selectedSector === 'all' || selectedSector === 'backoffice') && <Line type="monotone" dataKey="rupturas" stroke="hsl(var(--destructive))" strokeWidth={1.5} dot={false} />}
               {(selectedSector === 'all' || selectedSector === 'pos_vendas') && <Line type="monotone" dataKey="casos" stroke="hsl(var(--warning))" strokeWidth={1.5} dot={false} />}
-              {(selectedSector === 'all' || selectedSector === 'expedicao' || selectedSector === 'logistica') && <Line type="monotone" dataKey="envios" stroke="hsl(var(--info))" strokeWidth={1.5} dot={false} />}
+              {(selectedSector === 'all' || selectedSector === 'expedicao') && <Line type="monotone" dataKey="envios" stroke="hsl(var(--info))" strokeWidth={1.5} dot={false} />}
             </LineChart>
           </ResponsiveContainer>
         </motion.div>
@@ -149,7 +144,6 @@ export default function MasterDashboard() {
         </motion.div>
       </div>
 
-      {/* E-commerce Module */}
       <div className="space-y-3">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center"><Globe className="w-4 h-4 text-primary" /></div>
@@ -172,7 +166,6 @@ export default function MasterDashboard() {
         </div>
       </div>
 
-      {/* Other Modules */}
       <div className="space-y-3">
         <h2 className="font-barlow font-bold text-lg">Outros Módulos</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -191,7 +184,6 @@ export default function MasterDashboard() {
         </div>
       </div>
 
-      {/* Activity Feed */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }} className="card-base p-5">
         <h3 className="font-barlow font-bold mb-4">Métricas em Tempo Real</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">

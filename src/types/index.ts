@@ -3,8 +3,8 @@ export type UserRole = 'master' | 'admin' | 'usuario';
 
 export type AppSetor =
   | 'pos_vendas' | 'pre_vendas' | 'criacao' | 'backoffice'
-  | 'compras' | 'ti' | 'garantia' | 'financeiro_fiscal'
-  | 'expedicao' | 'logistica';
+  | 'compras' | 'ti' | 'garantia_loja' | 'garantia_ecommerce' | 'financeiro_fiscal'
+  | 'expedicao_loja' | 'expedicao_ecommerce';
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   master: 'Master',
@@ -19,10 +19,11 @@ export const SETOR_LABELS: Record<AppSetor, string> = {
   backoffice: 'BackOffice',
   compras: 'Compras',
   ti: 'Tecnologia da Informação',
-  garantia: 'Garantia',
+  garantia_loja: 'Garantia Loja',
+  garantia_ecommerce: 'Garantia Ecommerce',
   financeiro_fiscal: 'Financeiro Fiscal',
-  expedicao: 'Expedição',
-  logistica: 'Logística',
+  expedicao_loja: 'Expedição Loja',
+  expedicao_ecommerce: 'Expedição Ecommerce',
 };
 
 export const SETOR_OPTIONS: { value: AppSetor; label: string }[] = [
@@ -32,10 +33,11 @@ export const SETOR_OPTIONS: { value: AppSetor; label: string }[] = [
   { value: 'backoffice', label: 'BackOffice' },
   { value: 'compras', label: 'Compras' },
   { value: 'ti', label: 'Tecnologia da Informação' },
-  { value: 'garantia', label: 'Garantia' },
+  { value: 'garantia_loja', label: 'Garantia Loja' },
+  { value: 'garantia_ecommerce', label: 'Garantia Ecommerce' },
   { value: 'financeiro_fiscal', label: 'Financeiro Fiscal' },
-  { value: 'expedicao', label: 'Expedição' },
-  { value: 'logistica', label: 'Logística' },
+  { value: 'expedicao_loja', label: 'Expedição Loja' },
+  { value: 'expedicao_ecommerce', label: 'Expedição Ecommerce' },
 ];
 
 export const SETOR_HOME_ROUTES: Record<AppSetor, string> = {
@@ -45,10 +47,11 @@ export const SETOR_HOME_ROUTES: Record<AppSetor, string> = {
   backoffice: '/backoffice',
   compras: '/compras',
   ti: '/ti',
-  garantia: '/garantia',
+  garantia_loja: '/garantia-loja',
+  garantia_ecommerce: '/garantia-ecommerce',
   financeiro_fiscal: '/financeiro',
-  expedicao: '/expedicao',
-  logistica: '/logistica',
+  expedicao_loja: '/expedicao-loja',
+  expedicao_ecommerce: '/expedicao-ecommerce',
 };
 
 export interface Profile {
@@ -197,23 +200,19 @@ export const STATUS_LABELS: Record<string, string> = {
   concluido: 'Concluído',
   aguardando_fiscal: 'Aguardando Fiscal',
   reprovado: 'Reprovado',
-  // Expedição
   criada: 'Criada',
   em_separacao: 'Em Separação',
   conferindo: 'Conferindo',
   despachada: 'Despachada',
-  // Ocorrências
   aberta: 'Aberta',
   em_tratativa: 'Em Tratativa',
   resolvida: 'Resolvida',
-  // Leads
   prospeccao: 'Prospecção',
   contato: 'Contato',
   proposta: 'Proposta',
   negociacao: 'Negociação',
   fechado_ganho: 'Fechado-Ganho',
   fechado_perdido: 'Fechado-Perdido',
-  // Criação
   solicitado: 'Solicitado',
   em_producao: 'Em Produção',
   em_revisao: 'Em Revisão',
