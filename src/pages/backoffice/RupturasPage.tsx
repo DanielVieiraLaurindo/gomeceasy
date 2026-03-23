@@ -54,6 +54,10 @@ export default function RupturasPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [canalFilter, setCanalFilter] = useState<string>('all');
   const [unidadeFilter, setUnidadeFilter] = useState<string>('all');
+  const [skuFilter, setSkuFilter] = useState<string>('all');
+  const [produtoFilter, setProdutoFilter] = useState<string>('all');
+  const [compradorFilter, setCompradorFilter] = useState<string>('all');
+  const [transportadoraFilter, setTransportadoraFilter] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -87,14 +91,18 @@ export default function RupturasPage() {
     const toDate = dateTo ? new Date(dateTo + 'T23:59:59') : null;
 
     let items = abertas.filter(r => {
-      const matchSearch = !debouncedSearch || [r.numero_pedido, r.sku, r.produto, r.comprador || '', r.observacoes || '']
+      const matchSearch = !debouncedSearch || [r.numero_pedido, r.sku, r.produto, r.comprador || '', r.observacoes || '', r.transportadora || '']
         .some(f => f.toLowerCase().includes(debouncedSearch.toLowerCase()));
       const matchStatus = statusFilter === 'all' || r.status === statusFilter;
       const matchCanal = canalFilter === 'all' || r.canal_venda === canalFilter;
       const matchUnidade = unidadeFilter === 'all' || r.unidade_negocio === unidadeFilter;
+      const matchSku = skuFilter === 'all' || r.sku === skuFilter;
+      const matchProduto = produtoFilter === 'all' || r.produto === produtoFilter;
+      const matchComprador = compradorFilter === 'all' || r.comprador === compradorFilter;
+      const matchTransp = transportadoraFilter === 'all' || r.transportadora === transportadoraFilter;
       const matchFrom = !fromDate || new Date(r.created_at || '') >= fromDate;
       const matchTo = !toDate || new Date(r.created_at || '') <= toDate;
-      return matchSearch && matchStatus && matchCanal && matchUnidade && matchFrom && matchTo;
+      return matchSearch && matchStatus && matchCanal && matchUnidade && matchSku && matchProduto && matchComprador && matchTransp && matchFrom && matchTo;
     });
     items.sort((a: any, b: any) => {
       const av = a[sortField]; const bv = b[sortField];
@@ -102,7 +110,7 @@ export default function RupturasPage() {
       return sortDir === 'asc' ? cmp : -cmp;
     });
     return items;
-  }, [abertas, debouncedSearch, statusFilter, canalFilter, unidadeFilter, dateFrom, dateTo, sortField, sortDir]);
+  }, [abertas, debouncedSearch, statusFilter, canalFilter, unidadeFilter, skuFilter, produtoFilter, compradorFilter, transportadoraFilter, dateFrom, dateTo, sortField, sortDir]);
 
   // Group by date
   const grouped = useMemo(() => {
@@ -132,8 +140,12 @@ export default function RupturasPage() {
     }).length,
   }), [abertas, concluidas, rupturas]);
 
-  const canais = useMemo(() => [...new Set(rupturas.map(r => r.canal_venda).filter(Boolean))], [rupturas]);
-  const unidades = useMemo(() => [...new Set(rupturas.map(r => r.unidade_negocio).filter(Boolean))], [rupturas]);
+  const canais = useMemo(() => [...new Set(rupturas.map(r => r.canal_venda).filter(Boolean))].sort(), [rupturas]);
+  const unidades = useMemo(() => [...new Set(rupturas.map(r => r.unidade_negocio).filter(Boolean))].sort(), [rupturas]);
+  const skus = useMemo(() => [...new Set(rupturas.map(r => r.sku).filter(Boolean))].sort(), [rupturas]);
+  const produtos = useMemo(() => [...new Set(rupturas.map(r => r.produto).filter(Boolean))].sort(), [rupturas]);
+  const compradores = useMemo(() => [...new Set(rupturas.map(r => r.comprador).filter(Boolean))].sort(), [rupturas]);
+  const transportadorasUnicas = useMemo(() => [...new Set(rupturas.map(r => r.transportadora).filter(Boolean))].sort(), [rupturas]);
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -239,24 +251,52 @@ export default function RupturasPage() {
       {showFilters && (
         <div className="flex flex-wrap gap-3 p-3 bg-muted/50 rounded-lg">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-48"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectTrigger className="w-44"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os Status</SelectItem>
               {[...KANBAN_COLUMNS, 'revertida' as const, 'cancelada' as const].map(s => <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={canalFilter} onValueChange={setCanalFilter}>
-            <SelectTrigger className="w-48"><SelectValue placeholder="Canal" /></SelectTrigger>
+            <SelectTrigger className="w-44"><SelectValue placeholder="Canal" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os Canais</SelectItem>
               {canais.map(c => <SelectItem key={c} value={c!}>{c}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={unidadeFilter} onValueChange={setUnidadeFilter}>
-            <SelectTrigger className="w-48"><SelectValue placeholder="Unidade" /></SelectTrigger>
+            <SelectTrigger className="w-44"><SelectValue placeholder="Unidade" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas Unidades</SelectItem>
               {unidades.map(u => <SelectItem key={u} value={u!}>{u}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={skuFilter} onValueChange={setSkuFilter}>
+            <SelectTrigger className="w-44"><SelectValue placeholder="SKU" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os SKUs</SelectItem>
+              {skus.map(s => <SelectItem key={s} value={s!}>{s}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={produtoFilter} onValueChange={setProdutoFilter}>
+            <SelectTrigger className="w-52"><SelectValue placeholder="Produto" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os Produtos</SelectItem>
+              {produtos.map(p => <SelectItem key={p} value={p!}>{p}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={compradorFilter} onValueChange={setCompradorFilter}>
+            <SelectTrigger className="w-52"><SelectValue placeholder="Comprador" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os Compradores</SelectItem>
+              {compradores.map(c => <SelectItem key={c} value={c!}>{c}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={transportadoraFilter} onValueChange={setTransportadoraFilter}>
+            <SelectTrigger className="w-52"><SelectValue placeholder="Transportadora" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas Transportadoras</SelectItem>
+              {transportadorasUnicas.map(t => <SelectItem key={t} value={t!}>{t}</SelectItem>)}
             </SelectContent>
           </Select>
           <div className="flex items-center gap-2">
@@ -265,6 +305,13 @@ export default function RupturasPage() {
             <Label className="text-xs">Até:</Label>
             <Input type="date" className="w-36 h-9" value={dateTo} onChange={e => setDateTo(e.target.value)} />
           </div>
+          <Button variant="ghost" size="sm" onClick={() => {
+            setStatusFilter('all'); setCanalFilter('all'); setUnidadeFilter('all');
+            setSkuFilter('all'); setProdutoFilter('all'); setCompradorFilter('all');
+            setTransportadoraFilter('all'); setDateFrom(''); setDateTo('');
+          }}>
+            <X className="w-4 h-4 mr-1" />Limpar Filtros
+          </Button>
         </div>
       )}
 

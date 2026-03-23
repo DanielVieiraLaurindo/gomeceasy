@@ -58,20 +58,24 @@ export default function NovaRupturaPage() {
       const rows: any[] = XLSX.utils.sheet_to_json(ws);
       if (!rows.length) { toast.error('Arquivo vazio'); return; }
 
-      const mapped = rows.map((r, i) => ({
-        _idx: i,
-        numero_pedido: String(r['Pedido'] || r['numero_pedido'] || r['Número Pedido'] || ''),
-        canal_venda: String(r['Canal'] || r['canal_venda'] || ''),
-        marketplace: String(r['Marketplace'] || r['marketplace'] || ''),
-        unidade_negocio: String(r['Unidade'] || r['unidade_negocio'] || 'GAP-Virtual'),
-        sku: String(r['SKU'] || r['sku'] || ''),
-        produto: String(r['Produto'] || r['produto'] || ''),
-        quantidade: Number(r['Quantidade'] || r['quantidade'] || 1),
-        valor_total: Number(r['Valor'] || r['valor_total'] || 0),
-        comprador: String(r['Comprador'] || r['comprador'] || ''),
-        transportadora: String(r['Transportadora'] || r['transportadora'] || ''),
-        observacoes: String(r['Observações'] || r['observacoes'] || ''),
-      }));
+      const mapped = rows.map((r, i) => {
+        const saldoAtender = Number(r['Saldo a atender'] || r['Quantidade'] || r['quantidade'] || r['Qtd Pedida'] || 1);
+        const precoLiq = Number(r['Preço Líquido'] || r['Valor'] || r['valor_total'] || 0);
+        return {
+          _idx: i,
+          numero_pedido: String(r['Nro do Pedido'] || r['Pedido - ID'] || r['Pedido'] || r['numero_pedido'] || r['Número Pedido'] || ''),
+          canal_venda: String(r['Canal de venda'] || r['Canal'] || r['canal_venda'] || ''),
+          marketplace: String(r['Canal de venda'] || r['Marketplace'] || r['marketplace'] || ''),
+          unidade_negocio: String(r['Unidade de negócio'] || r['Unidade'] || r['unidade_negocio'] || 'GAP-Virtual'),
+          sku: String(r['Produto - Código'] || r['SKU'] || r['sku'] || ''),
+          produto: String(r['Produto - Nome'] || r['Produto'] || r['produto'] || ''),
+          quantidade: saldoAtender,
+          valor_total: Number(r['Produto - Total líquido (pedido)'] || r['Produto - Total bruto (pedido)'] || precoLiq * saldoAtender || 0),
+          comprador: String(r['Parceiro - Razão Social'] || r['Comprador'] || r['comprador'] || ''),
+          transportadora: String(r['Transportadora'] || r['transportadora'] || ''),
+          observacoes: String(r['Observações'] || r['observacoes'] || r['Status'] || ''),
+        };
+      });
 
       setImportedRows(mapped);
       toast.success(`${mapped.length} linhas carregadas do arquivo`);
@@ -106,9 +110,12 @@ export default function NovaRupturaPage() {
 
   const downloadTemplate = () => {
     const ws = XLSX.utils.json_to_sheet([{
-      'Pedido': '', 'Canal': '', 'Marketplace': '', 'Unidade': 'GAP-Virtual',
-      'SKU': '', 'Produto': '', 'Quantidade': 1, 'Valor': 0,
-      'Comprador': '', 'Transportadora': '', 'Observações': '',
+      'Pedido - ID': '', 'Unidade de negócio': 'GAP - VIRTUAL', 'Nro do Pedido': '',
+      'Canal de venda': '', 'Parceiro - Razão Social': '', 'Status': '',
+      'Produto - Código': '', 'Produto - Nome': '', 'Qtd Pedida': 1,
+      'Qtd Reservada': 0, 'Saldo a atender': 1, 'Preço Bruto': 0,
+      'Preço Líquido': 0, 'Produto - Total bruto (pedido)': 0,
+      'Produto - Total líquido (pedido)': 0, 'Cadastro': '', 'Transportadora': '',
     }]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Rupturas');
