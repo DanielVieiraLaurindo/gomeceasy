@@ -23,7 +23,7 @@ import { useNavigate } from 'react-router-dom';
 import { useRupturas } from '@/hooks/useRupturas';
 import { supabase } from '@/integrations/supabase/client';
 import { exportToExcel } from '@/lib/export-utils';
-import { formatSlaTime } from '@/lib/business-hours';
+import { formatSlaTime, businessMillisecondsBetween } from '@/lib/business-hours';
 import { toast } from 'sonner';
 import { format, isToday, isYesterday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
