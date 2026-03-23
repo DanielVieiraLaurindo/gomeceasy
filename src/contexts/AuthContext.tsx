@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Profile, AppSetor, UserRole } from '@/types';
 
@@ -20,59 +20,80 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
 
-  const fetchProfile = async (userId: string) => {
-    const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
-    if (data) setProfile(data as unknown as Profile);
-    return data as unknown as Profile | null;
-  };
+  const fetchProfile = useCallback(async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id,nome,email,setor,role,avatar_url,ativo,created_at')
+        .eq('id', userId)
+        .single();
+      if (data && !error) {
+        setProfile(data as unknown as Profile);
+      }
+      return data as unknown as Profile | null;
+    } catch {
+      return null;
+    }
+  }, []);
 
-  const refreshProfile = async () => {
+  const refreshProfile = useCallback(async () => {
     if (user?.id) await fetchProfile(user.id);
-  };
+  }, [user?.id, fetchProfile]);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    // Get initial session first
+    supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setUser(session.user);
-        await fetchProfile(session.user.id);
+        fetchProfile(session.user.id).finally(() => {
+          setLoading(false);
+          setInitialized(true);
+        });
+      } else {
+        setUser(null);
+        setProfile(null);
+        setLoading(false);
+        setInitialized(true);
+      }
+    });
+
+    // Then listen for changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!initialized && _event === 'INITIAL_SESSION') return; // skip, handled above
+      
+      if (session?.user) {
+        setUser(session.user);
+        fetchProfile(session.user.id);
       } else {
         setUser(null);
         setProfile(null);
       }
-      setLoading(false);
-    });
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUser(session.user);
-        fetchProfile(session.user.id);
-      }
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error };
-  };
+  }, []);
 
-  const signUp = async (email: string, password: string, nome: string, setor: AppSetor) => {
-    const { data, error } = await supabase.auth.signUp({
+  const signUp = useCallback(async (email: string, password: string, nome: string, setor: AppSetor) => {
+    const { error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { nome, setor } }
     });
     return { error };
-  };
+  }, []);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     await supabase.auth.signOut();
     setUser(null);
     setProfile(null);
-  };
+  }, []);
 
   return (
     <AuthContext.Provider value={{
