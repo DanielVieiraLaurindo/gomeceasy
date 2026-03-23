@@ -143,6 +143,9 @@ const App = () => (
 
                   {/* Compras */}
                   <Route path="/compras" element={<ComprasDashboard />} />
+                  <Route path="/compras/uso-consumo" element={<UsoConsumoDashboard />} />
+                  <Route path="/compras/uso-consumo/nova" element={<UsoConsumoNovaPage />} />
+                  <Route path="/compras/uso-consumo/:id" element={<UsoConsumoDetalhePage />} />
                   <Route path="/compras/divergencias" element={<DivergenciasListPage />} />
                   <Route path="/compras/divergencias/dashboard" element={<DivergenciasDashboard />} />
                   <Route path="/compras/divergencias/historico" element={<HistoricoDivergenciasPage />} />

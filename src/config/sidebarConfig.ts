@@ -73,6 +73,7 @@ export const SIDEBAR_ITEMS: Record<AppSetor, SidebarItem[]> = {
   ],
   compras: [
     { path: '/compras', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/compras/uso-consumo', label: 'Uso e Consumo', icon: ClipboardList },
     { path: '/compras/divergencias', label: 'Divergências', icon: AlertTriangle },
     { path: '/compras/divergencias/dashboard', label: 'Dashboard Diverg.', icon: BarChart2 },
     { path: '/compras/divergencias/historico', label: 'Histórico Diverg.', icon: Archive },
