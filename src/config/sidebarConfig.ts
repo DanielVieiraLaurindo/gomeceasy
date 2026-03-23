@@ -78,6 +78,7 @@ export const SIDEBAR_ITEMS: Record<AppSetor, SidebarItem[]> = {
     { path: '/compras/divergencias/historico', label: 'Histórico Diverg.', icon: Archive },
     { path: '/compras/solicitacoes', label: 'Solicitações', icon: ShoppingCart },
     { path: '/compras/pedidos', label: 'Pedidos de Compra', icon: FileText },
+    { path: '/compras/precificacao', label: 'Calculadora Preços', icon: Calculator },
     { path: '/compras/marcas', label: 'Marcas', icon: Building2 },
     { path: '/compras/minhas-marcas', label: 'Minhas Marcas', icon: UserCheck },
   ],
