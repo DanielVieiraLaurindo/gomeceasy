@@ -138,7 +138,16 @@ export default function GEPosVendasTab() {
             <p className="text-sm text-muted-foreground">{activeCases.length} casos ativos</p>
           </div>
         </div>
-        <Button onClick={() => setIsFormOpen(true)}><Plus className="w-4 h-4 mr-2" />Novo Caso</Button>
+        <div className="flex items-center gap-2">
+          {selectedIds.size > 0 && (
+            <Button variant="destructive" size="sm" onClick={async () => {
+              for (const id of selectedIds) await deleteCase.mutateAsync(id);
+              setSelectedIds(new Set());
+              toast.success(`${selectedIds.size} casos excluídos`);
+            }}><Trash2 className="w-4 h-4 mr-1" />Excluir {selectedIds.size}</Button>
+          )}
+          <Button onClick={() => setIsFormOpen(true)}><Plus className="w-4 h-4 mr-2" />Novo Caso</Button>
+        </div>
       </div>
 
       <Tabs value={unitTab} onValueChange={setUnitTab}>
