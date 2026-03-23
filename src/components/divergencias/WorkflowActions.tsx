@@ -39,7 +39,7 @@ interface WorkflowActionsProps {
 }
 
 export default function WorkflowActions({ divergencia, itens }: WorkflowActionsProps) {
-  const { user, role } = useAuth();
+  const { user, role, setor } = useAuth();
   const queryClient = useQueryClient();
   const [executing, setExecuting] = useState(false);
   const [observacao, setObservacao] = useState("");
