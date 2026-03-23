@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,8 +9,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Search, FileText, Clock, CheckCircle2, AlertCircle, Eye, Filter } from 'lucide-react';
+import { Search, FileText, Clock, CheckCircle2, AlertCircle, Eye, Filter, Download, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Configure pdf.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 type AnaliseCnpjStatus = 'aguardando_analise' | 'em_analise' | 'liberado' | 'corrigido';
 
@@ -54,15 +58,30 @@ function formatCnpj(value: string): string {
   return value;
 }
 
+async function extractPdfText(file: File): Promise<string> {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  let fullText = '';
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    const pageText = content.items.map((item: any) => item.str).join(' ');
+    fullText += pageText + '\n';
+  }
+  return fullText;
+}
+
 export default function AnaliseCnpjPage() {
   const [registros, setRegistros] = useState<AnaliseCnpj[]>([]);
   const [loading, setLoading] = useState(true);
+  const [importing, setImporting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('todos');
   const [selectedRegistro, setSelectedRegistro] = useState<AnaliseCnpj | null>(null);
   const [editStatus, setEditStatus] = useState<AnaliseCnpjStatus>('aguardando_analise');
   const [editObs, setEditObs] = useState('');
   const [editResponsavel, setEditResponsavel] = useState('');
+  const importRef = useRef<HTMLInputElement>(null);
 
   const fetchRegistros = useCallback(async () => {
     setLoading(true);
@@ -83,6 +102,67 @@ export default function AnaliseCnpjPage() {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [fetchRegistros]);
+
+  const handlePdfImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      toast.error('Selecione um arquivo PDF');
+      return;
+    }
+
+    setImporting(true);
+    try {
+      // Extract text from PDF client-side
+      const pdfText = await extractPdfText(file);
+      
+      // Send to edge function for AI parsing
+      const { data, error } = await supabase.functions.invoke('parse-cnpj-pdf', {
+        body: { pdfText },
+      });
+
+      if (error) throw error;
+      const rows = data?.rows;
+      if (!rows || !rows.length) {
+        toast.error('Nenhum registro encontrado no PDF');
+        setImporting(false);
+        return;
+      }
+
+      // Insert into database
+      const toInsert = rows.map((r: any) => ({
+        pedido: String(r.pedido || ''),
+        data_pedido: r.data_pedido || null,
+        id_cliente: String(r.id_cliente || ''),
+        seq_venda: String(r.seq_venda || ''),
+        cnpj_cpf: String(r.cnpj_cpf || '').replace(/\D/g, ''),
+        cliente: String(r.cliente || ''),
+        grupo_cliente: String(r.grupo_cliente || ''),
+        inscricao: String(r.inscricao || ''),
+        valor: Number(r.valor) || 0,
+        uf: String(r.uf || ''),
+        percentual: Number(r.percentual) || 0,
+        forma_pagamento: String(r.forma_pagamento || ''),
+        condicao_pagamento: String(r.condicao_pagamento || ''),
+        quantidade: Number(r.quantidade) || 0,
+        bloqueio_sistema: String(r.bloqueio_sistema || ''),
+        bloqueio_credito: String(r.bloqueio_credito || ''),
+        liberado_credito: String(r.liberado_credito || ''),
+        status: 'aguardando_analise',
+      }));
+
+      const { error: insertError } = await (supabase as any).from('analise_cnpj').insert(toInsert);
+      if (insertError) throw insertError;
+
+      toast.success(`${toInsert.length} registros importados do PDF`);
+      fetchRegistros();
+    } catch (err: any) {
+      console.error('PDF import error:', err);
+      toast.error('Erro ao importar PDF: ' + (err.message || 'erro desconhecido'));
+    }
+    setImporting(false);
+    e.target.value = '';
+  };
 
   const handleSaveEdit = async () => {
     if (!selectedRegistro) return;
@@ -125,7 +205,14 @@ export default function AnaliseCnpjPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-barlow font-bold">Análise CNPJ's</h1>
-          <p className="text-muted-foreground text-sm">Controle de vendas para pessoas jurídicas</p>
+          <p className="text-muted-foreground text-sm">Controle de vendas para pessoas jurídicas - Setor Fiscal</p>
+        </div>
+        <div>
+          <input ref={importRef} type="file" accept=".pdf" className="hidden" onChange={handlePdfImport} />
+          <Button onClick={() => importRef.current?.click()} disabled={importing} className="bg-orange-600 hover:bg-orange-700">
+            {importing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+            {importing ? 'Processando...' : 'Importar PDF'}
+          </Button>
         </div>
       </div>
 
@@ -201,7 +288,7 @@ export default function AnaliseCnpjPage() {
                       <TableCell className="text-sm">{reg.data_pedido ? format(new Date(reg.data_pedido), 'dd/MM/yyyy') : '-'}</TableCell>
                       <TableCell className="font-mono text-xs">{formatCnpj(reg.cnpj_cpf)}</TableCell>
                       <TableCell className="max-w-[200px] truncate text-sm">{reg.cliente}</TableCell>
-                      <TableCell className="text-sm font-medium">{reg.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
+                      <TableCell className="text-sm font-medium">{(reg.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
                       <TableCell><Badge variant="outline" className="text-xs">{reg.uf}</Badge></TableCell>
                       <TableCell className="text-xs">{reg.bloqueio_sistema || '-'}</TableCell>
                       <TableCell><Badge className={`${statusConf.color} border text-xs`}>{statusConf.label}</Badge></TableCell>
@@ -225,7 +312,7 @@ export default function AnaliseCnpjPage() {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div><p className="text-muted-foreground">Cliente</p><p className="font-medium">{selectedRegistro.cliente}</p></div>
                 <div><p className="text-muted-foreground">CNPJ/CPF</p><p className="font-mono">{formatCnpj(selectedRegistro.cnpj_cpf)}</p></div>
-                <div><p className="text-muted-foreground">Valor</p><p className="font-medium">{selectedRegistro.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p></div>
+                <div><p className="text-muted-foreground">Valor</p><p className="font-medium">{(selectedRegistro.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p></div>
                 <div><p className="text-muted-foreground">UF</p><p>{selectedRegistro.uf}</p></div>
                 <div><p className="text-muted-foreground">Inscrição</p><p>{selectedRegistro.inscricao || '-'}</p></div>
                 <div><p className="text-muted-foreground">Grupo Cliente</p><p>{selectedRegistro.grupo_cliente || '-'}</p></div>
