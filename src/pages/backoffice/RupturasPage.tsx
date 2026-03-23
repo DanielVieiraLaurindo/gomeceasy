@@ -47,7 +47,7 @@ function getDateLabel(dateStr: string | null) {
 function getStatusSla(r: any): string {
   const start = r.status_alterado_em || r.created_at;
   if (!start) return '—';
-  const elapsed = Date.now() - new Date(start).getTime();
+  const elapsed = businessMillisecondsBetween(new Date(start), new Date());
   return formatSlaTime(elapsed);
 }
 
