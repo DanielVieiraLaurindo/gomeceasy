@@ -88,6 +88,7 @@ const App = () => (
                   <Route path="/backoffice/fulfillment" element={<FulfillmentPage />} />
                   <Route path="/backoffice/rupturas" element={<RupturasPage />} />
                   <Route path="/backoffice/rupturas/nova" element={<NovaRupturaPage />} />
+                  <Route path="/backoffice/rupturas/relatorios" element={<RupturasRelatoriosPage />} />
                   <Route path="/backoffice/pedidos-site" element={<PedidosSitePage />} />
                   <Route path="/backoffice/precificacao" element={<PrecificacaoPage />} />
                   <Route path="/backoffice/cnpjs" element={<AnaliseCnpjPage />} />
