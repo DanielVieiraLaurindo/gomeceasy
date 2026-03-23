@@ -8,17 +8,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
-import { DollarSign, CheckCircle, XCircle, Clock, AlertTriangle, FileText, Eye } from 'lucide-react';
+import { DollarSign, CheckCircle, XCircle, Clock, FileText, Eye, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
-// Workflow: pos_vendas → conferencia_garantia → analise_lider → analise_fiscal → financeiro_pagamento → pago
 type ReembolsoStatus = 'aguardando_conferencia' | 'conferencia_garantia' | 'analise_lider' | 'analise_fiscal' | 'financeiro_pagamento' | 'pago' | 'correcao_solicitada';
 
 const STATUS_LABELS: Record<ReembolsoStatus, string> = {
@@ -66,16 +66,16 @@ export default function GEFinanceiroTab() {
   const [approvalDialog, setApprovalDialog] = useState<{ caso: ReembolsoCase; action: 'approve' | 'reject' } | null>(null);
   const [approvalComment, setApprovalComment] = useState('');
   const [paymentDate, setPaymentDate] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  // Fetch cases that have reimbursement workflow
+  // Cases auto-migrated from Pós-Vendas: those with reimbursement_value > 0 or flagged
   const { data: reembolsoCases, isLoading } = useQuery({
     queryKey: ['garantia-financeiro-cases'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('return_cases')
         .select('*')
-        .not('reimbursement_value', 'is', null)
-        .gt('reimbursement_value', 0)
+        .or('reimbursement_value.gt.0,status.in.(aguardando_conferencia,conferencia_garantia,analise_lider,analise_fiscal,financeiro_pagamento,pago,correcao_solicitada)')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data || []).map(c => ({
@@ -100,10 +100,7 @@ export default function GEFinanceiroTab() {
   const { data: ressarcimentos, isLoading: loadingMO } = useQuery({
     queryKey: ['ressarcimentos-mo'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('ressarcimentos_mo')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const { data, error } = await supabase.from('ressarcimentos_mo').select('*').order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
     },
@@ -115,19 +112,18 @@ export default function GEFinanceiroTab() {
       if (payment_date) updates.data_solicitacao_reembolso = payment_date;
       const { error } = await supabase.from('return_cases').update(updates).eq('id', id);
       if (error) throw error;
-      // Log approval
       if (comment) {
-        await supabase.from('case_history').insert({
-          case_id: id, action: `Status: ${status}`, comment, created_by: user?.id,
-        });
+        await supabase.from('case_history').insert({ case_id: id, action: `Status: ${status}`, comment, created_by: user?.id });
       }
-      // Create notification
+      const sectorMap: Record<string, string> = {
+        conferencia_garantia: 'garantia', analise_lider: 'pos_vendas',
+        analise_fiscal: 'financeiro_fiscal', financeiro_pagamento: 'financeiro_fiscal',
+        pago: 'pos_vendas', correcao_solicitada: 'pos_vendas',
+      };
       await supabase.from('notificacoes').insert({
         mensagem: `Caso de reembolso atualizado para: ${STATUS_LABELS[status as ReembolsoStatus] || status}`,
-        tipo: 'reembolso',
-        referencia_id: id,
-        referencia_tabela: 'return_cases',
-        setor_destino: getNextSector(status),
+        tipo: 'reembolso', referencia_id: id, referencia_tabela: 'return_cases',
+        setor_destino: sectorMap[status] || 'pos_vendas',
       } as any);
     },
     onSuccess: () => {
@@ -140,24 +136,23 @@ export default function GEFinanceiroTab() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  const getNextSector = (status: string): string => {
-    switch (status) {
-      case 'conferencia_garantia': return 'garantia';
-      case 'analise_lider': return 'pos_vendas';
-      case 'analise_fiscal': return 'fiscal';
-      case 'financeiro_pagamento': return 'financeiro';
-      case 'pago': return 'pos_vendas';
-      case 'correcao_solicitada': return 'pos_vendas';
-      default: return 'pos_vendas';
-    }
-  };
+  const deleteCases = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error } = await supabase.from('return_cases').delete().in('id', ids);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['garantia-financeiro-cases'] });
+      setSelectedIds(new Set());
+      toast.success('Casos excluídos');
+    },
+  });
 
   const handleApproval = () => {
     if (!approvalDialog) return;
     const { caso, action } = approvalDialog;
     const currentStatus = caso.status as ReembolsoStatus;
     let nextStatus: string;
-
     if (action === 'reject') {
       nextStatus = 'correcao_solicitada';
     } else {
@@ -171,14 +166,14 @@ export default function GEFinanceiroTab() {
       };
       nextStatus = flow[currentStatus] || 'pago';
     }
-
     updateCaseStatus.mutate({
-      id: caso.id,
-      status: nextStatus,
+      id: caso.id, status: nextStatus,
       comment: `${action === 'approve' ? 'Aprovado' : 'Correção solicitada'}: ${approvalComment}`,
       payment_date: paymentDate || undefined,
     });
   };
+
+  const toggleSelect = (id: string) => setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   const reembolsosByStatus = useMemo(() => {
     if (!reembolsoCases) return {};
@@ -195,17 +190,23 @@ export default function GEFinanceiroTab() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center">
-          <DollarSign className="w-5 h-5 text-success" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center">
+            <DollarSign className="w-5 h-5 text-success" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-barlow font-bold">Financeiro</h1>
+            <p className="text-sm text-muted-foreground">Casos migrados automaticamente do Pós-Vendas (reembolso/ressarcimento)</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-barlow font-bold">Financeiro</h1>
-          <p className="text-sm text-muted-foreground">Reembolsos e ressarcimentos de mão de obra</p>
-        </div>
+        {selectedIds.size > 0 && (
+          <Button variant="destructive" size="sm" onClick={() => deleteCases.mutate(Array.from(selectedIds))}>
+            <Trash2 className="w-4 h-4 mr-1" />Excluir {selectedIds.size}
+          </Button>
+        )}
       </div>
 
-      {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: 'Aguardando', count: (reembolsosByStatus['aguardando_conferencia']?.length || 0) + (reembolsosByStatus['correcao_solicitada']?.length || 0), icon: Clock, color: 'text-warning' },
@@ -214,10 +215,7 @@ export default function GEFinanceiroTab() {
           { label: 'Pagos', count: reembolsosByStatus['pago']?.length || 0, icon: CheckCircle, color: 'text-success' },
         ].map((m, i) => (
           <div key={i} className="p-4 rounded-lg border bg-card">
-            <div className="flex items-center gap-2 mb-1">
-              <m.icon className={cn("w-4 h-4", m.color)} />
-              <span className="text-sm text-muted-foreground">{m.label}</span>
-            </div>
+            <div className="flex items-center gap-2 mb-1"><m.icon className={cn("w-4 h-4", m.color)} /><span className="text-sm text-muted-foreground">{m.label}</span></div>
             <p className="text-2xl font-bold">{m.count}</p>
           </div>
         ))}
@@ -245,6 +243,7 @@ export default function GEFinanceiroTab() {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-10"><Checkbox checked={items.every(c => selectedIds.has(c.id))} onCheckedChange={checked => { const ids = items.map(c => c.id); setSelectedIds(prev => { const n = new Set(prev); ids.forEach(id => checked ? n.add(id) : n.delete(id)); return n; }); }} /></TableHead>
                         <TableHead>#</TableHead>
                         <TableHead>Cliente</TableHead>
                         <TableHead>Venda</TableHead>
@@ -256,6 +255,7 @@ export default function GEFinanceiroTab() {
                     <TableBody>
                       {items.map(c => (
                         <TableRow key={c.id}>
+                          <TableCell><Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => toggleSelect(c.id)} /></TableCell>
                           <TableCell className="font-mono-data">{c.case_number}</TableCell>
                           <TableCell className="font-medium">{c.client_name || '—'}</TableCell>
                           <TableCell className="font-mono-data text-sm">{c.sale_number || '—'}</TableCell>
@@ -264,6 +264,7 @@ export default function GEFinanceiroTab() {
                           <TableCell>
                             <div className="flex items-center gap-1">
                               <Button size="sm" variant="ghost" onClick={() => setViewingCase(c)}><Eye className="w-4 h-4" /></Button>
+                              <Button size="sm" variant="ghost" className="text-destructive" onClick={() => deleteCases.mutate([c.id])}><Trash2 className="w-4 h-4" /></Button>
                               {statusKey !== 'pago' && (
                                 <>
                                   <Button size="sm" variant="outline" className="text-success" onClick={() => setApprovalDialog({ caso: c, action: 'approve' })}>
@@ -285,7 +286,7 @@ export default function GEFinanceiroTab() {
             );
           })}
           {reembolsoCases?.length === 0 && (
-            <Card><CardContent className="py-12 text-center text-muted-foreground">Nenhum caso de reembolso encontrado</CardContent></Card>
+            <Card><CardContent className="py-12 text-center text-muted-foreground">Nenhum caso de reembolso. Os casos são migrados automaticamente do Pós-Vendas quando marcados com reembolso ou ressarcimento.</CardContent></Card>
           )}
         </TabsContent>
 
@@ -298,11 +299,7 @@ export default function GEFinanceiroTab() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Serviço</TableHead>
-                      <TableHead>Valor</TableHead>
-                      <TableHead>NF</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Data</TableHead>
+                      <TableHead>Serviço</TableHead><TableHead>Valor</TableHead><TableHead>NF</TableHead><TableHead>Status</TableHead><TableHead>Data</TableHead><TableHead>Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -313,6 +310,7 @@ export default function GEFinanceiroTab() {
                         <TableCell className="font-mono-data">{r.numero_nf || '—'}</TableCell>
                         <TableCell><Badge variant="outline">{r.status}</Badge></TableCell>
                         <TableCell>{r.data ? format(new Date(r.data), 'dd/MM/yyyy') : '—'}</TableCell>
+                        <TableCell><Button variant="ghost" size="sm" className="text-destructive" onClick={async () => { await supabase.from('ressarcimentos_mo').delete().eq('id', r.id); queryClient.invalidateQueries({ queryKey: ['ressarcimentos-mo'] }); toast.success('Excluído'); }}><Trash2 className="w-4 h-4" /></Button></TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -326,9 +324,7 @@ export default function GEFinanceiroTab() {
       {/* Approval Dialog */}
       <Dialog open={!!approvalDialog} onOpenChange={() => setApprovalDialog(null)}>
         <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{approvalDialog?.action === 'approve' ? 'Aprovar Reembolso' : 'Solicitar Correção'}</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>{approvalDialog?.action === 'approve' ? 'Aprovar Reembolso' : 'Solicitar Correção'}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             {approvalDialog?.caso && (
               <div className="p-3 rounded-lg bg-muted/50 space-y-1">
@@ -338,15 +334,9 @@ export default function GEFinanceiroTab() {
               </div>
             )}
             {approvalDialog?.action === 'approve' && approvalDialog.caso.status === 'financeiro_pagamento' && (
-              <div>
-                <Label>Data do Pagamento</Label>
-                <Input type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} />
-              </div>
+              <div><Label>Data do Pagamento</Label><Input type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} /></div>
             )}
-            <div>
-              <Label>Observação</Label>
-              <Textarea value={approvalComment} onChange={e => setApprovalComment(e.target.value)} rows={3} placeholder={approvalDialog?.action === 'approve' ? 'Comentário de aprovação...' : 'Descreva a correção necessária...'} />
-            </div>
+            <div><Label>Observação</Label><Textarea value={approvalComment} onChange={e => setApprovalComment(e.target.value)} rows={3} placeholder={approvalDialog?.action === 'approve' ? 'Comentário de aprovação...' : 'Descreva a correção necessária...'} /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setApprovalDialog(null)}>Cancelar</Button>
@@ -378,7 +368,7 @@ export default function GEFinanceiroTab() {
                   </div>
                 )}
                 {viewingCase.analysis_reason && (
-                  <div><p className="text-xs text-muted-foreground">Observações</p><p className="bg-muted/50 p-2 rounded">{viewingCase.analysis_reason}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Observações</p><p>{viewingCase.analysis_reason}</p></div>
                 )}
               </div>
             </>
