@@ -1,18 +1,33 @@
 /**
- * Business hours utilities — Seg–Sex, 08:00–18:00 (São Paulo)
+ * Business hours utilities — Seg–Sex, 08:00–18:00; Sáb 08:00–13:00; Dom não conta (São Paulo)
  */
 
 const BUSINESS_START_HOUR = 8;
-const BUSINESS_END_HOUR = 18;
-const BUSINESS_HOURS_PER_DAY = BUSINESS_END_HOUR - BUSINESS_START_HOUR;
+const WEEKDAY_END_HOUR = 18;
+const SATURDAY_END_HOUR = 13;
+const BUSINESS_HOURS_PER_DAY = WEEKDAY_END_HOUR - BUSINESS_START_HOUR;
 
 function toSaoPauloDate(date: Date): Date {
   return new Date(date.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
 }
 
-function isBusinessDay(date: Date): boolean {
+function isWeekday(date: Date): boolean {
   const day = date.getDay();
   return day >= 1 && day <= 5;
+}
+
+function isSaturday(date: Date): boolean {
+  return date.getDay() === 6;
+}
+
+function getEndHour(date: Date): number {
+  if (isSaturday(date)) return SATURDAY_END_HOUR;
+  if (isWeekday(date)) return WEEKDAY_END_HOUR;
+  return BUSINESS_START_HOUR; // Sunday = no business hours
+}
+
+function isBusinessDay(date: Date): boolean {
+  return isWeekday(date) || isSaturday(date);
 }
 
 function businessDayStart(date: Date): Date {
@@ -23,7 +38,7 @@ function businessDayStart(date: Date): Date {
 
 function businessDayEnd(date: Date): Date {
   const d = new Date(date);
-  d.setHours(BUSINESS_END_HOUR, 0, 0, 0);
+  d.setHours(getEndHour(date), 0, 0, 0);
   return d;
 }
 
@@ -37,10 +52,12 @@ export function businessMillisecondsBetween(start: Date, end: Date): number {
     if (isBusinessDay(cursor)) {
       const dayStart = businessDayStart(cursor);
       const dayEnd = businessDayEnd(cursor);
-      const periodStart = cursor < dayStart ? dayStart : cursor;
-      const periodEnd = spEnd < dayEnd ? spEnd : dayEnd;
-      if (periodEnd > periodStart) {
-        totalMs += periodEnd.getTime() - periodStart.getTime();
+      if (dayEnd > dayStart) {
+        const periodStart = cursor < dayStart ? dayStart : cursor;
+        const periodEnd = spEnd < dayEnd ? spEnd : dayEnd;
+        if (periodEnd > periodStart) {
+          totalMs += periodEnd.getTime() - periodStart.getTime();
+        }
       }
     }
     cursor.setDate(cursor.getDate() + 1);

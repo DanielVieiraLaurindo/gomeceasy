@@ -6,11 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
-import { Download, BarChart3, Package, Clock, CheckCircle, AlertTriangle, TrendingUp } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line } from 'recharts';
+import { Download, BarChart3, Package, Clock, CheckCircle, AlertTriangle, TrendingUp, Brain } from 'lucide-react';
 import { getBusinessDaysSince } from '@/lib/businessDays';
-import { subDays, startOfMonth, format, parseISO, differenceInDays } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { subDays, startOfMonth, format } from 'date-fns';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 const COLORS = ['hsl(var(--primary))', 'hsl(142, 76%, 36%)', 'hsl(45, 93%, 47%)', 'hsl(0, 72%, 51%)', 'hsl(215, 80%, 50%)', 'hsl(280, 80%, 60%)'];
 
@@ -34,6 +35,16 @@ export default function GERelatoriosTab() {
   const filters = dateFrom ? { dateFrom: format(dateFrom, 'yyyy-MM-dd') } : {};
   const { data: cases, isLoading } = useGarantiaCases(filters);
   const { data: stats } = useGarantiaCaseStats();
+
+  // Backoffice actions for financial reports
+  const { data: backofficeActions } = useQuery({
+    queryKey: ['backoffice-actions-all'],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('backoffice_actions').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+  });
 
   const computedStats = useMemo(() => {
     if (!cases) return null;
@@ -66,6 +77,50 @@ export default function GERelatoriosTab() {
     return Object.entries(stats.byMarketplace).map(([k, v]) => ({ name: k, value: v })).sort((a, b) => b.value - a.value);
   }, [stats]);
 
+  // Financial performance data
+  const financialData = useMemo(() => {
+    if (!backofficeActions) return { totalReembolso: 0, totalGanho: 0, totalPerda: 0, byType: [] };
+    let totalReembolso = 0, totalGanho = 0, totalPerda = 0;
+    const byType: Record<string, { reembolso: number; ganho: number; perda: number }> = {};
+    backofficeActions.forEach((a: any) => {
+      totalReembolso += a.refund_value || 0;
+      totalGanho += a.gain_value || 0;
+      totalPerda += a.loss_value || 0;
+      const t = a.action_type || 'outros';
+      if (!byType[t]) byType[t] = { reembolso: 0, ganho: 0, perda: 0 };
+      byType[t].reembolso += a.refund_value || 0;
+      byType[t].ganho += a.gain_value || 0;
+      byType[t].perda += a.loss_value || 0;
+    });
+    return {
+      totalReembolso, totalGanho, totalPerda,
+      byType: Object.entries(byType).map(([k, v]) => ({ name: k, ...v })),
+    };
+  }, [backofficeActions]);
+
+  // AI insights
+  const insights = useMemo(() => {
+    if (!cases || !computedStats) return [];
+    const result: string[] = [];
+    if (computedStats.sla < 80) result.push(`⚠️ SLA está em ${computedStats.sla}% — abaixo do ideal de 80%. Considere redistribuir a carga de trabalho.`);
+    if (computedStats.overSLA > 5) result.push(`🔴 ${computedStats.overSLA} casos fora do SLA. Priorize os mais antigos para evitar impacto na satisfação.`);
+    const devolucoesCount = cases.filter(c => c.case_type === 'DEVOLUCAO').length;
+    const garantiasCount = cases.filter(c => c.case_type === 'GARANTIA').length;
+    if (devolucoesCount > garantiasCount * 2) result.push(`📊 Devoluções (${devolucoesCount}) superam garantias (${garantiasCount}) 2:1. Investigue causas recorrentes de devolução.`);
+    if (financialData.totalPerda > financialData.totalGanho) result.push(`💰 Perdas (R$ ${financialData.totalPerda.toFixed(2)}) superam ganhos (R$ ${financialData.totalGanho.toFixed(2)}). Revise estratégia de mediação.`);
+    if (financialData.totalGanho > 0) result.push(`✅ Ganhos recuperados via backoffice: R$ ${financialData.totalGanho.toFixed(2)}. Taxa de recuperação: ${((financialData.totalGanho / (financialData.totalGanho + financialData.totalPerda)) * 100).toFixed(0)}%.`);
+    if (computedStats.open > 20) result.push(`📋 ${computedStats.open} casos abertos. Avalie automação para triagem inicial.`);
+    if (result.length === 0) result.push('✅ Todos os indicadores estão dentro dos parâmetros normais.');
+    return result;
+  }, [cases, computedStats, financialData]);
+
+  // Descartes data
+  const descartesData = useMemo(() => {
+    if (!cases) return { total: 0, valor: 0 };
+    const descartes = cases.filter(c => c.case_type === 'DESCARTE');
+    return { total: descartes.length, valor: descartes.reduce((s, c) => s + (c.reimbursement_value || 0), 0) };
+  }, [cases]);
+
   const handleExport = () => {
     if (!cases) return;
     const headers = ['Caso', 'Cliente', 'Venda', 'Marketplace', 'Tipo', 'Status', 'Entrada'];
@@ -97,7 +152,7 @@ export default function GERelatoriosTab() {
             <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
             <SelectContent>{Object.entries(PERIOD_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
           </Select>
-          <Button variant="outline" size="sm" onClick={handleExport}><Download className="w-4 h-4 mr-2" />Exportar Casos</Button>
+          <Button variant="outline" size="sm" onClick={handleExport}><Download className="w-4 h-4 mr-2" />Exportar</Button>
         </div>
       </div>
 
@@ -119,9 +174,7 @@ export default function GERelatoriosTab() {
             ].map((m, i) => (
               <div key={i} className="p-4 rounded-lg border bg-card">
                 <div className="flex items-center gap-2 mb-2">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${m.color}`}>
-                    <m.icon className="w-4 h-4" />
-                  </div>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${m.color}`}><m.icon className="w-4 h-4" /></div>
                   <span className="text-xs text-muted-foreground">{m.title}</span>
                 </div>
                 <p className="text-2xl font-bold">{m.value}</p>
@@ -140,7 +193,7 @@ export default function GERelatoriosTab() {
             </Card>
 
             <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-lg flex items-center gap-2">Por Marketplace</CardTitle></CardHeader>
+              <CardHeader className="pb-2"><CardTitle className="text-lg">Por Marketplace</CardTitle></CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
@@ -155,10 +208,99 @@ export default function GERelatoriosTab() {
           </div>
         </TabsContent>
 
-        <TabsContent value="desempenho">
-          <div className="p-8 text-center text-muted-foreground">
-            <p>Métricas detalhadas de desempenho serão exibidas aqui conforme os dados forem inseridos.</p>
+        <TabsContent value="desempenho" className="space-y-6">
+          {/* AI Insights */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2"><Brain className="w-5 h-5 text-purple-500" />Insights Inteligentes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {insights.map((insight, i) => (
+                  <div key={i} className="p-3 rounded-lg bg-muted/50 border text-sm">{insight}</div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Financial Summary */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-5 rounded-lg border bg-card">
+              <p className="text-sm text-muted-foreground">Total Reembolsos</p>
+              <p className="text-2xl font-bold text-destructive">R$ {financialData.totalReembolso.toFixed(2)}</p>
+            </div>
+            <div className="p-5 rounded-lg border bg-card">
+              <p className="text-sm text-muted-foreground">Ganhos (Backoffice)</p>
+              <p className="text-2xl font-bold text-success">R$ {financialData.totalGanho.toFixed(2)}</p>
+            </div>
+            <div className="p-5 rounded-lg border bg-card">
+              <p className="text-sm text-muted-foreground">Perdas (Backoffice)</p>
+              <p className="text-2xl font-bold text-destructive">R$ {financialData.totalPerda.toFixed(2)}</p>
+            </div>
           </div>
+
+          {/* Descartes */}
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-lg">Relatório de Descartes</CardTitle></CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="p-4 bg-muted/30 rounded-lg">
+                  <p className="text-sm text-muted-foreground">Total Descartes</p>
+                  <p className="text-2xl font-bold">{descartesData.total}</p>
+                </div>
+                <div className="p-4 bg-muted/30 rounded-lg">
+                  <p className="text-sm text-muted-foreground">Valor Total</p>
+                  <p className="text-2xl font-bold text-destructive">R$ {descartesData.valor.toFixed(2)}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Financial by Action Type */}
+          {financialData.byType.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-lg">Financeiro por Tipo de Ação (BackOffice)</CardTitle></CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={financialData.byType}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip formatter={(v: any) => `R$ ${Number(v).toFixed(2)}`} />
+                    <Legend />
+                    <Bar dataKey="ganho" name="Ganhos" fill="hsl(142, 76%, 36%)" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="perda" name="Perdas" fill="hsl(0, 72%, 51%)" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="reembolso" name="Reembolsos" fill="hsl(45, 93%, 47%)" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Pós-Vendas performance */}
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-lg">Desempenho Pós-Vendas</CardTitle></CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="p-4 bg-muted/30 rounded-lg text-center">
+                  <p className="text-xs text-muted-foreground">Casos Ativos</p>
+                  <p className="text-2xl font-bold">{computedStats?.open || 0}</p>
+                </div>
+                <div className="p-4 bg-muted/30 rounded-lg text-center">
+                  <p className="text-xs text-muted-foreground">Taxa Resolução</p>
+                  <p className="text-2xl font-bold">{computedStats?.total ? Math.round((computedStats.finalized / computedStats.total) * 100) : 0}%</p>
+                </div>
+                <div className="p-4 bg-muted/30 rounded-lg text-center">
+                  <p className="text-xs text-muted-foreground">Tempo Médio</p>
+                  <p className="text-2xl font-bold">{computedStats?.avgDays || 0}d</p>
+                </div>
+                <div className="p-4 bg-muted/30 rounded-lg text-center">
+                  <p className="text-xs text-muted-foreground">SLA Cumprido</p>
+                  <p className="text-2xl font-bold text-success">{computedStats?.sla || 100}%</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

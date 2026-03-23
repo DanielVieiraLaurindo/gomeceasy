@@ -4,7 +4,7 @@ import {
   Camera, RefreshCw, Briefcase, PenTool, Monitor, Settings, Megaphone,
   TrendingUp, FolderOpen, BookOpen, UserCheck, Columns3, Archive, Scale,
   Truck, MapPin, Bell, Eye, Boxes, CheckSquare, ClipboardList, Route,
-  Send, BarChart2, Globe, Clock, Clipboard, Calculator
+  Send, BarChart2, Globe, Clock, Clipboard, Calculator, Headphones, Headset
 } from 'lucide-react';
 import type { AppSetor } from '@/types';
 import type { LucideIcon } from 'lucide-react';
@@ -39,7 +39,13 @@ export const SIDEBAR_ITEMS: Record<AppSetor, SidebarItem[]> = {
     { path: '/garantia-loja/casos', label: 'Casos', icon: FolderOpen },
   ],
   garantia_ecommerce: [
-    { path: '/garantia-ecommerce', label: 'Controle Devoluções', icon: Shield },
+    { path: '/garantia-ecommerce', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/garantia-ecommerce/backoffice', label: 'BackOffice', icon: Headphones },
+    { path: '/garantia-ecommerce/pos-vendas', label: 'Pós Vendas', icon: Headset },
+    { path: '/garantia-ecommerce/financeiro', label: 'Financeiro', icon: DollarSign },
+    { path: '/garantia-ecommerce/galeria', label: 'Galeria de Fotos', icon: Camera },
+    { path: '/garantia-ecommerce/relatorios', label: 'Relatórios', icon: BarChart2 },
+    { path: '/garantia-ecommerce/configuracoes', label: 'Configurações', icon: Settings },
   ],
   financeiro_fiscal: [
     { path: '/financeiro', label: 'Dashboard', icon: LayoutDashboard },
