@@ -6,58 +6,53 @@ export function useMasterMetrics() {
     queryKey: ['master-metrics'],
     queryFn: async () => {
       const [rupturas, envios, cases, reembolsos, ocorrencias, leads] = await Promise.all([
-        supabase.from('rupturas').select('status, valor_total, created_at'),
-        supabase.from('envios').select('status, valor_total, created_at'),
-        supabase.from('return_cases').select('status, case_type, total_value, reimbursement_value, created_at'),
-        supabase.from('reembolsos').select('status, valor, created_at'),
-        supabase.from('ocorrencias').select('status, created_at'),
-        supabase.from('leads').select('estagio, valor_estimado, created_at'),
+        supabase.from('rupturas').select('status,valor_total,created_at').limit(1000),
+        supabase.from('envios').select('status,valor_total,created_at,separado,embalado,saiu_onda').limit(1000),
+        supabase.from('return_cases').select('status,case_type,total_value,reimbursement_value,created_at').limit(1000),
+        supabase.from('reembolsos').select('status,valor,created_at').limit(500),
+        supabase.from('ocorrencias').select('status,created_at').limit(500),
+        supabase.from('leads').select('estagio,valor_estimado,created_at').limit(500),
       ]);
 
-      const rupturasData = rupturas.data || [];
-      const enviosData = envios.data || [];
-      const casesData = cases.data || [];
-      const reembolsosData = reembolsos.data || [];
-      const ocorrenciasData = ocorrencias.data || [];
-      const leadsData = leads.data || [];
+      const r = rupturas.data || [], e = envios.data || [], c = cases.data || [];
+      const rb = reembolsos.data || [], o = ocorrencias.data || [], l = leads.data || [];
 
-      const rupturasAbertas = rupturasData.filter(r => !['revertida', 'cancelada'].includes(r.status));
-      const enviosPendentes = enviosData.filter(e => e.status === 'pendente');
-      const casosAbertos = casesData.filter(c => !['pago', 'finalizado', 'reembolsado', 'arquivado'].includes(c.status));
+      const rOpen = r.filter(x => !['revertida', 'cancelada'].includes(x.status));
+      const cOpen = c.filter(x => !['pago', 'finalizado', 'reembolsado', 'arquivado'].includes(x.status));
 
       return {
         backoffice: {
-          rupturasAbertas: rupturasAbertas.length,
-          valorRisco: rupturasAbertas.reduce((s, r) => s + (r.valor_total || 0), 0),
-          enviosPendentes: enviosPendentes.length,
+          rupturasAbertas: rOpen.length,
+          valorRisco: rOpen.reduce((s, x) => s + (x.valor_total || 0), 0),
+          enviosPendentes: e.filter(x => x.status === 'pendente').length,
         },
         posVendas: {
-          casosAbertos: casosAbertos.length,
-          garantias: casesData.filter(c => c.case_type === 'GARANTIA').length,
-          devolucoes: casesData.filter(c => c.case_type === 'DEVOLUCAO').length,
-          atrasados: 0, // computed client-side
+          casosAbertos: cOpen.length,
+          garantias: c.filter(x => x.case_type === 'GARANTIA').length,
+          devolucoes: c.filter(x => x.case_type === 'DEVOLUCAO').length,
+          atrasados: 0,
         },
         financeiro: {
-          totalPendente: reembolsosData.filter(r => !['pago'].includes(r.status || '')).reduce((s, r) => s + (r.valor || 0), 0),
-          totalPago: reembolsosData.filter(r => r.status === 'pago').reduce((s, r) => s + (r.valor || 0), 0),
+          totalPendente: rb.filter(x => x.status !== 'pago').reduce((s, x) => s + (x.valor || 0), 0),
+          totalPago: rb.filter(x => x.status === 'pago').reduce((s, x) => s + (x.valor || 0), 0),
         },
         expedicao: {
-          emSeparacao: enviosData.filter(e => ['pendente', 'separacao'].includes(e.status)).length,
-          saiuOnda: enviosData.filter(e => e.status === 'despachado' || e.status === 'em_transito').length,
+          emSeparacao: e.filter(x => ['pendente', 'separacao'].includes(x.status)).length,
+          saiuOnda: e.filter(x => x.status === 'despachado' || x.status === 'em_transito').length,
         },
         logistica: {
-          emTransito: enviosData.filter(e => e.status === 'em_transito').length,
-          ocorrencias: ocorrenciasData.filter(o => o.status !== 'resolvida').length,
+          emTransito: e.filter(x => x.status === 'em_transito').length,
+          ocorrencias: o.filter(x => x.status !== 'resolvida').length,
         },
         preVendas: {
-          pipeline: leadsData.filter(l => !['fechado_ganho', 'fechado_perdido'].includes(l.estagio || '')).length,
-          leads: leadsData.length,
+          pipeline: l.filter(x => !['fechado_ganho', 'fechado_perdido'].includes(x.estagio || '')).length,
+          leads: l.length,
         },
-        // Chart data - last 30 days activity
-        chartData: buildChartData(rupturasData, enviosData, casesData),
+        chartData: buildChartData(r, e, c),
       };
     },
-    refetchInterval: 30000,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
   });
 }
 
