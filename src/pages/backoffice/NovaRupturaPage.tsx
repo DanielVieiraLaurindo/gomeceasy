@@ -109,14 +109,16 @@ export default function NovaRupturaPage() {
   };
 
   const downloadTemplate = () => {
-    const ws = XLSX.utils.json_to_sheet([{
-      'Pedido - ID': '', 'Unidade de negócio': 'GAP - VIRTUAL', 'Nro do Pedido': '',
-      'Canal de venda': '', 'Parceiro - Razão Social': '', 'Status': '',
-      'Produto - Código': '', 'Produto - Nome': '', 'Qtd Pedida': 1,
-      'Qtd Reservada': 0, 'Saldo a atender': 1, 'Preço Bruto': 0,
-      'Preço Líquido': 0, 'Produto - Total bruto (pedido)': 0,
-      'Produto - Total líquido (pedido)': 0, 'Cadastro': '', 'Transportadora': '',
-    }]);
+    const headers = [
+      'Pedido - ID', 'Unidade de negócio', 'Nro do Pedido',
+      'Canal de venda', 'Parceiro - Razão Social', 'Status',
+      'Produto - Código', 'Produto - Nome', 'Qtd Pedida',
+      'Qtd Reservada', 'Saldo a atender', 'Preço Bruto',
+      'Preço Líquido', 'Produto - Total bruto (pedido)',
+      'Produto - Total líquido (pedido)', 'Cadastro', 'Transportadora',
+    ];
+    const ws = XLSX.utils.aoa_to_sheet([headers]);
+    ws['!cols'] = headers.map(() => ({ wch: 22 }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Rupturas');
     XLSX.writeFile(wb, 'modelo_rupturas.xlsx');
