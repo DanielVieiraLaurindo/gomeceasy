@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDivergencias } from "@/hooks/useDivergencias";
@@ -41,23 +41,49 @@ export default function DivergenciasListPage() {
   const isMaster = role === "master";
   const { data: divergencias = [], isLoading } = useDivergencias();
 
+  // Search items by code/reference
+  const { data: matchingItemDivIds = [] } = useQuery({
+    queryKey: ["item-search", busca],
+    enabled: busca.length >= 2,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("divergencia_itens")
+        .select("divergencia_id")
+        .or(`codigo_interno.ilike.%${busca}%,referencia.ilike.%${busca}%`);
+      return [...new Set(data?.map((d) => d.divergencia_id) ?? [])];
+    },
+  });
+
   const lojas = useMemo(() => [...new Set(divergencias.map(d => d.loja))].sort(), [divergencias]);
 
   const filtered = useMemo(() => divergencias.filter(d => {
     const q = busca.toLowerCase();
-    const matchBusca = !busca || d.codigo_fornecedor.toLowerCase().includes(q) || d.nome_fornecedor.toLowerCase().includes(q) || (d.requisicao_dc || "").toLowerCase().includes(q) || (d.nota_fiscal || "").toLowerCase().includes(q) || (d.requisicao_rc || "").toLowerCase().includes(q);
+    const matchBusca = !busca || d.codigo_fornecedor.toLowerCase().includes(q) || d.nome_fornecedor.toLowerCase().includes(q) || (d.requisicao_dc || "").toLowerCase().includes(q) || (d.nota_fiscal || "").toLowerCase().includes(q) || (d.requisicao_rc || "").toLowerCase().includes(q) || matchingItemDivIds.includes(d.id);
     const matchTipo = filtroTipo === "todos" || d.ocorrencia === filtroTipo;
     const matchStatus = filtroStatus === "todos" || d.status === filtroStatus;
     const matchLoja = filtroLoja === "todos" || d.loja === filtroLoja;
     const hideFinalizados = filtroStatus === "todos" && !busca && d.status === "Finalizado";
     return matchBusca && matchTipo && matchStatus && matchLoja && !hideFinalizados;
-  }), [divergencias, busca, filtroTipo, filtroStatus, filtroLoja]);
+  }), [divergencias, busca, filtroTipo, filtroStatus, filtroLoja, matchingItemDivIds]);
 
   const toggleSelect = (id: string) => setSelectedIds(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   const toggleSelectAll = () => { if (selectedIds.size === filtered.length) setSelectedIds(new Set()); else setSelectedIds(new Set(filtered.map(d => d.id))); };
 
   const exportToExcel = () => {
-    const rows = filtered.filter(d => selectedIds.has(d.id)).map(d => ({ Data: formatDate(d.data), Loja: d.loja, "Cód. Fornecedor": d.codigo_fornecedor, Fornecedor: d.nome_fornecedor, Ocorrência: d.ocorrencia, Status: d.status, "Última Atualização": formatDate(d.updated_at) }));
+    const rows = filtered.filter(d => selectedIds.has(d.id)).map(d => ({
+      Data: formatDate(d.data),
+      Loja: d.loja,
+      "Cód. Fornecedor": d.codigo_fornecedor,
+      Fornecedor: d.nome_fornecedor,
+      Ocorrência: d.ocorrencia,
+      Status: d.status,
+      Ação: d.acao,
+      "Nota Fiscal": d.nota_fiscal || "",
+      "NF Devolução": d.numero_nf_devolucao || "",
+      DC: d.requisicao_dc || "",
+      RC: d.requisicao_rc || "",
+      "Última Atualização": formatDate(d.updated_at),
+    }));
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Divergências");
@@ -66,14 +92,14 @@ export default function DivergenciasListPage() {
 
   const handleBulkDelete = async () => {
     if (!isMaster || selectedIds.size === 0) return;
-    if (!window.confirm(`Excluir ${selectedIds.size} divergência(s)?`)) return;
+    if (!window.confirm(`Tem certeza que deseja excluir ${selectedIds.size} divergência(s)? Esta ação não pode ser desfeita.`)) return;
     setExecuting(true);
     try {
       const ids = Array.from(selectedIds);
-      await supabase.from("divergencia_anexos" as any).delete().in("divergencia_id", ids);
-      await supabase.from("divergencia_historico" as any).delete().in("divergencia_id", ids);
-      await supabase.from("divergencia_itens" as any).delete().in("divergencia_id", ids);
-      const { error } = await supabase.from("divergencias" as any).delete().in("id", ids);
+      await supabase.from("divergencia_anexos").delete().in("divergencia_id", ids);
+      await supabase.from("divergencia_historico").delete().in("divergencia_id", ids);
+      await supabase.from("divergencia_itens").delete().in("divergencia_id", ids);
+      const { error } = await supabase.from("divergencias").delete().in("id", ids);
       if (error) throw error;
       toast.success(`${ids.length} divergência(s) excluída(s).`);
       setSelectedIds(new Set());
@@ -88,10 +114,11 @@ export default function DivergenciasListPage() {
     try {
       const ids = Array.from(selectedIds);
       const { data: { user } } = await supabase.auth.getUser();
-      await supabase.from("divergencias" as any).update({ status: bulkStatus, atualizado_por: user?.id }).in("id", ids);
-      const historyRows = ids.map(id => ({ divergencia_id: id, status: bulkStatus, observacao: bulkObs.trim() || `Status alterado em lote para ${bulkStatus}`, usuario_id: user?.id }));
-      await supabase.from("divergencia_historico" as any).insert(historyRows);
-      toast.success(`${ids.length} divergência(s) alterada(s).`);
+      const { error } = await supabase.from("divergencias").update({ status: bulkStatus as StatusDivergencia, atualizado_por: user?.id } as any).in("id", ids);
+      if (error) throw error;
+      const historyRows = ids.map(id => ({ divergencia_id: id, status: bulkStatus as StatusDivergencia, observacao: bulkObs.trim() || `Status alterado em lote para ${bulkStatus}`, usuario_id: user?.id }));
+      await supabase.from("divergencia_historico").insert(historyRows as any);
+      toast.success(`${ids.length} divergência(s) alterada(s) para "${bulkStatus}".`);
       setSelectedIds(new Set()); setBulkStatusOpen(false); setBulkStatus(""); setBulkObs("");
       queryClient.invalidateQueries({ queryKey: ["divergencias"] });
     } catch (err: any) { toast.error(err.message || "Erro."); }
@@ -103,14 +130,14 @@ export default function DivergenciasListPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div><h1 className="text-2xl font-bold tracking-tight">Divergências</h1><p className="text-muted-foreground text-sm mt-1">{filtered.length} ocorrência(s)</p></div>
+        <div><h1 className="text-2xl font-bold tracking-tight">Divergências</h1><p className="text-muted-foreground text-sm mt-1">{filtered.length} ocorrência{filtered.length !== 1 ? "s" : ""} encontrada{filtered.length !== 1 ? "s" : ""}</p></div>
         <div className="flex gap-2 flex-wrap">
           {selectedIds.size > 0 && (
             <>
               <Button variant="outline" onClick={exportToExcel}><Download className="h-4 w-4 mr-2" /> Exportar ({selectedIds.size})</Button>
               {isMaster && (
                 <>
-                  <Button variant="outline" onClick={() => setBulkStatusOpen(true)}><ArrowRightLeft className="h-4 w-4 mr-2" /> Status ({selectedIds.size})</Button>
+                  <Button variant="outline" onClick={() => setBulkStatusOpen(true)}><ArrowRightLeft className="h-4 w-4 mr-2" /> Alterar Status ({selectedIds.size})</Button>
                   <Button variant="destructive" onClick={handleBulkDelete} disabled={executing}><Trash2 className="h-4 w-4 mr-2" /> Excluir ({selectedIds.size})</Button>
                 </>
               )}
@@ -122,7 +149,7 @@ export default function DivergenciasListPage() {
 
       <Card className="border-0 shadow-sm p-4">
         <div className="flex flex-wrap gap-3 items-end">
-          <div className="flex-1 min-w-[200px]"><div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar fornecedor, NF, RC, DC..." value={busca} onChange={e => setBusca(e.target.value)} className="pl-9" /></div></div>
+          <div className="flex-1 min-w-[200px]"><div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar fornecedor, NF, RC, DC, código do item ou referência..." value={busca} onChange={e => setBusca(e.target.value)} className="pl-9" /></div></div>
           <Select value={filtroTipo} onValueChange={setFiltroTipo}><SelectTrigger className="w-[150px]"><SelectValue placeholder="Ocorrência" /></SelectTrigger><SelectContent><SelectItem value="todos">Todas</SelectItem><SelectItem value="Falta">Falta</SelectItem><SelectItem value="Sobra">Sobra</SelectItem><SelectItem value="Defeito">Defeito</SelectItem><SelectItem value="Devolução">Devolução</SelectItem></SelectContent></Select>
           <Select value={filtroStatus} onValueChange={setFiltroStatus}><SelectTrigger className="w-[210px]"><SelectValue placeholder="Status" /></SelectTrigger><SelectContent><SelectItem value="todos">Todos</SelectItem>{ALL_STATUS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>
           <Select value={filtroLoja} onValueChange={setFiltroLoja}><SelectTrigger className="w-[140px]"><SelectValue placeholder="Loja" /></SelectTrigger><SelectContent><SelectItem value="todos">Todas</SelectItem>{lojas.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent></Select>
@@ -161,11 +188,17 @@ export default function DivergenciasListPage() {
 
       <Dialog open={bulkStatusOpen} onOpenChange={setBulkStatusOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Alterar Status em Lote ({selectedIds.size})</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Alterar Status em Lote ({selectedIds.size} selecionada{selectedIds.size > 1 ? "s" : ""})</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
-            <Select value={bulkStatus} onValueChange={setBulkStatus}><SelectTrigger><SelectValue placeholder="Selecione o status" /></SelectTrigger><SelectContent>{ALL_STATUS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>
-            <Textarea value={bulkObs} onChange={e => setBulkObs(e.target.value)} placeholder="Motivo..." rows={2} className="text-sm" />
-            <Button className="w-full" disabled={!bulkStatus || executing} onClick={handleBulkStatusChange}>{executing && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Confirmar</Button>
+            <div className="space-y-1.5">
+              <Label className="text-sm">Novo Status</Label>
+              <Select value={bulkStatus} onValueChange={setBulkStatus}><SelectTrigger><SelectValue placeholder="Selecione o status" /></SelectTrigger><SelectContent>{ALL_STATUS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm">Observação</Label>
+              <Textarea value={bulkObs} onChange={e => setBulkObs(e.target.value)} placeholder="Motivo da alteração..." rows={2} className="text-sm" />
+            </div>
+            <Button className="w-full" disabled={!bulkStatus || executing} onClick={handleBulkStatusChange}>{executing && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Confirmar Alteração</Button>
           </div>
         </DialogContent>
       </Dialog>

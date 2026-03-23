@@ -56,6 +56,7 @@ export default function WorkflowActions({ divergencia, itens }: WorkflowActionsP
     loja: "", requisicao_rc: "", nota_fiscal: "", codigo_fornecedor: "",
     nome_fornecedor: "", ocorrencia: "", requisicao_dc: "", anotacoes: "", numero_nf_devolucao: "",
   });
+  const [refreshing, setRefreshing] = useState(false);
 
   const d = divergencia;
   const actions = getAvailableActions(d.ocorrencia as TipoOcorrencia, d.status as StatusDivergencia, d.acao as AcaoDivergencia);
@@ -71,22 +72,32 @@ export default function WorkflowActions({ divergencia, itens }: WorkflowActionsP
       const updates: Record<string, any> = { status: action.nextStatus, acao: action.nextAcao, atualizado_por: user.id };
       if (action.requiresNF && nfNumero) updates.numero_nf_devolucao = nfNumero;
 
-      const { error: updErr } = await supabase.from("divergencias" as any).update(updates).eq("id", d.id);
+      const { error: updErr } = await supabase.from("divergencias").update(updates as any).eq("id", d.id);
       if (updErr) throw updErr;
 
-      await supabase.from("divergencia_historico" as any).insert({
+      await supabase.from("divergencia_historico").insert({
         divergencia_id: d.id, status: action.nextStatus,
         observacao: observacao.trim() || action.label, usuario_id: user.id,
-      });
+      } as any);
 
       if (action.requiresNF && nfFile) {
         const path = `${d.id}/nf_${Date.now()}_${nfFile.name}`;
         const { error: upErr } = await supabase.storage.from("divergencias").upload(path, nfFile);
         if (!upErr) {
           const { data: urlData } = supabase.storage.from("divergencias").getPublicUrl(path);
-          await supabase.from("divergencia_anexos" as any).insert({ divergencia_id: d.id, nome_arquivo: nfFile.name, url: urlData.publicUrl, tipo: "nf_devolucao", uploaded_by: user.id });
-          await supabase.from("divergencias" as any).update({ anexo_nf_url: urlData.publicUrl }).eq("id", d.id);
+          await supabase.from("divergencia_anexos").insert({ divergencia_id: d.id, nome_arquivo: nfFile.name, url: urlData.publicUrl, tipo: "nf_devolucao", uploaded_by: user.id } as any);
+          await supabase.from("divergencias").update({ anexo_nf_url: urlData.publicUrl } as any).eq("id", d.id);
         }
+      }
+
+      if (action.notifySetor) {
+        await supabase.from("notificacoes").insert({
+          mensagem: `${action.label}: ${d.nome_fornecedor} (${d.ocorrencia})`,
+          setor_destino: action.notifySetor,
+          referencia_id: d.id,
+          referencia_tabela: "divergencias",
+          tipo: "divergencia",
+        } as any);
       }
 
       toast.success(`Ação "${action.label}" executada com sucesso!`);
@@ -102,8 +113,8 @@ export default function WorkflowActions({ divergencia, itens }: WorkflowActionsP
     if (!user || !manualStatus) return;
     setExecuting(true);
     try {
-      await supabase.from("divergencias" as any).update({ status: manualStatus, atualizado_por: user.id }).eq("id", d.id);
-      await supabase.from("divergencia_historico" as any).insert({ divergencia_id: d.id, status: manualStatus, observacao: manualObs.trim() || `Status alterado para ${manualStatus}`, usuario_id: user.id });
+      await supabase.from("divergencias").update({ status: manualStatus, atualizado_por: user.id } as any).eq("id", d.id);
+      await supabase.from("divergencia_historico").insert({ divergencia_id: d.id, status: manualStatus, observacao: manualObs.trim() || `Status alterado manualmente para ${manualStatus}`, usuario_id: user.id } as any);
       toast.success(`Status alterado para "${manualStatus}"`);
       setManualOpen(false); setManualStatus(""); setManualObs("");
       queryClient.invalidateQueries({ queryKey: ["divergencia", d.id] });
@@ -116,11 +127,20 @@ export default function WorkflowActions({ divergencia, itens }: WorkflowActionsP
     if (!user || !delegarSetor || !delegarObs.trim()) { toast.error("Preencha a observação e selecione o departamento."); return; }
     setExecuting(true);
     try {
-      await supabase.from("divergencia_historico" as any).insert({ divergencia_id: d.id, status: d.status, observacao: `Delegado para ${SETORES.find(s => s.value === delegarSetor)?.label}: ${delegarObs.trim()}`, usuario_id: user.id });
-      await supabase.from("divergencias" as any).update({ atualizado_por: user.id }).eq("id", d.id);
-      toast.success(`Atividade delegada.`);
+      await supabase.from("notificacoes").insert({
+        mensagem: `Delegação: ${delegarObs.trim()} — ${d.nome_fornecedor} (${d.ocorrencia})`,
+        setor_destino: delegarSetor,
+        referencia_id: d.id,
+        referencia_tabela: "divergencias",
+        tipo: "delegacao",
+      } as any);
+
+      await supabase.from("divergencia_historico").insert({ divergencia_id: d.id, status: d.status, observacao: `Delegado para ${SETORES.find(s => s.value === delegarSetor)?.label}: ${delegarObs.trim()}`, usuario_id: user.id } as any);
+      await supabase.from("divergencias").update({ atualizado_por: user.id } as any).eq("id", d.id);
+      toast.success(`Atividade delegada para ${SETORES.find(s => s.value === delegarSetor)?.label}.`);
       setDelegarOpen(false); setDelegarSetor(""); setDelegarObs("");
       queryClient.invalidateQueries({ queryKey: ["divergencia", d.id] });
+      queryClient.invalidateQueries({ queryKey: ["divergencias"] });
     } catch (err: any) { toast.error(err.message || "Erro ao delegar."); }
     finally { setExecuting(false); }
   };
@@ -130,10 +150,58 @@ export default function WorkflowActions({ divergencia, itens }: WorkflowActionsP
     else if (d.ocorrencia === "Falta") gerarComunicadoFalta({ divergencia: d, itens });
     else if (d.ocorrencia === "Devolução") gerarComunicadoDevolucao({ divergencia: d, itens });
     else {
-      const itemsText = itens.map(it => `• ${it.codigo_interno} - ${it.descricao_produto} | Qtd: ${it.quantidade} ${it.unidade_medida}`).join("\n");
-      const text = `COMUNICADO DE DIVERGÊNCIA\n========================\nFornecedor: ${d.nome_fornecedor}\nLoja: ${d.loja}\nMotivo: ${d.ocorrencia}\n\nITENS:\n${itemsText}`;
+      const itemsText = itens.map(it => `• ${it.codigo_interno} - ${it.descricao_produto} | Ref: ${it.referencia || "—"} | Qtd: ${it.quantidade} ${it.unidade_medida}`).join("\n");
+      const text = `
+COMUNICADO DE DIVERGÊNCIA
+========================
+Data: ${new Date(d.data).toLocaleDateString("pt-BR")}
+Fornecedor: ${d.nome_fornecedor} (${d.codigo_fornecedor})
+Loja: ${d.loja}
+Nota Fiscal: ${d.nota_fiscal || "Não informada"}
+Motivo: ${d.ocorrencia}
+
+ITENS:
+${itemsText}
+
+Observações: ${d.anotacoes || "—"}
+      `.trim();
       const win = window.open("", "_blank");
-      if (win) { win.document.write(`<html><body><pre>${text}</pre><script>window.print();</script></body></html>`); win.document.close(); }
+      if (win) {
+        win.document.write(`<html><head><title>Comunicado</title><style>body{font-family:'Courier New',monospace;padding:40px;line-height:1.6;}</style></head><body><pre>${text}</pre><script>window.print();</script></body></html>`);
+        win.document.close();
+      }
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      if (d.codigo_fornecedor) {
+        const { data: fornData } = await supabase.functions.invoke("google-sheets-lookup", {
+          body: { type: "fornecedor", codigo: d.codigo_fornecedor.trim() },
+        });
+        if (fornData?.nome && fornData.nome !== d.nome_fornecedor) {
+          await supabase.from("divergencias").update({ nome_fornecedor: fornData.nome, atualizado_por: user?.id } as any).eq("id", d.id);
+        }
+      }
+
+      for (const item of itens) {
+        try {
+          const { data: prodData } = await supabase.functions.invoke("google-sheets-lookup", {
+            body: { type: "produto", codigo: item.codigo_interno.trim() },
+          });
+          if (prodData?.descricao && prodData.descricao !== item.descricao_produto) {
+            await supabase.from("divergencia_itens").update({ descricao_produto: prodData.descricao } as any).eq("id", item.id);
+          }
+        } catch { /* skip */ }
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["divergencia", d.id] });
+      toast.success("Dados atualizados com sucesso!");
+    } catch {
+      toast.error("Erro ao atualizar dados.");
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -146,13 +214,38 @@ export default function WorkflowActions({ divergencia, itens }: WorkflowActionsP
     if (!user) return;
     setExecuting(true);
     try {
-      const { error } = await supabase.from("divergencias" as any).update({
+      const changes: string[] = [];
+      const fieldLabels: Record<string, string> = {
+        loja: "Loja", requisicao_rc: "RC", nota_fiscal: "Nota Fiscal",
+        codigo_fornecedor: "Cód. Fornecedor", nome_fornecedor: "Fornecedor",
+        ocorrencia: "Ocorrência", requisicao_dc: "DC", anotacoes: "Anotações", numero_nf_devolucao: "NF Devolução",
+      };
+      const original: Record<string, string> = {
+        loja: d.loja, requisicao_rc: d.requisicao_rc || "", nota_fiscal: d.nota_fiscal || "",
+        codigo_fornecedor: d.codigo_fornecedor, nome_fornecedor: d.nome_fornecedor,
+        ocorrencia: d.ocorrencia, requisicao_dc: d.requisicao_dc || "",
+        anotacoes: d.anotacoes || "", numero_nf_devolucao: d.numero_nf_devolucao || "",
+      };
+      for (const key of Object.keys(editFields) as (keyof typeof editFields)[]) {
+        if (editFields[key] !== original[key]) {
+          changes.push(`${fieldLabels[key]}: "${original[key] || "—"}" → "${editFields[key] || "—"}"`);
+        }
+      }
+      if (changes.length === 0) { toast.info("Nenhuma alteração detectada."); setEditOpen(false); setExecuting(false); return; }
+
+      const { error } = await supabase.from("divergencias").update({
         loja: editFields.loja, requisicao_rc: editFields.requisicao_rc || null, nota_fiscal: editFields.nota_fiscal || null,
         codigo_fornecedor: editFields.codigo_fornecedor, nome_fornecedor: editFields.nome_fornecedor, ocorrencia: editFields.ocorrencia,
         requisicao_dc: editFields.requisicao_dc || null, anotacoes: editFields.anotacoes || null, numero_nf_devolucao: editFields.numero_nf_devolucao || null, atualizado_por: user.id,
-      }).eq("id", d.id);
+      } as any).eq("id", d.id);
       if (error) throw error;
-      toast.success("Cartão atualizado!");
+
+      await supabase.from("divergencia_historico").insert({
+        divergencia_id: d.id, status: d.status,
+        observacao: `Edição Master: ${changes.join("; ")}`, usuario_id: user.id,
+      } as any);
+
+      toast.success("Cartão atualizado com sucesso!");
       setEditOpen(false);
       queryClient.invalidateQueries({ queryKey: ["divergencia", d.id] });
       queryClient.invalidateQueries({ queryKey: ["divergencias"] });
@@ -170,14 +263,20 @@ export default function WorkflowActions({ divergencia, itens }: WorkflowActionsP
           </div>
           {isMaster && (
             <>
-              <Button variant="outline" size="sm" className="w-full gap-2" onClick={openEditDialog}><Pencil className="h-4 w-4" /> Editar Cartão</Button>
+              <Button variant="outline" size="sm" className="w-full gap-2" onClick={openEditDialog}><Pencil className="h-4 w-4" /> Editar Cartão (Master)</Button>
               <Dialog open={manualOpen} onOpenChange={setManualOpen}>
                 <DialogTrigger asChild><Button variant="outline" size="sm" className="w-full gap-2"><ArrowRightLeft className="h-4 w-4" /> Alterar Status</Button></DialogTrigger>
                 <DialogContent>
                   <DialogHeader><DialogTitle>Alterar Status</DialogTitle></DialogHeader>
                   <div className="space-y-4 pt-2">
-                    <Select value={manualStatus} onValueChange={setManualStatus}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{ALL_STATUS.filter(s => s !== d.status).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>
-                    <Textarea value={manualObs} onChange={e => setManualObs(e.target.value)} placeholder="Motivo..." rows={2} className="text-sm" />
+                    <div className="space-y-1.5">
+                      <Label className="text-sm">Novo Status</Label>
+                      <Select value={manualStatus} onValueChange={setManualStatus}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{ALL_STATUS.filter(s => s !== d.status).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-sm">Observação</Label>
+                      <Textarea value={manualObs} onChange={e => setManualObs(e.target.value)} placeholder="Motivo..." rows={2} className="text-sm" />
+                    </div>
                     <Button className="w-full" disabled={!manualStatus || executing} onClick={handleManualStatusChange}>{executing && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Confirmar</Button>
                   </div>
                 </DialogContent>
@@ -191,13 +290,19 @@ export default function WorkflowActions({ divergencia, itens }: WorkflowActionsP
 
   return (
     <Card className="border-0 shadow-sm">
-      <CardHeader className="pb-3"><CardTitle className="text-base">Ações do Fluxo</CardTitle></CardHeader>
+      <CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2">Ações do Fluxo</CardTitle></CardHeader>
       <CardContent className="space-y-4">
         <Button variant="outline" size="sm" className="w-full gap-2" onClick={handleGenerateComunicado}>
-          <Printer className="h-4 w-4" /> Gerar Comunicado
+          <Printer className="h-4 w-4" />
+          Gerar Comunicado {d.ocorrencia === "Defeito" ? "de Avaria" : d.ocorrencia === "Falta" ? "de Falta" : d.ocorrencia === "Devolução" ? "de Devolução" : "de Divergência"}
         </Button>
 
-        {isMaster && <Button variant="outline" size="sm" className="w-full gap-2" onClick={openEditDialog}><Pencil className="h-4 w-4" /> Editar Cartão</Button>}
+        <Button variant="outline" size="sm" className="w-full gap-2" onClick={handleRefresh} disabled={refreshing}>
+          {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          Atualizar Dados (Fornecedor/Produtos)
+        </Button>
+
+        {isMaster && <Button variant="outline" size="sm" className="w-full gap-2" onClick={openEditDialog}><Pencil className="h-4 w-4" /> Editar Cartão (Master)</Button>}
 
         {(d.status === "Emitir NF" || userActions.some(a => a.requiresNF)) && (
           <div className="space-y-3 p-3 rounded-lg bg-muted/50">
@@ -216,7 +321,7 @@ export default function WorkflowActions({ divergencia, itens }: WorkflowActionsP
           </div>
         )}
 
-        {d.anexo_nf_url && <a href={d.anexo_nf_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline"><FileText className="h-4 w-4" /> Ver NF anexada</a>}
+        {d.anexo_nf_url && <a href={d.anexo_nf_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-sm text-primary hover:underline"><FileText className="h-4 w-4" /> Ver NF de Devolução anexada</a>}
 
         <div className="space-y-1.5">
           <Label className="text-xs font-medium">Observação (opcional)</Label>
@@ -224,7 +329,7 @@ export default function WorkflowActions({ divergencia, itens }: WorkflowActionsP
         </div>
 
         {userActions.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-2">Nenhuma ação disponível para o seu perfil.</p>
+          <p className="text-xs text-muted-foreground text-center py-2">Nenhuma ação disponível para o seu perfil neste momento.</p>
         ) : (
           <div className="space-y-2">
             {userActions.map(action => (
@@ -241,22 +346,35 @@ export default function WorkflowActions({ divergencia, itens }: WorkflowActionsP
           <DialogContent>
             <DialogHeader><DialogTitle>Delegar Atividade</DialogTitle></DialogHeader>
             <div className="space-y-4 pt-2">
-              <Select value={delegarSetor} onValueChange={setDelegarSetor}><SelectTrigger><SelectValue placeholder="Departamento" /></SelectTrigger><SelectContent>{SETORES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent></Select>
-              <Textarea value={delegarObs} onChange={e => setDelegarObs(e.target.value)} placeholder="Descreva..." rows={3} className="text-sm" />
-              <Button className="w-full" disabled={!delegarSetor || !delegarObs.trim() || executing} onClick={handleDelegar}>{executing && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Enviar</Button>
+              <p className="text-sm text-muted-foreground">Envie uma observação para um departamento específico sem alterar o status da divergência.</p>
+              <div className="space-y-1.5">
+                <Label className="text-sm">Departamento</Label>
+                <Select value={delegarSetor} onValueChange={setDelegarSetor}><SelectTrigger><SelectValue placeholder="Selecione o departamento" /></SelectTrigger><SelectContent>{SETORES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent></Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm">Observação *</Label>
+                <Textarea value={delegarObs} onChange={e => setDelegarObs(e.target.value)} placeholder="Descreva o que precisa ser feito..." rows={3} className="text-sm" />
+              </div>
+              <Button className="w-full" disabled={!delegarSetor || !delegarObs.trim() || executing} onClick={handleDelegar}>{executing && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Enviar Delegação</Button>
             </div>
           </DialogContent>
         </Dialog>
 
-        {isMaster && (
+        {(isMaster || role === "compras") && (
           <Dialog open={manualOpen} onOpenChange={setManualOpen}>
-            <DialogTrigger asChild><Button variant="outline" size="sm" className="w-full gap-2"><ArrowRightLeft className="h-4 w-4" /> Alterar Status</Button></DialogTrigger>
+            <DialogTrigger asChild><Button variant="outline" size="sm" className="w-full gap-2"><ArrowRightLeft className="h-4 w-4" /> Alterar Status Manualmente</Button></DialogTrigger>
             <DialogContent>
               <DialogHeader><DialogTitle>Alterar Status</DialogTitle></DialogHeader>
               <div className="space-y-4 pt-2">
-                <Select value={manualStatus} onValueChange={setManualStatus}><SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent>{ALL_STATUS.filter(s => s !== d.status).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>
-                <Textarea value={manualObs} onChange={e => setManualObs(e.target.value)} placeholder="Motivo..." rows={2} className="text-sm" />
-                <Button className="w-full" disabled={!manualStatus || executing} onClick={handleManualStatusChange}>{executing && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Confirmar</Button>
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Novo Status</Label>
+                  <Select value={manualStatus} onValueChange={setManualStatus}><SelectTrigger><SelectValue placeholder="Selecione o status" /></SelectTrigger><SelectContent>{ALL_STATUS.filter(s => s !== d.status).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Observação</Label>
+                  <Textarea value={manualObs} onChange={e => setManualObs(e.target.value)} placeholder="Motivo da alteração..." rows={2} className="text-sm" />
+                </div>
+                <Button className="w-full" disabled={!manualStatus || executing} onClick={handleManualStatusChange}>{executing && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Confirmar Alteração</Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -264,12 +382,20 @@ export default function WorkflowActions({ divergencia, itens }: WorkflowActionsP
 
         <Dialog open={editOpen} onOpenChange={setEditOpen}>
           <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-            <DialogHeader><DialogTitle>Editar Cartão</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>Editar Cartão (Master)</DialogTitle></DialogHeader>
             <div className="space-y-3 pt-2">
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1"><Label className="text-xs">Loja</Label><Input value={editFields.loja} onChange={e => setEditFields(p => ({...p, loja: e.target.value}))} className="text-sm" /></div>
+                <div className="space-y-1"><Label className="text-xs">Loja</Label>
+                  <Select value={editFields.loja} onValueChange={v => setEditFields(p => ({...p, loja: v}))}>
+                    <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="001">Loja 001</SelectItem><SelectItem value="002">Loja 002</SelectItem><SelectItem value="003">Loja 003</SelectItem><SelectItem value="004">Loja 004</SelectItem></SelectContent>
+                  </Select>
+                </div>
                 <div className="space-y-1"><Label className="text-xs">Ocorrência</Label>
-                  <Select value={editFields.ocorrencia} onValueChange={v => setEditFields(p => ({...p, ocorrencia: v}))}><SelectTrigger className="text-sm"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Falta">Falta</SelectItem><SelectItem value="Sobra">Sobra</SelectItem><SelectItem value="Defeito">Defeito</SelectItem><SelectItem value="Devolução">Devolução</SelectItem></SelectContent></Select>
+                  <Select value={editFields.ocorrencia} onValueChange={v => setEditFields(p => ({...p, ocorrencia: v}))}>
+                    <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="Falta">Falta</SelectItem><SelectItem value="Sobra">Sobra</SelectItem><SelectItem value="Defeito">Defeito</SelectItem><SelectItem value="Devolução">Devolução</SelectItem></SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -285,7 +411,7 @@ export default function WorkflowActions({ divergencia, itens }: WorkflowActionsP
                 <div className="space-y-1"><Label className="text-xs">NF Devolução</Label><Input value={editFields.numero_nf_devolucao} onChange={e => setEditFields(p => ({...p, numero_nf_devolucao: e.target.value}))} className="text-sm" /></div>
               </div>
               <div className="space-y-1"><Label className="text-xs">Anotações</Label><Textarea value={editFields.anotacoes} onChange={e => setEditFields(p => ({...p, anotacoes: e.target.value}))} rows={3} className="text-sm" /></div>
-              <Button className="w-full" disabled={executing} onClick={handleEditSave}>{executing && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Salvar</Button>
+              <Button className="w-full" disabled={executing} onClick={handleEditSave}>{executing && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Salvar Alterações</Button>
             </div>
           </DialogContent>
         </Dialog>
