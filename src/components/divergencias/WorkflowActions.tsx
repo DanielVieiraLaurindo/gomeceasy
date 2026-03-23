@@ -16,7 +16,7 @@ import {
 import { Upload, Loader2, ShieldCheck, FileText, Printer, ArrowRightLeft, Send, RefreshCw, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import type { DivergenciaDB, DivergenciaItem, TipoOcorrencia, StatusDivergencia, AcaoDivergencia } from "@/types/divergencia";
-import { getAvailableActions, canExecuteAction, type WorkflowAction } from "@/lib/workflow-rules";
+import { getAvailableActions, canExecuteAction, getWorkflowRoles, type WorkflowAction } from "@/lib/workflow-rules";
 import { gerarComunicadoDefeito } from "@/components/divergencias/ComunicadoDefeito";
 import { gerarComunicadoFalta } from "@/components/divergencias/ComunicadoFalta";
 import { gerarComunicadoDevolucao } from "@/components/divergencias/ComunicadoDevolucao";
