@@ -1,7 +1,6 @@
-import React, { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { MetricCard } from '@/components/MetricCard';
-import { Package, CheckCircle, Truck, AlertTriangle, Search, Download, Eye, Printer, Plus, Trash2, Edit, Building2, Warehouse, Loader2 } from 'lucide-react';
+import { Package, CheckCircle, Truck, AlertTriangle, Search, Download, Eye, Printer, Plus, Trash2, Edit, Building2, Warehouse, Loader2, ChevronDown, ChevronRight, FileDown } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -13,6 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { Progress } from '@/components/ui/progress';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Skeleton } from '@/components/ui/skeleton';
 import { STATUS_COLORS, STATUS_LABELS } from '@/types';
 import type { EnvioStatus } from '@/types';
 import { cn } from '@/lib/utils';
@@ -20,6 +20,22 @@ import { useEnvios, useVolumeGroups, useBrands, useDistributionCenters } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { exportToExcel } from '@/lib/export-utils';
+
+const STATUSES: EnvioStatus[] = ['pendente', 'separacao', 'embalado', 'despachado', 'em_transito', 'entregue', 'problema'];
+const PAGE_SIZE = 50;
+
+function useDebounce(value: string, ms = 600) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => { const t = setTimeout(() => setDebounced(value), ms); return () => clearTimeout(t); }, [value, ms]);
+  return debounced;
+}
+
+function TableSkeleton({ rows = 5, cols = 7 }: { rows?: number; cols?: number }) {
+  return <>{Array.from({ length: rows }).map((_, i) => (
+    <tr key={i} className="border-b"><td colSpan={cols} className="p-3"><Skeleton className="h-5 w-full" /></td></tr>
+  ))}</>;
+}
 
 export default function FulfillmentPage() {
   const { data: envios = [], isLoading, updateEnvio } = useEnvios();
@@ -28,19 +44,23 @@ export default function FulfillmentPage() {
   const queryClient = useQueryClient();
 
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [detailEnvio, setDetailEnvio] = useState<any | null>(null);
   const [selectedShipment, setSelectedShipment] = useState<string>('');
   const [volumeDialog, setVolumeDialog] = useState<any | null>(null);
   const [showVolumeForm, setShowVolumeForm] = useState(false);
   const [newVolume, setNewVolume] = useState<any>({ quantidade: 1, altura_cm: 0, largura_cm: 0, comprimento_cm: 0, peso_kg: 0, is_fragile: false });
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [page, setPage] = useState(1);
 
-  // Brands editing
+  // Brands
   const [editBrand, setEditBrand] = useState<any | null>(null);
   const [brandForm, setBrandForm] = useState<any>({});
   const [brandSearch, setBrandSearch] = useState('');
+  const debouncedBrandSearch = useDebounce(brandSearch);
 
-  // CDs editing
+  // CDs
   const [editCd, setEditCd] = useState<string | null>(null);
   const [cdEditName, setCdEditName] = useState('');
 
@@ -48,12 +68,20 @@ export default function FulfillmentPage() {
   const { data: volumes = [], createVolume, updateVolume, deleteVolume } = useVolumeGroups(effectiveShipment);
 
   const filtered = useMemo(() => {
-    let items = envios.filter((e: any) =>
-      [e.numero_pedido, e.sku || '', e.comprador || '', e.codigo_rastreio || ''].some((f: string) => f.toLowerCase().includes(search.toLowerCase()))
+    const s = debouncedSearch.toLowerCase();
+    let items = envios;
+    if (s) items = items.filter((e: any) =>
+      (e.numero_pedido || '').toLowerCase().includes(s) ||
+      (e.sku || '').toLowerCase().includes(s) ||
+      (e.comprador || '').toLowerCase().includes(s) ||
+      (e.codigo_rastreio || '').toLowerCase().includes(s)
     );
     if (statusFilter !== 'all') items = items.filter((e: any) => e.status === statusFilter);
     return items;
-  }, [envios, search, statusFilter]);
+  }, [envios, debouncedSearch, statusFilter]);
+
+  const paginatedFiltered = useMemo(() => filtered.slice(0, page * PAGE_SIZE), [filtered, page]);
+  const hasMore = paginatedFiltered.length < filtered.length;
 
   const metrics = useMemo(() => ({
     pendentes: envios.filter((e: any) => e.status === 'pendente').length,
@@ -76,30 +104,59 @@ export default function FulfillmentPage() {
     frageis: volumes.filter((v: any) => v.is_fragile).length,
   }), [volumes]);
 
-  const updateStatus = (id: string, status: EnvioStatus) => {
+  const updateStatus = useCallback((id: string, status: EnvioStatus) => {
     const extra: any = {};
     if (status === 'despachado') extra.data_despacho = new Date().toISOString();
     if (status === 'entregue') extra.data_entrega = new Date().toISOString();
     updateEnvio.mutate({ id, status, ...extra }, { onSuccess: () => toast.success('Status atualizado') });
-  };
+  }, [updateEnvio]);
 
-  const toggleExpField = (id: string, field: 'separado' | 'embalado' | 'saiu_onda', current: any) => {
+  const toggleExpField = useCallback((id: string, field: 'separado' | 'embalado' | 'saiu_onda', current: any) => {
     const updates: any = { [field]: !current[field] };
     if (field === 'separado' && current.separado) { updates.embalado = false; updates.saiu_onda = false; }
     if (field === 'embalado' && current.embalado) { updates.saiu_onda = false; }
     updateEnvio.mutate({ id, ...updates });
-  };
+  }, [updateEnvio]);
 
-  const progressFor = (e: any) => (Number(e.separado) + Number(e.embalado) + Number(e.saiu_onda)) / 3 * 100;
+  const progressFor = useCallback((e: any) => (Number(e.separado) + Number(e.embalado) + Number(e.saiu_onda)) / 3 * 100, []);
 
-  const saveVolume = () => {
+  const toggleExpand = useCallback((id: string) => {
+    setExpandedRows(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const saveVolume = useCallback(() => {
     if (volumeDialog) {
       updateVolume.mutate({ id: volumeDialog.id, ...newVolume }, { onSuccess: () => { setVolumeDialog(null); setShowVolumeForm(false); toast.success('Volume atualizado'); } });
     } else {
       createVolume.mutate({ shipment_id: effectiveShipment, ...newVolume }, { onSuccess: () => { setShowVolumeForm(false); toast.success('Volume criado'); } });
     }
     setNewVolume({ quantidade: 1, altura_cm: 0, largura_cm: 0, comprimento_cm: 0, peso_kg: 0, is_fragile: false });
-  };
+  }, [volumeDialog, newVolume, effectiveShipment, updateVolume, createVolume]);
+
+  const downloadLabel = useCallback((envio: any) => {
+    const vols = volumes.filter((v: any) => v.shipment_id === envio.id);
+    const totalVols = vols.reduce((s: number, v: any) => s + (v.quantidade || 0), 0) || 1;
+    const content = Array.from({ length: totalVols }, (_, i) =>
+      `VOLUME ${i + 1} de ${totalVols}\nPedido: ${envio.numero_pedido}\nComprador: ${envio.comprador || '—'}\nTransportadora: ${envio.transportadora || '—'}\n${vols.some((v: any) => v.is_fragile) ? '⚠️ FRÁGIL' : ''}\n---`
+    ).join('\n');
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `etiqueta_${envio.numero_pedido}.txt`; a.click();
+    URL.revokeObjectURL(url);
+  }, [volumes]);
+
+  const handleExport = useCallback(() => {
+    exportToExcel(filtered.map((e: any) => ({
+      Pedido: e.numero_pedido, Marketplace: e.marketplace, Comprador: e.comprador,
+      SKU: e.sku, Produto: e.produto, Qtd: e.quantidade, Valor: e.valor_total,
+      Status: STATUS_LABELS[e.status as EnvioStatus] || e.status, Rastreio: e.codigo_rastreio,
+    })), 'fulfillment');
+  }, [filtered]);
 
   // Brand mutations
   const saveBrand = useMutation({
@@ -123,7 +180,6 @@ export default function FulfillmentPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['brands'] }),
   });
 
-  // CD mutations
   const updateCd = useMutation({
     mutationFn: async ({ id, nome }: { id: string; nome: string }) => {
       const { error } = await supabase.from('distribution_centers').update({ nome }).eq('id', id);
@@ -132,11 +188,14 @@ export default function FulfillmentPage() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['distribution_centers'] }); setEditCd(null); toast.success('CD atualizado'); },
   });
 
-  const filteredBrands = brands.filter((b: any) =>
-    [b.nome, b.nome_completo, b.categoria, b.contato].some((f: any) => (f || '').toLowerCase().includes(brandSearch.toLowerCase()))
-  );
-
-  if (isLoading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+  const filteredBrands = useMemo(() => {
+    const s = debouncedBrandSearch.toLowerCase();
+    if (!s) return brands;
+    return brands.filter((b: any) =>
+      (b.nome || '').toLowerCase().includes(s) || (b.nome_completo || '').toLowerCase().includes(s) ||
+      (b.categoria || '').toLowerCase().includes(s) || (b.contato || '').toLowerCase().includes(s)
+    );
+  }, [brands, debouncedBrandSearch]);
 
   return (
     <div className="space-y-6">
@@ -145,7 +204,7 @@ export default function FulfillmentPage() {
           <h1 className="text-2xl font-barlow font-bold">Fulfillment</h1>
           <p className="text-muted-foreground text-sm">Gestão de envios, expedição, marcas e CDs</p>
         </div>
-        <Button variant="outline" size="sm"><Download className="w-4 h-4 mr-2" />Exportar</Button>
+        <Button variant="outline" size="sm" onClick={handleExport}><Download className="w-4 h-4 mr-2" />Exportar</Button>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -164,66 +223,97 @@ export default function FulfillmentPage() {
           <TabsTrigger value="cds">Centros Distrib.</TabsTrigger>
         </TabsList>
 
-        {/* ENVIOS TAB */}
+        {/* ENVIOS TAB — expandable rows */}
         <TabsContent value="envios" className="space-y-4 mt-4">
           <div className="flex gap-3">
             <div className="relative max-w-sm flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input placeholder="Buscar pedido, SKU, rastreio..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter} onValueChange={v => { setStatusFilter(v); setPage(1); }}>
               <SelectTrigger className="w-44"><SelectValue placeholder="Status" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
-                {(['pendente', 'separacao', 'embalado', 'despachado', 'em_transito', 'entregue', 'problema'] as EnvioStatus[]).map(s => (
-                  <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>
-                ))}
+                {STATUSES.map(s => <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
           <div className="card-base overflow-hidden">
-            <div className="overflow-x-auto">
+            <div className="overflow-auto max-h-[65vh]">
               <table className="w-full text-sm">
-                <thead><tr className="bg-table-header border-b">
+                <thead className="sticky top-0 z-10"><tr className="bg-table-header border-b">
+                  <th className="w-8 p-3" />
                   <th className="text-left p-3 font-medium">Pedido</th>
                   <th className="text-left p-3 font-medium">Marketplace</th>
                   <th className="text-left p-3 font-medium">Comprador</th>
                   <th className="text-left p-3 font-medium">SKU</th>
-                  <th className="text-left p-3 font-medium">Produto</th>
                   <th className="text-right p-3 font-medium">Valor</th>
                   <th className="text-left p-3 font-medium">Status</th>
                   <th className="text-left p-3 font-medium">Rastreio</th>
                   <th className="text-center p-3 font-medium">Ações</th>
                 </tr></thead>
                 <tbody>
-                  {filtered.map((e: any, i: number) => (
-                    <motion.tr key={e.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }} className="border-b hover:bg-table-hover transition-colors">
-                      <td className="p-3 font-mono-data font-medium">{e.numero_pedido}</td>
-                      <td className="p-3 text-muted-foreground">{e.marketplace}</td>
-                      <td className="p-3">{e.comprador}</td>
-                      <td className="p-3 font-mono-data text-muted-foreground">{e.sku}</td>
-                      <td className="p-3 max-w-[160px] truncate">{e.produto}</td>
-                      <td className="p-3 text-right font-mono-data">R$ {(e.valor_total || 0).toFixed(2)}</td>
-                      <td className="p-3">
-                        <Select value={e.status} onValueChange={v => updateStatus(e.id, v as EnvioStatus)}>
-                          <SelectTrigger className="h-7 w-auto border-0 px-0">
-                            <Badge className={cn('text-[10px]', STATUS_COLORS[e.status])}>{STATUS_LABELS[e.status]}</Badge>
-                          </SelectTrigger>
-                          <SelectContent>{(['pendente', 'separacao', 'embalado', 'despachado', 'em_transito', 'entregue', 'problema'] as EnvioStatus[]).map(s => (
-                            <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>
-                          ))}</SelectContent>
-                        </Select>
-                      </td>
-                      <td className="p-3 font-mono-data text-xs">{e.codigo_rastreio || '—'}</td>
-                      <td className="p-3 text-center">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDetailEnvio(e)}><Eye className="w-3.5 h-3.5" /></Button>
-                      </td>
-                    </motion.tr>
+                  {isLoading ? <TableSkeleton rows={8} cols={9} /> : paginatedFiltered.map((e: any) => (
+                    <React.Fragment key={e.id}>
+                      <tr className="border-b hover:bg-table-hover transition-colors cursor-pointer" onClick={() => toggleExpand(e.id)}>
+                        <td className="p-3 text-muted-foreground">
+                          {expandedRows.has(e.id) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                        </td>
+                        <td className="p-3 font-mono-data font-medium">{e.numero_pedido}</td>
+                        <td className="p-3 text-muted-foreground">{e.marketplace}</td>
+                        <td className="p-3">{e.comprador}</td>
+                        <td className="p-3 font-mono-data text-muted-foreground">{e.sku}</td>
+                        <td className="p-3 text-right font-mono-data">R$ {(e.valor_total || 0).toFixed(2)}</td>
+                        <td className="p-3" onClick={ev => ev.stopPropagation()}>
+                          <Select value={e.status} onValueChange={v => updateStatus(e.id, v as EnvioStatus)}>
+                            <SelectTrigger className="h-7 w-auto border-0 px-0">
+                              <Badge className={cn('text-[10px]', STATUS_COLORS[e.status])}>{STATUS_LABELS[e.status]}</Badge>
+                            </SelectTrigger>
+                            <SelectContent>{STATUSES.map(s => <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>)}</SelectContent>
+                          </Select>
+                        </td>
+                        <td className="p-3 font-mono-data text-xs">{e.codigo_rastreio || '—'}</td>
+                        <td className="p-3 text-center" onClick={ev => ev.stopPropagation()}>
+                          <div className="flex items-center justify-center gap-1">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDetailEnvio(e)}><Eye className="w-3.5 h-3.5" /></Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => downloadLabel(e)} title="Baixar etiqueta"><FileDown className="w-3.5 h-3.5" /></Button>
+                          </div>
+                        </td>
+                      </tr>
+                      {expandedRows.has(e.id) && (
+                        <tr className="bg-muted/30">
+                          <td colSpan={9} className="p-4">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                              <div><span className="text-muted-foreground text-xs">Produto</span><p className="font-medium">{e.produto || '—'}</p></div>
+                              <div><span className="text-muted-foreground text-xs">Qtd</span><p className="font-mono-data">{e.quantidade}</p></div>
+                              <div><span className="text-muted-foreground text-xs">Transportadora</span><p>{e.transportadora || '—'}</p></div>
+                              <div><span className="text-muted-foreground text-xs">Tipo Envio</span><p>{e.tipo_envio || '—'}</p></div>
+                              <div><span className="text-muted-foreground text-xs">Data Pedido</span><p className="font-mono-data">{e.data_pedido || '—'}</p></div>
+                              <div><span className="text-muted-foreground text-xs">Prazo Entrega</span><p className="font-mono-data">{e.prazo_entrega || '—'}</p></div>
+                              <div><span className="text-muted-foreground text-xs">Responsável</span><p>{e.responsavel || '—'}</p></div>
+                              <div><span className="text-muted-foreground text-xs">Observações</span><p className="truncate max-w-[200px]">{e.observacoes || '—'}</p></div>
+                            </div>
+                            <div className="flex items-center gap-3 mt-3 pt-3 border-t">
+                              <span className="text-xs text-muted-foreground">Expedição:</span>
+                              <label className="flex items-center gap-1.5 text-xs"><Checkbox checked={e.separado} onCheckedChange={() => toggleExpField(e.id, 'separado', e)} />Separado</label>
+                              <label className="flex items-center gap-1.5 text-xs"><Checkbox checked={e.embalado} disabled={!e.separado} onCheckedChange={() => toggleExpField(e.id, 'embalado', e)} />Embalado</label>
+                              <label className="flex items-center gap-1.5 text-xs"><Checkbox checked={e.saiu_onda} disabled={!e.embalado} onCheckedChange={() => toggleExpField(e.id, 'saiu_onda', e)} />Saiu Onda</label>
+                              <Progress value={progressFor(e)} className="h-1.5 w-24" />
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   ))}
-                  {filtered.length === 0 && <tr><td colSpan={9} className="p-12 text-center text-muted-foreground">Nenhum envio encontrado</td></tr>}
+                  {!isLoading && filtered.length === 0 && <tr><td colSpan={9} className="p-12 text-center text-muted-foreground">Nenhum envio encontrado</td></tr>}
                 </tbody>
               </table>
             </div>
+            {hasMore && (
+              <div className="p-3 text-center border-t">
+                <Button variant="ghost" size="sm" onClick={() => setPage(p => p + 1)}>Carregar mais ({filtered.length - paginatedFiltered.length} restantes)</Button>
+              </div>
+            )}
           </div>
         </TabsContent>
 
@@ -235,14 +325,14 @@ export default function FulfillmentPage() {
             <MetricCard title="Embalados" value={expMetrics.embalados} icon={Package} variant="default" />
             <MetricCard title="Saiu na Onda" value={expMetrics.saiuOnda} icon={Truck} variant="success" />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[60vh] overflow-y-auto">
             {envios.filter((e: any) => ['pendente', 'separacao', 'embalado'].includes(e.status)).map((envio: any) => (
-              <motion.div key={envio.id} whileHover={{ y: -2 }} className={cn('card-base p-4 transition-colors', envio.saiu_onda && 'border-success bg-success/5')}>
+              <div key={envio.id} className={cn('card-base p-4 transition-colors hover:-translate-y-0.5', envio.saiu_onda && 'border-success bg-success/5')}>
                 <div className="flex justify-between items-start mb-3">
                   <span className="font-mono-data font-medium">{envio.numero_pedido}</span>
                   <Badge className={cn('text-[10px]', STATUS_COLORS[envio.status])}>{STATUS_LABELS[envio.status]}</Badge>
                 </div>
-                <p className="text-sm mb-1">{envio.produto}</p>
+                <p className="text-sm mb-1 truncate">{envio.produto}</p>
                 <p className="text-xs text-muted-foreground mb-3">{envio.comprador}</p>
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 text-sm cursor-pointer"><Checkbox checked={envio.separado} onCheckedChange={() => toggleExpField(envio.id, 'separado', envio)} />Separado</label>
@@ -250,7 +340,7 @@ export default function FulfillmentPage() {
                   <label className="flex items-center gap-2 text-sm cursor-pointer"><Checkbox checked={envio.saiu_onda} disabled={!envio.embalado} onCheckedChange={() => toggleExpField(envio.id, 'saiu_onda', envio)} />Saiu na Onda</label>
                 </div>
                 <Progress value={progressFor(envio)} className="mt-3 h-2" />
-              </motion.div>
+              </div>
             ))}
           </div>
         </TabsContent>
@@ -261,7 +351,7 @@ export default function FulfillmentPage() {
             <Label>Envio:</Label>
             <Select value={effectiveShipment} onValueChange={setSelectedShipment}>
               <SelectTrigger className="w-64"><SelectValue placeholder="Selecione um envio" /></SelectTrigger>
-              <SelectContent>{envios.map((e: any) => <SelectItem key={e.id} value={e.id}>{e.numero_pedido} — {e.produto}</SelectItem>)}</SelectContent>
+              <SelectContent>{envios.slice(0, 100).map((e: any) => <SelectItem key={e.id} value={e.id}>{e.numero_pedido} — {e.produto}</SelectItem>)}</SelectContent>
             </Select>
             <Button size="sm" onClick={() => { setVolumeDialog(null); setShowVolumeForm(true); setNewVolume({ quantidade: 1, altura_cm: 0, largura_cm: 0, comprimento_cm: 0, peso_kg: 0, is_fragile: false }); }}>
               <Plus className="w-4 h-4 mr-1" />Novo Grupo
@@ -311,26 +401,28 @@ export default function FulfillmentPage() {
             </Button>
           </div>
           <div className="card-base overflow-hidden">
-            <table className="w-full text-sm"><thead><tr className="bg-table-header border-b">
-              <th className="text-left p-3 font-medium">Nome</th>
-              <th className="text-left p-3 font-medium">Nome Completo</th>
-              <th className="text-left p-3 font-medium">Categoria</th>
-              <th className="text-left p-3 font-medium">Contato</th>
-              <th className="text-center p-3 font-medium">Ativo</th>
-              <th className="text-center p-3 font-medium">Ações</th>
-            </tr></thead><tbody>
-              {filteredBrands.map((b: any) => (
-                <tr key={b.id} className="border-b hover:bg-table-hover">
-                  <td className="p-3 font-medium">{b.nome}</td>
-                  <td className="p-3 text-muted-foreground">{b.nome_completo || '—'}</td>
-                  <td className="p-3 text-muted-foreground">{b.categoria || '—'}</td>
-                  <td className="p-3 text-muted-foreground">{b.contato || '—'}</td>
-                  <td className="p-3 text-center"><Switch checked={b.ativo} onCheckedChange={c => toggleBrandActive.mutate({ id: b.id, ativo: c })} /></td>
-                  <td className="p-3 text-center"><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditBrand(b); setBrandForm(b); }}><Edit className="w-3.5 h-3.5" /></Button></td>
-                </tr>
-              ))}
-              {filteredBrands.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">Nenhuma marca encontrada</td></tr>}
-            </tbody></table>
+            <div className="overflow-auto max-h-[60vh]">
+              <table className="w-full text-sm"><thead className="sticky top-0 z-10"><tr className="bg-table-header border-b">
+                <th className="text-left p-3 font-medium">Nome</th>
+                <th className="text-left p-3 font-medium">Nome Completo</th>
+                <th className="text-left p-3 font-medium">Categoria</th>
+                <th className="text-left p-3 font-medium">Contato</th>
+                <th className="text-center p-3 font-medium">Ativo</th>
+                <th className="text-center p-3 font-medium">Ações</th>
+              </tr></thead><tbody>
+                {filteredBrands.map((b: any) => (
+                  <tr key={b.id} className="border-b hover:bg-table-hover">
+                    <td className="p-3 font-medium">{b.nome}</td>
+                    <td className="p-3 text-muted-foreground">{b.nome_completo || '—'}</td>
+                    <td className="p-3 text-muted-foreground">{b.categoria || '—'}</td>
+                    <td className="p-3 text-muted-foreground">{b.contato || '—'}</td>
+                    <td className="p-3 text-center"><Switch checked={b.ativo} onCheckedChange={c => toggleBrandActive.mutate({ id: b.id, ativo: c })} /></td>
+                    <td className="p-3 text-center"><Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditBrand(b); setBrandForm(b); }}><Edit className="w-3.5 h-3.5" /></Button></td>
+                  </tr>
+                ))}
+                {filteredBrands.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">Nenhuma marca encontrada</td></tr>}
+              </tbody></table>
+            </div>
           </div>
         </TabsContent>
 
@@ -380,6 +472,9 @@ export default function FulfillmentPage() {
                 <p className="text-sm">Embalado: {detailEnvio.embalado ? '✅' : '❌'}</p>
                 <p className="text-sm">Saiu na Onda: {detailEnvio.saiu_onda ? '✅' : '❌'}</p>
               </div>
+              <Button variant="outline" size="sm" className="w-full" onClick={() => downloadLabel(detailEnvio)}>
+                <FileDown className="w-4 h-4 mr-2" />Baixar Etiqueta
+              </Button>
             </div>
           )}
         </SheetContent>
