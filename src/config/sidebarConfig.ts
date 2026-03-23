@@ -24,8 +24,6 @@ export const SIDEBAR_ITEMS: Record<AppSetor, SidebarItem[]> = {
     { path: '/backoffice/pedidos-site', label: 'Pedidos do Site', icon: ShoppingCart },
     { path: '/backoffice/precificacao', label: 'Precificação', icon: DollarSign },
     { path: '/backoffice/cnpjs', label: 'Análise CNPJs', icon: SearchIcon },
-    { path: '/backoffice/marcas', label: 'Marcas', icon: Building2 },
-    { path: '/backoffice/cds', label: 'Centros Distrib.', icon: Warehouse },
   ],
   pos_vendas: [
     { path: '/pos-vendas', label: 'Dashboard', icon: LayoutDashboard },
