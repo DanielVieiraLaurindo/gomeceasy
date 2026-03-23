@@ -303,7 +303,12 @@ export default function AnaliseCnpjPage() {
                       <TableCell className="text-xs">{reg.bloqueio_sistema || '-'}</TableCell>
                       <TableCell><Badge className={`${statusConf.color} border text-xs`}>{statusConf.label}</Badge></TableCell>
                       <TableCell className="text-sm">{reg.responsavel || '-'}</TableCell>
-                      <TableCell><Button size="sm" variant="ghost" onClick={e => { e.stopPropagation(); openEdit(reg); }}><Eye className="w-4 h-4" /></Button></TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button size="sm" variant="ghost" onClick={e => { e.stopPropagation(); openEdit(reg); }}><Eye className="w-4 h-4" /></Button>
+                          <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={e => handleDelete(reg.id, e)}><Trash2 className="w-4 h-4" /></Button>
+                        </div>
+                      </TableCell>
                     </TableRow>
                   );
                 })}
