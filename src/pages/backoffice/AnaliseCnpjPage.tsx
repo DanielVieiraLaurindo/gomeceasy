@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Search, FileText, Clock, CheckCircle2, AlertCircle, Eye, Filter, Download, Loader2 } from 'lucide-react';
+import { Search, FileText, Clock, CheckCircle2, AlertCircle, Eye, Filter, Download, Loader2, Trash2, Wrench } from 'lucide-react';
 import { format } from 'date-fns';
 import * as pdfjsLib from 'pdfjs-dist';
 
@@ -48,7 +48,7 @@ const STATUS_CONFIG: Record<AnaliseCnpjStatus, { label: string; color: string; i
   aguardando_analise: { label: 'Aguardando Análise', color: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20', icon: Clock },
   em_analise: { label: 'Em Análise', color: 'bg-blue-500/10 text-blue-600 border-blue-500/20', icon: Eye },
   liberado: { label: 'Liberado', color: 'bg-green-500/10 text-green-600 border-green-500/20', icon: CheckCircle2 },
-  corrigido: { label: 'Corrigido', color: 'bg-purple-500/10 text-purple-600 border-purple-500/20', icon: AlertCircle },
+  corrigido: { label: 'Corrigir', color: 'bg-purple-500/10 text-purple-600 border-purple-500/20', icon: Wrench },
 };
 
 function formatCnpj(value: string): string {
@@ -177,6 +177,16 @@ export default function AnaliseCnpjPage() {
     }
   };
 
+  const handleDelete = async (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!confirm('Tem certeza que deseja excluir este registro?')) return;
+    const { error } = await (supabase as any).from('analise_cnpj').delete().eq('id', id);
+    if (error) { toast.error('Erro ao excluir'); } else {
+      toast.success('Registro excluído');
+      fetchRegistros();
+    }
+  };
+
   const openEdit = (reg: AnaliseCnpj) => {
     setSelectedRegistro(reg);
     setEditStatus(reg.status);
@@ -293,7 +303,12 @@ export default function AnaliseCnpjPage() {
                       <TableCell className="text-xs">{reg.bloqueio_sistema || '-'}</TableCell>
                       <TableCell><Badge className={`${statusConf.color} border text-xs`}>{statusConf.label}</Badge></TableCell>
                       <TableCell className="text-sm">{reg.responsavel || '-'}</TableCell>
-                      <TableCell><Button size="sm" variant="ghost" onClick={e => { e.stopPropagation(); openEdit(reg); }}><Eye className="w-4 h-4" /></Button></TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button size="sm" variant="ghost" onClick={e => { e.stopPropagation(); openEdit(reg); }}><Eye className="w-4 h-4" /></Button>
+                          <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={e => handleDelete(reg.id, e)}><Trash2 className="w-4 h-4" /></Button>
+                        </div>
+                      </TableCell>
                     </TableRow>
                   );
                 })}
