@@ -110,7 +110,7 @@ export default function RupturasPage() {
       return sortDir === 'asc' ? cmp : -cmp;
     });
     return items;
-  }, [abertas, debouncedSearch, statusFilter, canalFilter, unidadeFilter, dateFrom, dateTo, sortField, sortDir]);
+  }, [abertas, debouncedSearch, statusFilter, canalFilter, unidadeFilter, skuFilter, produtoFilter, compradorFilter, transportadoraFilter, dateFrom, dateTo, sortField, sortDir]);
 
   // Group by date
   const grouped = useMemo(() => {
@@ -140,8 +140,12 @@ export default function RupturasPage() {
     }).length,
   }), [abertas, concluidas, rupturas]);
 
-  const canais = useMemo(() => [...new Set(rupturas.map(r => r.canal_venda).filter(Boolean))], [rupturas]);
-  const unidades = useMemo(() => [...new Set(rupturas.map(r => r.unidade_negocio).filter(Boolean))], [rupturas]);
+  const canais = useMemo(() => [...new Set(rupturas.map(r => r.canal_venda).filter(Boolean))].sort(), [rupturas]);
+  const unidades = useMemo(() => [...new Set(rupturas.map(r => r.unidade_negocio).filter(Boolean))].sort(), [rupturas]);
+  const skus = useMemo(() => [...new Set(rupturas.map(r => r.sku).filter(Boolean))].sort(), [rupturas]);
+  const produtos = useMemo(() => [...new Set(rupturas.map(r => r.produto).filter(Boolean))].sort(), [rupturas]);
+  const compradores = useMemo(() => [...new Set(rupturas.map(r => r.comprador).filter(Boolean))].sort(), [rupturas]);
+  const transportadorasUnicas = useMemo(() => [...new Set(rupturas.map(r => r.transportadora).filter(Boolean))].sort(), [rupturas]);
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
