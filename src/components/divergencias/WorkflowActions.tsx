@@ -360,7 +360,7 @@ Observações: ${d.anotacoes || "—"}
           </DialogContent>
         </Dialog>
 
-        {(isMaster || role === "compras") && (
+        {(isMaster || (role as string) === "compras") && (
           <Dialog open={manualOpen} onOpenChange={setManualOpen}>
             <DialogTrigger asChild><Button variant="outline" size="sm" className="w-full gap-2"><ArrowRightLeft className="h-4 w-4" /> Alterar Status Manualmente</Button></DialogTrigger>
             <DialogContent>
