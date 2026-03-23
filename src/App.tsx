@@ -155,7 +155,7 @@ const App = () => (
 
                   {/* TI */}
                   <Route path="/ti" element={<TIDashboard />} />
-                  <Route path="/ti/usuarios" element={<PlaceholderPage title="Usuários" description="Gestão de usuários" />} />
+                  <Route path="/ti/usuarios" element={<UserManagementPage />} />
                   <Route path="/ti/chamados" element={<PlaceholderPage title="Chamados" description="Chamados internos de TI" />} />
                   <Route path="/ti/logs" element={<PlaceholderPage title="Logs" description="Logs de atividades" />} />
 
