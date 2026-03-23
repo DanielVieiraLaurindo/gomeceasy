@@ -75,6 +75,9 @@ export const SIDEBAR_ITEMS: Record<AppSetor, SidebarItem[]> = {
   ],
   compras: [
     { path: '/compras', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/compras/divergencias', label: 'Divergências', icon: AlertTriangle },
+    { path: '/compras/divergencias/dashboard', label: 'Dashboard Diverg.', icon: BarChart2 },
+    { path: '/compras/divergencias/historico', label: 'Histórico Diverg.', icon: Archive },
     { path: '/compras/solicitacoes', label: 'Solicitações', icon: ShoppingCart },
     { path: '/compras/pedidos', label: 'Pedidos de Compra', icon: FileText },
     { path: '/compras/marcas', label: 'Marcas', icon: Building2 },
