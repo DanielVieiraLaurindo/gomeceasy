@@ -350,6 +350,16 @@ export default function FulfillmentPage() {
           </div>
         </TabsContent>
 
+        {/* DADOS FISCAIS TAB */}
+        <TabsContent value="fiscal" className="mt-4">
+          <DadosFiscaisTab />
+        </TabsContent>
+
+        {/* CADASTRO PRODUTOS TAB */}
+        <TabsContent value="produtos" className="mt-4">
+          <CadastroProdutosTab />
+        </TabsContent>
+
         {/* CDS TAB */}
         <TabsContent value="cds" className="mt-4 space-y-4">
           <div className="card-base overflow-hidden">
