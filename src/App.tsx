@@ -12,14 +12,15 @@ import Index from "@/pages/Index";
 import React, { Suspense } from "react";
 import { Loader2 } from "lucide-react";
 
-// Lazy load all module pages for performance
+// Lazy load all module pages
 const MasterDashboard = React.lazy(() => import("@/pages/master/MasterDashboard"));
 const BackOfficeDashboard = React.lazy(() => import("@/pages/backoffice/BackOfficeDashboard"));
 const FulfillmentPage = React.lazy(() => import("@/pages/backoffice/FulfillmentPage"));
 const RupturasPage = React.lazy(() => import("@/pages/backoffice/RupturasPage"));
 const PosVendasDashboard = React.lazy(() => import("@/pages/pos-vendas/PosVendasDashboard"));
 const CasosPage = React.lazy(() => import("@/pages/pos-vendas/CasosPage"));
-const GarantiaDashboard = React.lazy(() => import("@/pages/garantia/GarantiaDashboard"));
+const GarantiaLojaDashboard = React.lazy(() => import("@/pages/garantia/GarantiaLojaDashboard"));
+const GarantiaEcommerceDashboard = React.lazy(() => import("@/pages/garantia/GarantiaEcommerceDashboard"));
 const FinanceiroDashboard = React.lazy(() => import("@/pages/financeiro/FinanceiroDashboard"));
 const ComprasDashboard = React.lazy(() => import("@/pages/compras/ComprasDashboard"));
 const DivergenciasDashboard = React.lazy(() => import("@/pages/compras/DivergenciasDashboard"));
@@ -29,8 +30,8 @@ const HistoricoDivergenciasPage = React.lazy(() => import("@/pages/compras/Histo
 const PreVendasDashboard = React.lazy(() => import("@/pages/pre-vendas/PreVendasDashboard"));
 const CriacaoDashboard = React.lazy(() => import("@/pages/criacao/CriacaoDashboard"));
 const TIDashboard = React.lazy(() => import("@/pages/ti/TIDashboard"));
-const ExpedicaoDashboard = React.lazy(() => import("@/pages/expedicao/ExpedicaoDashboard"));
-const LogisticaDashboard = React.lazy(() => import("@/pages/logistica/LogisticaDashboard"));
+const ExpedicaoLojaDashboard = React.lazy(() => import("@/pages/expedicao/ExpedicaoLojaDashboard"));
+const ExpedicaoEcommerceDashboard = React.lazy(() => import("@/pages/expedicao/ExpedicaoEcommerceDashboard"));
 const ClientesPrazoPage = React.lazy(() => import("@/pages/expedicao/ClientesPrazoPage"));
 const OperacaoInternaPage = React.lazy(() => import("@/pages/expedicao/OperacaoInternaPage"));
 const ResumoOperacaoPage = React.lazy(() => import("@/pages/expedicao/ResumoOperacaoPage"));
@@ -80,28 +81,27 @@ const App = () => (
                   <Route path="/backoffice/rupturas" element={<RupturasPage />} />
                   <Route path="/backoffice/rupturas/nova" element={<PlaceholderPage title="Nova Ruptura" description="Registrar nova ruptura de estoque" />} />
                   <Route path="/backoffice/pedidos-site" element={<PlaceholderPage title="Pedidos do Site" description="Gestão de pedidos do e-commerce" />} />
-                  <Route path="/backoffice/precificacao" element={<PlaceholderPage title="Precificação" description="Regras de preço por marketplace" />} />
+                  <Route path="/backoffice/precificacao" element={<PrecificacaoPage />} />
                   <Route path="/backoffice/cnpjs" element={<PlaceholderPage title="Análise de CNPJs" description="Consulta e validação de CNPJs" />} />
 
-                  {/* Expedição */}
-                  <Route path="/expedicao" element={<ExpedicaoDashboard />} />
-                  <Route path="/expedicao/clientes-prazo" element={<ClientesPrazoPage />} />
-                  <Route path="/expedicao/operacao-interna" element={<OperacaoInternaPage />} />
-                  <Route path="/expedicao/resumo-operacao" element={<ResumoOperacaoPage />} />
-                  <Route path="/expedicao/somatorio" element={<SomatorioPage />} />
-                  <Route path="/expedicao/separacao" element={<PlaceholderPage title="Separação" description="Fila de separação de pedidos" />} />
-                  <Route path="/expedicao/conferencia" element={<PlaceholderPage title="Conferência" description="Conferência de pedidos separados" />} />
-                  <Route path="/expedicao/embalagem" element={<PlaceholderPage title="Embalagem" description="Controle de embalagem" />} />
-                  <Route path="/expedicao/volumes" element={<PlaceholderPage title="Volumes" description="Gestão de volumes por envio" />} />
-                  <Route path="/expedicao/ondas" element={<PlaceholderPage title="Ondas" description="Gestão de ondas de despacho" />} />
-                  <Route path="/expedicao/despacho" element={<PlaceholderPage title="Despacho" description="Confirmação de coleta e despacho" />} />
+                  {/* Expedição Loja */}
+                  <Route path="/expedicao-loja" element={<ExpedicaoLojaDashboard />} />
+                  <Route path="/expedicao-loja/rastreamento" element={<PlaceholderPage title="Rastreamento" description="Rastreamento de entregas da loja" />} />
+                  <Route path="/expedicao-loja/transportadoras" element={<PlaceholderPage title="Transportadoras" description="Cadastro de transportadoras" />} />
 
-                  {/* Logística */}
-                  <Route path="/logistica" element={<LogisticaDashboard />} />
-                  <Route path="/logistica/rastreamento" element={<PlaceholderPage title="Rastreamento" description="Rastreamento de entregas" />} />
-                  <Route path="/logistica/ocorrencias" element={<PlaceholderPage title="Ocorrências" description="Gestão de ocorrências logísticas" />} />
-                  <Route path="/logistica/transportadoras" element={<PlaceholderPage title="Transportadoras" description="Cadastro de transportadoras" />} />
-                  <Route path="/logistica/sla" element={<PlaceholderPage title="SLA" description="Performance de SLA de entregas" />} />
+                  {/* Expedição Ecommerce */}
+                  <Route path="/expedicao-ecommerce" element={<ExpedicaoEcommerceDashboard />} />
+                  <Route path="/expedicao-ecommerce/clientes-prazo" element={<ClientesPrazoPage />} />
+                  <Route path="/expedicao-ecommerce/operacao-interna" element={<OperacaoInternaPage />} />
+                  <Route path="/expedicao-ecommerce/resumo-operacao" element={<ResumoOperacaoPage />} />
+                  <Route path="/expedicao-ecommerce/somatorio" element={<SomatorioPage />} />
+                  <Route path="/expedicao-ecommerce/separacao" element={<PlaceholderPage title="Separação" description="Fila de separação de pedidos" />} />
+                  <Route path="/expedicao-ecommerce/conferencia" element={<PlaceholderPage title="Conferência" description="Conferência de pedidos separados" />} />
+                  <Route path="/expedicao-ecommerce/despacho" element={<PlaceholderPage title="Despacho" description="Confirmação de coleta e despacho" />} />
+
+                  {/* Legacy expedição redirects */}
+                  <Route path="/expedicao" element={<Navigate to="/expedicao-ecommerce" replace />} />
+                  <Route path="/expedicao/*" element={<Navigate to="/expedicao-ecommerce" replace />} />
 
                   {/* Pós-Vendas */}
                   <Route path="/pos-vendas" element={<PosVendasDashboard />} />
@@ -112,13 +112,21 @@ const App = () => (
                   <Route path="/pos-vendas/ressarcimento-mo" element={<PlaceholderPage title="Ressarcimento MO" description="Ressarcimento de mão de obra" />} />
                   <Route path="/pos-vendas/galeria" element={<PlaceholderPage title="Galeria de Fotos" description="Fotos de casos e devoluções" />} />
 
-                  {/* Garantia */}
-                  <Route path="/garantia" element={<GarantiaDashboard />} />
-                  <Route path="/garantia/casos" element={<PlaceholderPage title="Todos os Casos" description="Casos de garantia" />} />
-                  <Route path="/garantia/devolucoes-recebidas" element={<PlaceholderPage title="Devoluções Recebidas" description="Devoluções recebidas do Pós-Vendas" />} />
-                  <Route path="/garantia/fornecedor" element={<PlaceholderPage title="Garantias Fornecedor" description="Garantias junto a fornecedores" />} />
-                  <Route path="/garantia/descartes" element={<PlaceholderPage title="Descartes" description="Gestão de descartes" />} />
-                  <Route path="/garantia/creditos" element={<PlaceholderPage title="Créditos de Garantia" description="Créditos recebidos de fornecedores" />} />
+                  {/* Garantia Loja */}
+                  <Route path="/garantia-loja" element={<GarantiaLojaDashboard />} />
+                  <Route path="/garantia-loja/casos" element={<PlaceholderPage title="Casos Garantia Loja" description="Todos os casos de garantia da loja" />} />
+
+                  {/* Garantia Ecommerce */}
+                  <Route path="/garantia-ecommerce" element={<GarantiaEcommerceDashboard />} />
+                  <Route path="/garantia-ecommerce/casos" element={<PlaceholderPage title="Todos os Casos" description="Casos de garantia ecommerce" />} />
+                  <Route path="/garantia-ecommerce/devolucoes-recebidas" element={<PlaceholderPage title="Devoluções Recebidas" description="Devoluções recebidas do Pós-Vendas" />} />
+                  <Route path="/garantia-ecommerce/fornecedor" element={<PlaceholderPage title="Garantias Fornecedor" description="Garantias junto a fornecedores" />} />
+                  <Route path="/garantia-ecommerce/descartes" element={<PlaceholderPage title="Descartes" description="Gestão de descartes" />} />
+                  <Route path="/garantia-ecommerce/creditos" element={<PlaceholderPage title="Créditos de Garantia" description="Créditos recebidos de fornecedores" />} />
+
+                  {/* Legacy garantia redirects */}
+                  <Route path="/garantia" element={<Navigate to="/garantia-ecommerce" replace />} />
+                  <Route path="/garantia/*" element={<Navigate to="/garantia-ecommerce" replace />} />
 
                   {/* Financeiro */}
                   <Route path="/financeiro" element={<FinanceiroDashboard />} />
@@ -128,6 +136,7 @@ const App = () => (
                   <Route path="/financeiro/ressarcimentos" element={<PlaceholderPage title="Ressarcimentos" description="Ressarcimentos de mão de obra" />} />
                   <Route path="/financeiro/cnpjs" element={<PlaceholderPage title="Análise de CNPJs" description="Consulta e validação de CNPJs" />} />
                   <Route path="/financeiro/notas-fiscais" element={<PlaceholderPage title="Notas Fiscais" description="Gestão de notas fiscais" />} />
+                  <Route path="/financeiro/clientes-prazo" element={<ClientesPrazoPage />} />
 
                   {/* Compras */}
                   <Route path="/compras" element={<ComprasDashboard />} />
