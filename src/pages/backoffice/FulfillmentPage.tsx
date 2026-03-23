@@ -21,7 +21,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { exportToExcel } from '@/lib/export-utils';
-import { FulfillmentDashboard as FulfillmentDashboardTab, CentralEstoquePage as CentralEstoqueTab, PedidosComprasPage as PedidosComprasTab } from './FulfillmentSubPages';
+import { FulfillmentDashboard as FulfillmentDashboardTab, CentralEstoquePage as CentralEstoqueTab, PedidosComprasPage as PedidosComprasTab, DadosFiscaisPage as DadosFiscaisTab, CadastroProdutosPage as CadastroProdutosTab } from './FulfillmentSubPages';
 import EnviosFullPage from './EnviosFullPage';
 
 const STATUSES: EnvioStatus[] = ['pendente', 'separacao', 'embalado', 'despachado', 'em_transito', 'entregue', 'problema'];
