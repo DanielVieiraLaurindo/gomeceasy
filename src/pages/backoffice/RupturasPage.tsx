@@ -251,24 +251,52 @@ export default function RupturasPage() {
       {showFilters && (
         <div className="flex flex-wrap gap-3 p-3 bg-muted/50 rounded-lg">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-48"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectTrigger className="w-44"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os Status</SelectItem>
               {[...KANBAN_COLUMNS, 'revertida' as const, 'cancelada' as const].map(s => <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={canalFilter} onValueChange={setCanalFilter}>
-            <SelectTrigger className="w-48"><SelectValue placeholder="Canal" /></SelectTrigger>
+            <SelectTrigger className="w-44"><SelectValue placeholder="Canal" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os Canais</SelectItem>
               {canais.map(c => <SelectItem key={c} value={c!}>{c}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={unidadeFilter} onValueChange={setUnidadeFilter}>
-            <SelectTrigger className="w-48"><SelectValue placeholder="Unidade" /></SelectTrigger>
+            <SelectTrigger className="w-44"><SelectValue placeholder="Unidade" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas Unidades</SelectItem>
               {unidades.map(u => <SelectItem key={u} value={u!}>{u}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={skuFilter} onValueChange={setSkuFilter}>
+            <SelectTrigger className="w-44"><SelectValue placeholder="SKU" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os SKUs</SelectItem>
+              {skus.map(s => <SelectItem key={s} value={s!}>{s}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={produtoFilter} onValueChange={setProdutoFilter}>
+            <SelectTrigger className="w-52"><SelectValue placeholder="Produto" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os Produtos</SelectItem>
+              {produtos.map(p => <SelectItem key={p} value={p!}>{p}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={compradorFilter} onValueChange={setCompradorFilter}>
+            <SelectTrigger className="w-52"><SelectValue placeholder="Comprador" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os Compradores</SelectItem>
+              {compradores.map(c => <SelectItem key={c} value={c!}>{c}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={transportadoraFilter} onValueChange={setTransportadoraFilter}>
+            <SelectTrigger className="w-52"><SelectValue placeholder="Transportadora" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas Transportadoras</SelectItem>
+              {transportadorasUnicas.map(t => <SelectItem key={t} value={t!}>{t}</SelectItem>)}
             </SelectContent>
           </Select>
           <div className="flex items-center gap-2">
@@ -277,6 +305,13 @@ export default function RupturasPage() {
             <Label className="text-xs">Até:</Label>
             <Input type="date" className="w-36 h-9" value={dateTo} onChange={e => setDateTo(e.target.value)} />
           </div>
+          <Button variant="ghost" size="sm" onClick={() => {
+            setStatusFilter('all'); setCanalFilter('all'); setUnidadeFilter('all');
+            setSkuFilter('all'); setProdutoFilter('all'); setCompradorFilter('all');
+            setTransportadoraFilter('all'); setDateFrom(''); setDateTo('');
+          }}>
+            <X className="w-4 h-4 mr-1" />Limpar Filtros
+          </Button>
         </div>
       )}
 
