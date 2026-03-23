@@ -52,22 +52,26 @@ export default function FulfillmentPage() {
       const ab = await file.arrayBuffer();
       const wb = XLSX.read(ab);
       const ws = wb.Sheets[wb.SheetNames[0]];
-      const json = XLSX.utils.sheet_to_json<any>(ws, { range: 9 });
+      // Header is on row 6 (0-indexed: 5)
+      const json = XLSX.utils.sheet_to_json<any>(ws, { range: 5 });
       let imported = 0;
+      const now = new Date().toISOString();
       for (const row of json) {
         const saleNumber = row['N.º de venda'] || row['Nº de venda'] || '';
+        if (!saleNumber) continue;
         const estado = row['Estado'] || '';
-        if (!saleNumber || !estado.toLowerCase().includes('devolução')) continue;
+        if (!estado.toLowerCase().includes('devolução')) continue;
         await supabase.from('return_cases').insert({
           sale_number: String(saleNumber),
-          client_name: row['Comprador'] || row['Dados pessoais ou da empresa'] || '-',
+          client_name: row['Comprador'] || '-',
           client_document: row['CPF'] || '',
-          product_description: row['Título do anúncio'] || '',
           product_sku: row['SKU'] || '',
+          product_description: row['Título do anúncio'] || '',
           case_type: 'DEVOLUCAO',
-          status: 'aguardando_analise',
-          entry_date: new Date().toISOString().split('T')[0],
-          marketplace_account: 'MELI_GAP',
+          status: 'antecipado',
+          entry_date: now.split('T')[0],
+          created_at: now,
+          marketplace_account: 'MELI_GOMEC',
           is_full: true,
           fullfilment_tracking: row['Número de rastreamento'] || '',
           quantity: parseInt(row['Unidades']) || 1,
