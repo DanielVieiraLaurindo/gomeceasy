@@ -43,6 +43,9 @@ const ProfileSettingsPage = React.lazy(() => import("@/pages/ProfileSettingsPage
 const UsoConsumoDashboard = React.lazy(() => import("@/pages/compras/UsoConsumoDashboard"));
 const UsoConsumoNovaPage = React.lazy(() => import("@/pages/compras/UsoConsumoNovaPage"));
 const UsoConsumoDetalhePage = React.lazy(() => import("@/pages/compras/UsoConsumoDetalhePage"));
+const PedidosSitePage = React.lazy(() => import("@/pages/backoffice/PedidosSitePage"));
+const AnaliseCnpjPage = React.lazy(() => import("@/pages/backoffice/AnaliseCnpjPage"));
+const NovaRupturaPage = React.lazy(() => import("@/pages/backoffice/NovaRupturaPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
