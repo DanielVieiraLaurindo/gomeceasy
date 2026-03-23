@@ -49,6 +49,7 @@ export default function GEBackofficeTab() {
   const { data: allCases, isLoading } = useGarantiaCases(filters);
   const updateCase = useUpdateGarantiaCase();
   const createCase = useCreateGarantiaCase();
+  const deleteCase = useDeleteGarantiaCase();
 
   // New case form
   const [formData, setFormData] = useState({
