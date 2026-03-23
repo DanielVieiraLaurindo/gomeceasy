@@ -22,6 +22,12 @@ const PosVendasDashboard = React.lazy(() => import("@/pages/pos-vendas/PosVendas
 const CasosPage = React.lazy(() => import("@/pages/pos-vendas/CasosPage"));
 const GarantiaLojaDashboard = React.lazy(() => import("@/pages/garantia/GarantiaLojaDashboard"));
 const GarantiaEcommerceDashboard = React.lazy(() => import("@/pages/garantia/GarantiaEcommerceDashboard"));
+const GEBackofficeTab = React.lazy(() => import("@/pages/garantia/ge/GEBackofficeTab"));
+const GEPosVendasTab = React.lazy(() => import("@/pages/garantia/ge/GEPosVendasTab"));
+const GEFinanceiroTab = React.lazy(() => import("@/pages/garantia/ge/GEFinanceiroTab"));
+const GEGaleriaTab = React.lazy(() => import("@/pages/garantia/ge/GEGaleriaTab"));
+const GERelatoriosTab = React.lazy(() => import("@/pages/garantia/ge/GERelatoriosTab"));
+const GEConfiguracoesTab = React.lazy(() => import("@/pages/garantia/ge/GEConfiguracoesTab"));
 const FinanceiroDashboard = React.lazy(() => import("@/pages/financeiro/FinanceiroDashboard"));
 const ComprasDashboard = React.lazy(() => import("@/pages/compras/ComprasDashboard"));
 const DivergenciasDashboard = React.lazy(() => import("@/pages/compras/DivergenciasDashboard"));
