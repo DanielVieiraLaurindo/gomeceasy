@@ -177,6 +177,16 @@ export default function AnaliseCnpjPage() {
     }
   };
 
+  const handleDelete = async (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!confirm('Tem certeza que deseja excluir este registro?')) return;
+    const { error } = await (supabase as any).from('analise_cnpj').delete().eq('id', id);
+    if (error) { toast.error('Erro ao excluir'); } else {
+      toast.success('Registro excluído');
+      fetchRegistros();
+    }
+  };
+
   const openEdit = (reg: AnaliseCnpj) => {
     setSelectedRegistro(reg);
     setEditStatus(reg.status);
