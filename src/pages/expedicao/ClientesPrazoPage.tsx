@@ -26,6 +26,8 @@ const statusLabels: Record<string, string> = {
   aguardando_link: 'Aguardando Link',
   aguardando_autorizacao: 'Aguardando Autorização',
   aguardando_pagamento: 'Aguardando Pagamento',
+  autorizado: 'Autorizado',
+  nao_autorizado: 'Não Autorizado',
   concluido: 'Concluído',
 };
 
@@ -33,6 +35,8 @@ const statusColors: Record<string, string> = {
   aguardando_link: 'bg-warning/20 text-warning border-warning/30',
   aguardando_autorizacao: 'bg-orange-500/20 text-orange-600 border-orange-500/30',
   aguardando_pagamento: 'bg-info/20 text-info border-info/30',
+  autorizado: 'bg-primary/20 text-primary border-primary/30',
+  nao_autorizado: 'bg-destructive/20 text-destructive border-destructive/30',
   concluido: 'bg-success/20 text-success border-success/30',
 };
 
@@ -164,9 +168,9 @@ function NovaRequisicaoDialog({ open, onOpenChange, onCreate }: { open: boolean;
   );
 }
 
-function DetalheSheet({ item, open, onOpenChange, onAuthorize, canAuthorize, onUpdateLink, onAddPayment }: {
+function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, canAuthorize, onUpdateLink, onAddPayment }: {
   item: any; open: boolean; onOpenChange: (v: boolean) => void;
-  onAuthorize: (id: string) => void; canAuthorize: boolean;
+  onAuthorize: (id: string) => void; onDeny: (id: string) => void; canAuthorize: boolean;
   onUpdateLink: (id: string, link: string) => void;
   onAddPayment: (clientePrazoId: string, valor: number, obs: string) => void;
 }) {
@@ -216,13 +220,23 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, canAuthorize, onU
           </div>
 
           {needsAuth && canAuthorize && (
-            <Button className="w-full gap-2" variant="default" onClick={() => onAuthorize(item.id)}>
-              <ShieldCheck className="w-4 h-4" /> Autorizar Pagamento Posterior
-            </Button>
+            <div className="flex gap-2">
+              <Button className="flex-1 gap-2" variant="default" onClick={() => onAuthorize(item.id)}>
+                <ShieldCheck className="w-4 h-4" /> Autorizar
+              </Button>
+              <Button className="flex-1 gap-2" variant="destructive" onClick={() => onDeny(item.id)}>
+                Não Autorizar
+              </Button>
+            </div>
           )}
           {needsAuth && !canAuthorize && (
             <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3 text-sm text-orange-600">
               Aguardando autorização de um Supervisor de Vendas.
+            </div>
+          )}
+          {item.status === 'nao_autorizado' && (
+            <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 text-sm text-destructive font-medium text-center">
+              ❌ Pagamento posterior não autorizado
             </div>
           )}
 
@@ -363,6 +377,8 @@ export default function ClientesPrazoPage() {
         r.nome_cliente?.toLowerCase().includes(search.toLowerCase()) ||
         r.nome_vendedor?.toLowerCase().includes(search.toLowerCase());
       const matchStatus = statusFilter === 'all' || r.status === statusFilter;
+      // Hide concluído from list unless explicitly filtered or searched by requisição number
+      if (!search && statusFilter === 'all' && r.status === 'concluido') return false;
       return matchSearch && matchStatus;
     });
   }, [requisicoes, search, statusFilter]);
@@ -378,8 +394,14 @@ export default function ClientesPrazoPage() {
     .reduce((acc: number, r: any) => acc + ((r.valor || 0) - (r.valor_pago || 0)), 0);
 
   const handleAuthorize = (id: string) => {
-    update.mutate({ id, status: 'aguardando_pagamento', autorizado_por: profile?.nome || 'Supervisor' }, {
-      onSuccess: () => { toast.success('Requisição autorizada — aguardando pagamento'); setSelectedItem(null); },
+    update.mutate({ id, status: 'autorizado', autorizado_por: profile?.nome || 'Supervisor' }, {
+      onSuccess: () => { toast.success('Requisição autorizada'); setSelectedItem(null); },
+    });
+  };
+
+  const handleDeny = (id: string) => {
+    update.mutate({ id, status: 'nao_autorizado', autorizado_por: profile?.nome || 'Supervisor' }, {
+      onSuccess: () => { toast.success('Pagamento posterior não autorizado'); setSelectedItem(null); },
     });
   };
 
@@ -545,12 +567,12 @@ export default function ClientesPrazoPage() {
                       <TableCell className="text-sm text-primary font-medium">{req.nome_vendedor || '—'}</TableCell>
                       <TableCell className="text-right font-mono-data text-sm">R$ {(req.valor || 0).toFixed(2)}</TableCell>
                       <TableCell className="text-right font-mono-data text-sm">
-                        {req.status === 'concluido' ? (
-                          <span className="text-success">R$ 0,00</span>
-                        ) : saldoRow > 0 && saldoRow < (req.valor || 0) ? (
-                          <span className="text-destructive font-bold">R$ {saldoRow.toFixed(2)}</span>
+                        {saldoRow === 0 || req.status === 'concluido' ? (
+                          <span className="text-muted-foreground">R$ 0,00</span>
+                        ) : saldoRow > 0 ? (
+                          <span className="text-destructive font-bold">- R$ {saldoRow.toFixed(2)}</span>
                         ) : (
-                          <span>R$ {saldoRow.toFixed(2)}</span>
+                          <span className="text-success font-bold">+ R$ {Math.abs(saldoRow).toFixed(2)}</span>
                         )}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">{req.prazo_cobrar ? format(new Date(req.prazo_cobrar), 'dd/MM/yyyy') : '—'}</TableCell>
@@ -577,6 +599,7 @@ export default function ClientesPrazoPage() {
         open={!!selectedItem}
         onOpenChange={() => setSelectedItem(null)}
         onAuthorize={handleAuthorize}
+        onDeny={handleDeny}
         canAuthorize={isSupervisor}
         onUpdateLink={handleUpdateLink}
         onAddPayment={handleAddPayment}
