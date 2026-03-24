@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { MetricCard } from '@/components/MetricCard';
-import { Clock, DollarSign, AlertTriangle, CheckCircle, Plus, Link2, ShieldCheck, Trash2 } from 'lucide-react';
+import { Clock, DollarSign, AlertTriangle, CheckCircle, Plus, Link2, ShieldCheck, Trash2, Upload, Download, FileText } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
@@ -16,7 +17,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { useClientesPrazo } from '@/hooks/useClientesPrazo';
+import { useClientesPrazo, useClientesPrazoPagamentos } from '@/hooks/useClientesPrazo';
 import { useAuth } from '@/contexts/AuthContext';
 import { TableToolbar } from '@/components/TableToolbar';
 import { format, addHours } from 'date-fns';
@@ -166,17 +167,48 @@ function NovaRequisicaoDialog({ open, onOpenChange, onCreate }: { open: boolean;
   );
 }
 
-function DetalheSheet({ item, open, onOpenChange, onAuthorize, canAuthorize, onUpdateLink }: {
+function DetalheSheet({ item, open, onOpenChange, onAuthorize, canAuthorize, onUpdateLink, onBaixa, onAddPayment }: {
   item: any; open: boolean; onOpenChange: (v: boolean) => void;
   onAuthorize: (id: string) => void; canAuthorize: boolean;
   onUpdateLink: (id: string, link: string) => void;
+  onBaixa: (id: string) => void;
+  onAddPayment: (clientePrazoId: string, valor: number, obs: string) => void;
 }) {
   const [linkInput, setLinkInput] = useState('');
+  const [valorPago, setValorPago] = useState('');
+  const [obsPagamento, setObsPagamento] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!item) return null;
   const saldo = (item.valor || 0) - (item.valor_pago || 0);
   const isPosterior = item.ocorrencia === 'pagar_posteriormente';
+  const isLink = item.ocorrencia === 'link_pagamento';
   const needsAuth = isPosterior && item.status === 'aguardando_autorizacao';
+  const isLiquidado = item.status === 'liquidado';
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const path = `${item.id}/${Date.now()}-${file.name}`;
+    const { error } = await supabase.storage.from('requisicoes-prazo').upload(path, file);
+    if (error) { toast.error('Erro no upload'); setUploading(false); return; }
+    const { data: urlData } = supabase.storage.from('requisicoes-prazo').getPublicUrl(path);
+    onUpdateLink(item.id, ''); // trigger refresh
+    // Save URL to foto_requisicao_url
+    await (supabase as any).from('clientes_prazo').update({ foto_requisicao_url: urlData.publicUrl, updated_at: new Date().toISOString() }).eq('id', item.id);
+    toast.success('Requisição assinada enviada');
+    setUploading(false);
+  };
+
+  const handlePaymentSubmit = () => {
+    const val = parseFloat(valorPago);
+    if (!val || val <= 0) { toast.error('Informe um valor válido'); return; }
+    onAddPayment(item.id, val, obsPagamento);
+    setValorPago('');
+    setObsPagamento('');
+  };
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -263,6 +295,53 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, canAuthorize, onU
               </div>
             )}
           </div>
+
+          {/* Upload de requisição assinada */}
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground uppercase font-bold">Requisição Assinada</p>
+            {item.foto_requisicao_url ? (
+              <a href={item.foto_requisicao_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary underline">
+                <FileText className="w-4 h-4" /> Ver arquivo enviado
+              </a>
+            ) : (
+              <p className="text-xs text-muted-foreground">Nenhum arquivo enviado</p>
+            )}
+            <input type="file" ref={fileInputRef} className="hidden" accept=".pdf,.jpg,.jpeg,.png" onChange={handleUpload} />
+            <Button size="sm" variant="outline" className="gap-2" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+              <Upload className="w-4 h-4" /> {uploading ? 'Enviando...' : 'Upload Requisição'}
+            </Button>
+          </div>
+
+          <Separator />
+
+          {/* Ações do Financeiro */}
+          {!isLiquidado && (
+            <div className="space-y-3 bg-muted/30 rounded-lg p-4 border">
+              <p className="text-xs text-muted-foreground uppercase font-bold">Ações do Financeiro</p>
+
+              {isLink && item.link_pagamento && (
+                <Button className="w-full gap-2" onClick={() => onBaixa(item.id)}>
+                  <Download className="w-4 h-4" /> Baixar Requisição (Link Pago)
+                </Button>
+              )}
+
+              {isPosterior && (item.status === 'autorizado' || item.status === 'aberto') && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold">Registrar Pagamento</p>
+                  <div className="flex gap-2">
+                    <Input type="number" step="0.01" placeholder="Valor pago (R$)" value={valorPago} onChange={e => setValorPago(e.target.value)} className="text-sm" />
+                    <Button size="sm" onClick={handlePaymentSubmit}>Registrar</Button>
+                  </div>
+                  <Input placeholder="Observação (opcional)" value={obsPagamento} onChange={e => setObsPagamento(e.target.value)} className="text-sm" />
+                  {saldo <= 0 ? null : (
+                    <Button variant="outline" className="w-full gap-2 mt-2" onClick={() => onBaixa(item.id)}>
+                      <Download className="w-4 h-4" /> Baixar Requisição
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {item.observacao && (
             <div>
@@ -438,6 +517,18 @@ export default function ClientesPrazoPage() {
         onAuthorize={handleAuthorize}
         canAuthorize={isSupervisor}
         onUpdateLink={handleUpdateLink}
+        onBaixa={(id: string) => {
+          update.mutate({ id, status: 'liquidado' }, {
+            onSuccess: () => { toast.success('Requisição baixada com sucesso'); setSelectedItem(null); },
+          });
+        }}
+        onAddPayment={(clientePrazoId: string, valor: number, obs: string) => {
+          const currentPago = selectedItem?.valor_pago || 0;
+          const newPago = currentPago + valor;
+          update.mutate({ id: clientePrazoId, valor_pago: newPago, updated_at: new Date().toISOString() }, {
+            onSuccess: () => { toast.success(`Pagamento de R$ ${valor.toFixed(2)} registrado`); setSelectedItem(null); },
+          });
+        }}
       />
     </div>
   );

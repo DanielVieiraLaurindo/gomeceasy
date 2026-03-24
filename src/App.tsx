@@ -40,6 +40,7 @@ const TIDashboard = React.lazy(() => import("@/pages/ti/TIDashboard"));
 const ExpedicaoLojaDashboard = React.lazy(() => import("@/pages/expedicao/ExpedicaoLojaDashboard"));
 const ExpedicaoEcommerceDashboard = React.lazy(() => import("@/pages/expedicao/ExpedicaoEcommerceDashboard"));
 const ClientesPrazoPage = React.lazy(() => import("@/pages/expedicao/ClientesPrazoPage"));
+const CreditosClientesPage = React.lazy(() => import("@/pages/expedicao/CreditosClientesPage"));
 const OperacaoInternaPage = React.lazy(() => import("@/pages/expedicao/OperacaoInternaPage"));
 const ResumoOperacaoPage = React.lazy(() => import("@/pages/expedicao/ResumoOperacaoPage"));
 const SomatorioPage = React.lazy(() => import("@/pages/expedicao/SomatorioPage"));
@@ -103,6 +104,7 @@ const App = () => (
                   {/* Expedição Loja */}
                   <Route path="/expedicao-loja" element={<ExpedicaoLojaDashboard />} />
                   <Route path="/expedicao-loja/clientes-prazo" element={<ClientesPrazoPage />} />
+                  <Route path="/expedicao-loja/creditos-clientes" element={<CreditosClientesPage />} />
                   <Route path="/expedicao-loja/rastreamento" element={<PlaceholderPage title="Rastreamento" description="Rastreamento de entregas da loja" />} />
                   <Route path="/expedicao-loja/transportadoras" element={<PlaceholderPage title="Transportadoras" description="Cadastro de transportadoras" />} />
 
