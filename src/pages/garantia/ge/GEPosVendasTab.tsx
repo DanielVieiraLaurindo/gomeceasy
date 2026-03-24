@@ -84,6 +84,8 @@ export default function GEPosVendasTab() {
   };
 
   const [formData, setFormData] = useState(defaultFormData);
+  const [casePhotos, setCasePhotos] = useState<File[]>([]);
+  const photoInputRef = React.useRef<HTMLInputElement>(null);
 
   // Auto-detect PIX key type
   useEffect(() => {
