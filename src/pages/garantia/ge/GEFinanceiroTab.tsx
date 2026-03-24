@@ -196,7 +196,7 @@ export default function GEFinanceiroTab() {
             <DollarSign className="w-5 h-5 text-success" />
           </div>
           <div>
-            <h1 className="text-2xl font-barlow font-bold">Financeiro</h1>
+            <h1 className="text-2xl font-barlow font-bold">Ressarcimentos</h1>
             <p className="text-sm text-muted-foreground">Casos migrados automaticamente do Pós-Vendas (reembolso/ressarcimento)</p>
           </div>
         </div>

@@ -40,9 +40,9 @@ export const SIDEBAR_ITEMS: Record<AppSetor, SidebarItem[]> = {
   ],
   garantia_ecommerce: [
     { path: '/garantia-ecommerce', label: 'Dashboard Garantia Ecom.', icon: LayoutDashboard },
-    { path: '/garantia-ecommerce/backoffice', label: 'BackOffice Garantia', icon: Headphones },
-    { path: '/garantia-ecommerce/pos-vendas', label: 'Pós Vendas Garantia', icon: Headset },
-    { path: '/garantia-ecommerce/financeiro', label: 'Financeiro Garantia', icon: DollarSign },
+    { path: '/garantia-ecommerce/backoffice', label: 'Recursos', icon: Headphones },
+    { path: '/garantia-ecommerce/pos-vendas', label: 'Garantias', icon: Headset },
+    { path: '/garantia-ecommerce/financeiro', label: 'Ressarcimentos', icon: DollarSign },
     { path: '/garantia-ecommerce/galeria', label: 'Galeria Garantia', icon: Camera },
     { path: '/garantia-ecommerce/relatorios', label: 'Relatórios Garantia', icon: BarChart2 },
     { path: '/garantia-ecommerce/configuracoes', label: 'Config. Garantia', icon: Settings },
@@ -83,7 +83,7 @@ export const SIDEBAR_ITEMS: Record<AppSetor, SidebarItem[]> = {
     { path: '/compras/pedidos', label: 'Pedidos de Compra', icon: FileText },
     { path: '/compras/precificacao', label: 'Calculadora Preços', icon: Calculator },
     { path: '/compras/marcas', label: 'Marcas', icon: Building2 },
-    { path: '/compras/minhas-marcas', label: 'Minhas Marcas', icon: UserCheck },
+    { path: '/compras/marcas-fornecedores', label: 'Marcas e Fornecedores', icon: UserCheck },
   ],
   pre_vendas: [
     { path: '/pre-vendas', label: 'Dashboard Pré-Vendas', icon: LayoutDashboard },

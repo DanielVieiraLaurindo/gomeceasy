@@ -206,7 +206,7 @@ export default function GEBackofficeTab() {
             <Headphones className="w-5 h-5 text-info" />
           </div>
           <div>
-            <h1 className="text-2xl font-barlow font-bold">BackOffice</h1>
+            <h1 className="text-2xl font-barlow font-bold">Recursos</h1>
             <p className="text-sm text-muted-foreground">
               {cases.filter(c => !['finalizado', 'arquivado'].includes(c.status)).length} em aberto / {cases.length} total
               {' • '}<span className="text-warning font-medium">{cases.filter(c => c.status === 'em_mediacao').length} em mediação</span>

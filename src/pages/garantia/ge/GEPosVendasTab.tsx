@@ -134,7 +134,7 @@ export default function GEPosVendasTab() {
             <Headset className="w-5 h-5 text-info" />
           </div>
           <div>
-            <h1 className="text-2xl font-barlow font-bold">Pós Vendas</h1>
+            <h1 className="text-2xl font-barlow font-bold">Garantias</h1>
             <p className="text-sm text-muted-foreground">{activeCases.length} casos ativos</p>
           </div>
         </div>
