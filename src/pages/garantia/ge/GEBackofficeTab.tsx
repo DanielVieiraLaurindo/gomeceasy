@@ -389,6 +389,7 @@ export default function GEBackofficeTab() {
               <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
                 <Upload className="w-4 h-4 mr-1" />Importar Devoluções
               </Button>
+              <p className="text-xs text-muted-foreground">Planilha Mercado Livre (cabeçalho linha 6)</p>
             </div>
           )}
           <div className="card-base overflow-hidden">
