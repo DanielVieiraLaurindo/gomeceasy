@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { MetricCard } from '@/components/MetricCard';
 import {
-  AlertTriangle, Search, Download, Plus, LayoutList, Columns3,
+  AlertTriangle, Search, Download, Plus, LayoutList, Columns3, Upload,
   ChevronDown, ChevronUp, ArrowUpDown, ArrowUp, ArrowDown,
   Trash2, Edit, Eye, FolderCheck, X, Loader2, CalendarDays,
   Clock, AlertOctagon, BarChart2,
