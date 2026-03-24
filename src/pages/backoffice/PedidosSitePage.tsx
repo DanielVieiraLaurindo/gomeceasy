@@ -184,6 +184,39 @@ export default function PedidosSitePage() {
     fetchPedidos();
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    setDeleting(true);
+    try {
+      const ids = Array.from(selectedIds);
+      const { error } = await (supabase as any).from('pedidos_site').delete().in('id', ids);
+      if (error) throw error;
+      toast.success(`${ids.length} pedido(s) excluído(s)`);
+      setSelectedIds(new Set());
+      fetchPedidos();
+    } catch {
+      toast.error('Erro ao excluir pedidos');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filtered.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map(p => p.id)));
+    }
+  };
+
   const handleExport = () => {
     exportToExcel(filtered.map(p => ({
       'ID Site': p.numero_pedido_site,
