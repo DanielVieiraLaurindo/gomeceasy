@@ -7,8 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import UCStatusBadge from "@/components/uso-consumo/UCStatusBadge";
 import { ucStatusConfig, type UCRequestStatus } from "@/lib/uso-consumo-status";
-import { Link } from "react-router-dom";
-import { ClipboardList, Clock, CheckCircle2, AlertCircle, Search, Eye, Plus } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { ClipboardList, Clock, CheckCircle2, AlertCircle, Search, Plus } from "lucide-react";
 
 interface PurchaseRequest {
   id: string;
