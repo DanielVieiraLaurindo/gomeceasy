@@ -26,6 +26,8 @@ const statusLabels: Record<string, string> = {
   aguardando_link: 'Aguardando Link',
   aguardando_autorizacao: 'Aguardando Autorização',
   aguardando_pagamento: 'Aguardando Pagamento',
+  autorizado: 'Autorizado',
+  nao_autorizado: 'Não Autorizado',
   concluido: 'Concluído',
 };
 
@@ -33,6 +35,8 @@ const statusColors: Record<string, string> = {
   aguardando_link: 'bg-warning/20 text-warning border-warning/30',
   aguardando_autorizacao: 'bg-orange-500/20 text-orange-600 border-orange-500/30',
   aguardando_pagamento: 'bg-info/20 text-info border-info/30',
+  autorizado: 'bg-primary/20 text-primary border-primary/30',
+  nao_autorizado: 'bg-destructive/20 text-destructive border-destructive/30',
   concluido: 'bg-success/20 text-success border-success/30',
 };
 
