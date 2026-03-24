@@ -535,6 +535,9 @@ export default function GEBackofficeTab() {
                 <div className="grid grid-cols-2 gap-4">
                   <div><p className="text-xs text-muted-foreground">Cliente</p><p className="font-medium">{viewingCase.client_name}</p></div>
                   <div><p className="text-xs text-muted-foreground">Venda</p><p className="font-mono text-sm">{viewingCase.sale_number || viewingCase.numero_pedido || '—'}</p></div>
+                  <div><p className="text-xs text-muted-foreground">CPF/CNPJ</p><p className="font-mono text-sm">{viewingCase.client_document || '—'}</p></div>
+                  <div><p className="text-xs text-muted-foreground">SKU</p><p className="font-mono text-sm">{(viewingCase as any).product_sku || '—'}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Rastreio</p><p className="font-mono text-sm">{(viewingCase as any).fullfilment_tracking || '—'}</p></div>
                   <div><p className="text-xs text-muted-foreground">Tipo</p><Badge variant="secondary">{CASE_TYPE_LABELS[viewingCase.case_type]}</Badge></div>
                   <div><p className="text-xs text-muted-foreground">Marketplace</p><p>{MARKETPLACE_ACCOUNT_LABELS[viewingCase.marketplace_account as MarketplaceAccount] || viewingCase.marketplace || '—'}</p></div>
                   <div><p className="text-xs text-muted-foreground">Entrada</p><p>{viewingCase.entry_date ? format(new Date(viewingCase.entry_date), 'dd/MM/yyyy', { locale: ptBR }) : '—'}</p></div>
