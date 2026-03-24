@@ -37,7 +37,6 @@ export const SETOR_OPTIONS: { value: AppSetor; label: string }[] = [
   { value: 'ti', label: 'Tecnologia da Informação' },
   { value: 'garantia_loja', label: 'Garantia Loja' },
   { value: 'garantia_ecommerce', label: 'Garantia Ecommerce' },
-  { value: 'financeiro_fiscal', label: 'Financeiro Fiscal' },
   { value: 'financeiro', label: 'Financeiro' },
   { value: 'fiscal', label: 'Fiscal' },
   { value: 'expedicao_loja', label: 'Expedição Loja' },
