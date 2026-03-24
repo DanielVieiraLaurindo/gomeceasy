@@ -533,6 +533,29 @@ export default function GEBackofficeTab() {
             </div>
             <div><Label>Quem Analisou</Label><Input value={formData.analyst_name} onChange={e => setFormData(f => ({ ...f, analyst_name: e.target.value }))} placeholder="Nome do analista" /></div>
             <div><Label>Observação</Label><Textarea value={formData.analysis_reason} onChange={e => setFormData(f => ({ ...f, analysis_reason: e.target.value }))} rows={3} /></div>
+            {/* Photos */}
+            <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
+              <Label className="text-base font-semibold">Fotos do Caso</Label>
+              <input ref={photoInputRef} type="file" accept="image/*" multiple className="hidden" onChange={e => {
+                if (e.target.files) setCasePhotos(prev => [...prev, ...Array.from(e.target.files!)]);
+                if (photoInputRef.current) photoInputRef.current.value = '';
+              }} />
+              <Button type="button" variant="outline" size="sm" onClick={() => photoInputRef.current?.click()}>
+                <Upload className="w-4 h-4 mr-1" />Adicionar Fotos
+              </Button>
+              {casePhotos.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {casePhotos.map((f, i) => (
+                    <div key={i} className="relative group">
+                      <img src={URL.createObjectURL(f)} alt={f.name} className="w-20 h-20 object-cover rounded-lg border" />
+                      <button type="button" onClick={() => setCasePhotos(prev => prev.filter((_, idx) => idx !== i))}
+                        className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity">×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">{casePhotos.length} foto(s) selecionada(s)</p>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsNewCaseOpen(false)}>Cancelar</Button>

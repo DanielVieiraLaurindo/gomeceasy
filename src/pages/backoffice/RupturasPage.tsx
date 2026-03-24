@@ -22,6 +22,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useRupturas } from '@/hooks/useRupturas';
 import { supabase } from '@/integrations/supabase/client';
+import * as XLSX from 'xlsx';
 import { exportToExcel } from '@/lib/export-utils';
 import { formatSlaTime, businessMillisecondsBetween } from '@/lib/business-hours';
 import { toast } from 'sonner';
