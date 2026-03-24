@@ -257,8 +257,8 @@ export function AppSidebar() {
     </div>
   );
 
+  // All users now see all modules
   const currentSetor: AppSetor = setor || 'backoffice';
-  const items = SIDEBAR_ITEMS[currentSetor] || SIDEBAR_ITEMS.backoffice;
 
   return (
     <motion.aside
