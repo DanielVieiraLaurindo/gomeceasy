@@ -116,6 +116,18 @@ export default function WorkflowActions({ divergencia, itens }: WorkflowActionsP
     try {
       await supabase.from("divergencias").update({ status: manualStatus, atualizado_por: user.id } as any).eq("id", d.id);
       await supabase.from("divergencia_historico").insert({ divergencia_id: d.id, status: manualStatus, observacao: manualObs.trim() || `Status alterado manualmente para ${manualStatus}`, usuario_id: user.id } as any);
+
+      // Notify fiscal users when status changes to "Emitir NF"
+      if (manualStatus === "Emitir NF") {
+        await supabase.from("notificacoes").insert({
+          mensagem: `Emitir NF: ${d.nome_fornecedor} (${d.ocorrencia}) - Divergência aguardando emissão de NF`,
+          setor_destino: "fiscal",
+          referencia_id: d.id,
+          referencia_tabela: "divergencias",
+          tipo: "divergencia",
+        } as any);
+      }
+
       toast.success(`Status alterado para "${manualStatus}"`);
       setManualOpen(false); setManualStatus(""); setManualObs("");
       queryClient.invalidateQueries({ queryKey: ["divergencia", d.id] });
