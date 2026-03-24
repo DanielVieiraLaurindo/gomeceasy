@@ -47,14 +47,6 @@ export const SIDEBAR_ITEMS: Record<AppSetor, SidebarItem[]> = {
     { path: '/garantia-ecommerce/relatorios', label: 'Relatórios Garantia', icon: BarChart2 },
     { path: '/garantia-ecommerce/configuracoes', label: 'Config. Garantia', icon: Settings },
   ],
-  financeiro_fiscal: [
-    { path: '/financeiro', label: 'Dashboard Financeiro', icon: LayoutDashboard },
-    { path: '/financeiro/reembolsos', label: 'Validação Reembolsos', icon: Receipt },
-    { path: '/financeiro/validacao-financeira', label: 'Validação Financeira', icon: CheckSquare },
-    { path: '/financeiro/pagamentos', label: 'Pagamentos', icon: CreditCard },
-    { path: '/financeiro/ressarcimentos', label: 'Ressarcimentos', icon: Scale },
-    { path: '/financeiro/clientes-prazo', label: 'Clientes Prazo', icon: Clock },
-  ],
   financeiro: [
     { path: '/financeiro', label: 'Dashboard Financeiro', icon: LayoutDashboard },
     { path: '/financeiro/reembolsos', label: 'Validação Reembolsos', icon: Receipt },

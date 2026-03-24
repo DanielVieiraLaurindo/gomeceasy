@@ -407,7 +407,7 @@ export function DadosFiscaisPage() {
     mutationFn: async (data: any) => {
       const { error } = await (supabase as any).from('fiscal_data').upsert(data);
       if (error) throw error;
-      await supabase.from('notificacoes').insert({ mensagem: `Novo item fiscal incluído: SKU ${data.sku}`, tipo: 'fiscal_novo_item', referencia_tabela: 'fiscal_data', setor_destino: 'financeiro_fiscal' } as any);
+      await supabase.from('notificacoes').insert({ mensagem: `Novo item fiscal incluído: SKU ${data.sku}`, tipo: 'fiscal_novo_item', referencia_tabela: 'fiscal_data', setor_destino: 'fiscal' } as any);
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['fiscal-data'] }),
   });

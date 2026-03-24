@@ -204,7 +204,7 @@ export function getWorkflowRoles(role: string | null, setor: string | null): str
   const roles: string[] = [];
   if (role === "master") roles.push("master");
   if (setor === "compras" || role === "master") roles.push("compras");
-  if (setor === "financeiro_fiscal" || role === "master") roles.push("fiscal");
+  if (setor === "fiscal" || role === "master") roles.push("fiscal");
   if (setor === "backoffice" || setor === "expedicao" || role === "master") roles.push("recebimento");
   return roles;
 }
