@@ -70,6 +70,9 @@ export default function UCQuotationManager({ request, items, onUpdate }: Props) 
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [supplierName, setSupplierName] = useState("");
+  const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const pdfDocRef = useRef<jsPDF | null>(null);
 
   const currentBatch = Math.max(1, ...items.filter(i => i.quotation_batch).map(i => i.quotation_batch!));
 
