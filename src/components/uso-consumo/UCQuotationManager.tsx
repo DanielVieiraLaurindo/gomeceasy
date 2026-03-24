@@ -127,7 +127,7 @@ export default function UCQuotationManager({ request, items, onUpdate }: Props) 
       String(i + 1), item.item_name, item.reference_models || "—", String(item.quantity), item.destinado_a || "—", "", "",
     ]);
 
-    (doc as any).autoTable({
+    autoTable(doc, {
       startY: y,
       head: [["#", "Item", "Ref./Modelo", "Qtd", "Destinado a", "Preço Unit.", "Total"]],
       body: tableData,
