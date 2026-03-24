@@ -52,7 +52,6 @@ export const SETOR_HOME_ROUTES: Record<AppSetor, string> = {
   ti: '/ti',
   garantia_loja: '/garantia-loja',
   garantia_ecommerce: '/garantia-ecommerce',
-  financeiro_fiscal: '/financeiro',
   financeiro: '/financeiro',
   fiscal: '/fiscal',
   expedicao_loja: '/expedicao-loja',
