@@ -280,7 +280,7 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, canAuthorize, onU
             <p className="text-xs text-muted-foreground uppercase font-bold">Link de Pagamento</p>
             {item.link_pagamento ? (
               <a href={item.link_pagamento} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline break-all">{item.link_pagamento}</a>
-            ) : item.status === 'aguardando_link' ? (
+            ) : (item.status === 'aguardando_link' || item.status === 'aberto') ? (
               <div className="flex gap-2">
                 <Input placeholder="Cole o link aqui" value={linkInput} onChange={e => setLinkInput(e.target.value)} className="text-sm" />
                 <Button size="sm" variant="outline" onClick={() => { if (linkInput.trim()) { onUpdateLink(item.id, linkInput.trim()); setLinkInput(''); } }}>
@@ -311,7 +311,7 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, canAuthorize, onU
           <Separator />
 
           {/* Ações do Financeiro - registrar pagamento */}
-          {!isConcluido && item.status === 'aguardando_pagamento' && (
+          {!isConcluido && (item.status === 'aguardando_pagamento' || item.status === 'aberto' || item.status === 'autorizado') && (
             <div className="space-y-3 bg-muted/30 rounded-lg p-4 border">
               <p className="text-xs text-muted-foreground uppercase font-bold">Ações do Financeiro</p>
               <div className="space-y-2">
