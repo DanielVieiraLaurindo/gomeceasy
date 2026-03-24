@@ -16,6 +16,7 @@ export interface GarantiaCaseFilters {
   sentToBackoffice?: 'waiting' | 'not_sent';
   onlyFull?: boolean;
   excludeFinalized?: boolean;
+  origemFilter?: 'backoffice' | 'pos_vendas';
 }
 
 export const useGarantiaCases = (filters?: GarantiaCaseFilters) => {
