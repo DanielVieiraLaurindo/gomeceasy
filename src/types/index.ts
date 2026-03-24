@@ -3,7 +3,7 @@ export type UserRole = 'master' | 'admin' | 'usuario';
 
 export type AppSetor =
   | 'pos_vendas' | 'pre_vendas' | 'criacao' | 'backoffice'
-  | 'compras' | 'ti' | 'garantia_loja' | 'garantia_ecommerce' | 'financeiro_fiscal'
+  | 'compras' | 'ti' | 'garantia_loja' | 'garantia_ecommerce'
   | 'financeiro' | 'fiscal'
   | 'expedicao_loja' | 'expedicao_ecommerce';
 
