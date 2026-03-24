@@ -382,13 +382,27 @@ export default function PedidosSitePage() {
       {/* Table */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2"><Package className="w-5 h-5" />Pedidos ({filtered.length})</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg flex items-center gap-2"><Package className="w-5 h-5" />Pedidos ({filtered.length})</CardTitle>
+            {selectedIds.size > 0 && (
+              <Button variant="destructive" size="sm" disabled={deleting} onClick={handleBulkDelete} className="gap-2">
+                <Trash2 className="w-4 h-4" />
+                Excluir {selectedIds.size} selecionado(s)
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={filtered.length > 0 && selectedIds.size === filtered.length}
+                      onCheckedChange={toggleSelectAll}
+                    />
+                  </TableHead>
                   <TableHead>ID Site</TableHead>
                   <TableHead>ID Signus</TableHead>
                   <TableHead>Faturar?</TableHead>
