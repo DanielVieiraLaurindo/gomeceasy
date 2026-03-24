@@ -13,8 +13,7 @@ export function useEnvios() {
       const { data, error } = await supabase
         .from('envios')
         .select(ENVIOS_COLUMNS)
-        .order('created_at', { ascending: false })
-        .limit(500);
+        .order('created_at', { ascending: false });
       if (error) throw error;
       return data;
     },
