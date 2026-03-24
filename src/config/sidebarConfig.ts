@@ -132,7 +132,8 @@ export const MASTER_SIDEBAR_GROUPS: MasterSidebarGroup[] = [
   { label: 'Expedição Ecommerce', setor: 'expedicao_ecommerce' },
   { label: 'Garantia Loja', setor: 'garantia_loja' },
   { label: 'Garantia Ecommerce', setor: 'garantia_ecommerce' },
-  { label: 'Financeiro', setor: 'financeiro_fiscal' },
+  { label: 'Financeiro', setor: 'financeiro' },
+  { label: 'Fiscal', setor: 'fiscal' },
   { label: 'Compras', setor: 'compras' },
   { label: 'TI', setor: 'ti' },
 ];
