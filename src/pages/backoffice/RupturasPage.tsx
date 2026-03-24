@@ -315,6 +315,17 @@ export default function RupturasPage() {
             <Button variant={viewMode === 'kanban' ? 'default' : 'ghost'} size="sm" className="rounded-none gap-1"
               onClick={() => setViewMode('kanban')}><Columns3 className="w-4 h-4" />Kanban</Button>
           </div>
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => {
+            const ws = XLSX.utils.aoa_to_sheet([['Pedido', 'Canal de Venda', 'Marketplace', 'Unidade de Negócio', 'SKU', 'Produto', 'Quantidade', 'Valor Total', 'Comprador', 'Transportadora', 'Observações']]);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Modelo');
+            XLSX.writeFile(wb, 'modelo_rupturas.xlsx');
+          }}>
+            <Download className="w-4 h-4" />Template
+          </Button>
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => navigate('/backoffice/rupturas/nova')}>
+            <Upload className="w-4 h-4" />Importar
+          </Button>
           <Button variant="outline" size="sm" className="gap-2" onClick={() => navigate('/backoffice/rupturas/relatorios')}>
             <BarChart2 className="w-4 h-4" />Dashboard
           </Button>
