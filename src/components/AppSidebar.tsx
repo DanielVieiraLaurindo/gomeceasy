@@ -305,7 +305,7 @@ export function AppSidebar() {
       )}
 
       <nav className="flex-1 py-3 overflow-y-auto scrollbar-thin">
-        {!searchTerm && (isMaster ? renderMasterSidebar() : items.map(renderItem))}
+        {!searchTerm && renderMasterSidebar()}
       </nav>
 
       <div className="border-t border-sidebar-border p-3">
