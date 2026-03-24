@@ -82,7 +82,8 @@ export default function NovaRupturaPage() {
           valor_total: Number(r['Produto - Total líquido (pedido)'] || r['Produto - Total bruto (pedido)'] || precoLiq * saldoAtender || 0),
           comprador: String(r['Parceiro - Razão Social'] || r['Comprador'] || r['comprador'] || ''),
           transportadora: String(r['Transportadora'] || r['transportadora'] || ''),
-          observacoes: String(r['Observações'] || r['observacoes'] || r['Status'] || ''),
+          observacoes: String(r['Observações'] || r['observacoes'] || ''),
+          status_original: String(r['Status'] || r['status'] || ''),
         };
       });
 
