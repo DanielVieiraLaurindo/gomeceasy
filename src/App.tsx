@@ -40,6 +40,7 @@ const TIDashboard = React.lazy(() => import("@/pages/ti/TIDashboard"));
 const ExpedicaoLojaDashboard = React.lazy(() => import("@/pages/expedicao/ExpedicaoLojaDashboard"));
 const ExpedicaoEcommerceDashboard = React.lazy(() => import("@/pages/expedicao/ExpedicaoEcommerceDashboard"));
 const ClientesPrazoPage = React.lazy(() => import("@/pages/expedicao/ClientesPrazoPage"));
+const CreditosClientesPage = React.lazy(() => import("@/pages/expedicao/CreditosClientesPage"));
 const OperacaoInternaPage = React.lazy(() => import("@/pages/expedicao/OperacaoInternaPage"));
 const ResumoOperacaoPage = React.lazy(() => import("@/pages/expedicao/ResumoOperacaoPage"));
 const SomatorioPage = React.lazy(() => import("@/pages/expedicao/SomatorioPage"));
