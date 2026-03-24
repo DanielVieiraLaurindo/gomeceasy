@@ -172,9 +172,28 @@ export default function GEPosVendasTab() {
       origem: 'pos_vendas',
       ...financialData,
     } as any, {
-      onSuccess: () => {
+      onSuccess: async (data: any) => {
+        // Upload photos
+        if (casePhotos.length > 0 && data?.id) {
+          for (const photo of casePhotos) {
+            const filePath = `${data.id}/${Date.now()}_${photo.name}`;
+            const { error: uploadError } = await supabase.storage.from('case-photos').upload(filePath, photo);
+            if (!uploadError) {
+              const { data: urlData } = supabase.storage.from('case-photos').getPublicUrl(filePath);
+              await supabase.from('case_photos').insert({
+                case_id: data.id,
+                photo_url: urlData.publicUrl,
+                photo_type: 'produto',
+                original_name: photo.name,
+                file_size: photo.size,
+                created_by: user?.id,
+              });
+            }
+          }
+        }
         setIsFormOpen(false);
         setFormData(defaultFormData);
+        setCasePhotos([]);
         if (formData.financial_type) {
           toast.success(`Caso criado e enviado para ${formData.financial_type === 'reembolso' ? 'Reembolso' : 'Ressarcimento M.O.'}`);
         }
