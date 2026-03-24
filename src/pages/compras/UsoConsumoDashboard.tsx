@@ -7,8 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import UCStatusBadge from "@/components/uso-consumo/UCStatusBadge";
 import { ucStatusConfig, type UCRequestStatus } from "@/lib/uso-consumo-status";
-import { Link } from "react-router-dom";
-import { ClipboardList, Clock, CheckCircle2, AlertCircle, Search, Eye, Plus } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { ClipboardList, Clock, CheckCircle2, AlertCircle, Search, Plus } from "lucide-react";
 
 interface PurchaseRequest {
   id: string;
@@ -22,6 +22,7 @@ interface PurchaseRequest {
 
 export default function UsoConsumoDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [requests, setRequests] = useState<PurchaseRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -165,19 +166,15 @@ export default function UsoConsumoDashboard() {
                   </tr>
                 ) : (
                   filtered.map((r) => (
-                    <tr key={r.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                    <tr key={r.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => navigate(`/compras/uso-consumo/${r.id}`)}>
                       <td className="px-4 py-4 text-sm text-muted-foreground">{new Date(r.created_at).toLocaleDateString("pt-BR")}</td>
                       <td className="px-4 py-4">
-                        <Link to={`/compras/uso-consumo/${r.id}`} className="font-mono text-sm font-semibold text-primary hover:underline">{r.req_number}</Link>
+                        <span className="font-mono text-sm font-semibold text-primary">{r.req_number}</span>
                       </td>
                       <td className="px-4 py-4 text-sm max-w-[200px] truncate">{r.item_name}</td>
                       <td className="px-4 py-4 text-sm">{r.store || "—"}</td>
                       <td className="px-4 py-4"><UCStatusBadge status={r.current_status} /></td>
-                      <td className="px-4 py-4 text-right">
-                        <Link to={`/compras/uso-consumo/${r.id}`} className="text-muted-foreground hover:text-foreground transition-colors">
-                          <Eye className="h-4 w-4 inline" />
-                        </Link>
-                      </td>
+                      <td className="px-4 py-4 text-right" />
                     </tr>
                   ))
                 )}

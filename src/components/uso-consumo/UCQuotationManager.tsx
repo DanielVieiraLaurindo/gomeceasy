@@ -1,12 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { FileText, Upload, BarChart3, Loader2, Trash2 } from "lucide-react";
+import { FileText, Upload, BarChart3, Loader2, Trash2, Download } from "lucide-react";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 
@@ -69,6 +70,9 @@ export default function UCQuotationManager({ request, items, onUpdate }: Props) 
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [supplierName, setSupplierName] = useState("");
+  const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const pdfDocRef = useRef<jsPDF | null>(null);
 
   const currentBatch = Math.max(1, ...items.filter(i => i.quotation_batch).map(i => i.quotation_batch!));
 
@@ -94,18 +98,7 @@ export default function UCQuotationManager({ request, items, onUpdate }: Props) 
     }
   };
 
-  const generateQuotationPDF = async () => {
-    const selectedItemsList = items.filter(i => selectedItems[i.id]);
-    if (selectedItemsList.length === 0) {
-      toast({ title: "Selecione ao menos um item", variant: "destructive" });
-      return;
-    }
-    setLoading(true);
-    const batchNum = currentBatch || 1;
-    for (const item of selectedItemsList) {
-      await supabase.from("purchase_request_items").update({ quotation_batch: batchNum }).eq("id", item.id);
-    }
-
+  const buildPdf = (selectedItemsList: PurchaseRequestItem[], batchNum: number) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     doc.setFontSize(18);
@@ -149,11 +142,38 @@ export default function UCQuotationManager({ request, items, onUpdate }: Props) 
     doc.text("Condições de pagamento: ___________________________________", 14, finalY);
     doc.text("Prazo de entrega: ___________________________________", 14, finalY + 8);
     doc.text("Validade da proposta: ___________________________________", 14, finalY + 16);
-    doc.save(`Cotacao_${request.req_number}_Lote${batchNum}.pdf`);
+    return doc;
+  };
 
-    toast({ title: "PDF gerado!", description: `Lote ${batchNum} com ${selectedItemsList.length} item(ns).` });
+  const generateQuotationPDF = async () => {
+    const selectedItemsList = items.filter(i => selectedItems[i.id]);
+    if (selectedItemsList.length === 0) {
+      toast({ title: "Selecione ao menos um item", variant: "destructive" });
+      return;
+    }
+    setLoading(true);
+    const batchNum = currentBatch || 1;
+    for (const item of selectedItemsList) {
+      await supabase.from("purchase_request_items").update({ quotation_batch: batchNum }).eq("id", item.id);
+    }
+
+    const doc = buildPdf(selectedItemsList, batchNum);
+    pdfDocRef.current = doc;
+    const blob = doc.output("blob");
+    if (pdfBlobUrl) URL.revokeObjectURL(pdfBlobUrl);
+    setPdfBlobUrl(URL.createObjectURL(blob));
+    setPdfPreviewOpen(true);
+
+    toast({ title: "Cotação gerada!", description: `Lote ${batchNum} com ${selectedItemsList.length} item(ns).` });
     setLoading(false);
     onUpdate();
+  };
+
+  const handleDownloadPdf = () => {
+    if (pdfDocRef.current) {
+      const batchNum = currentBatch || 1;
+      pdfDocRef.current.save(`Cotacao_${request.req_number}_Lote${batchNum}.pdf`);
+    }
   };
 
   const handleSupplierUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -213,6 +233,7 @@ export default function UCQuotationManager({ request, items, onUpdate }: Props) 
   const hasUnbatched = unbatchedItems.length > 0;
 
   return (
+    <>
     <div className="space-y-4">
       {hasUnbatched && (
         <Card>
@@ -313,5 +334,26 @@ export default function UCQuotationManager({ request, items, onUpdate }: Props) 
         </Card>
       )}
     </div>
+
+      {/* PDF Preview Dialog */}
+      <Dialog open={pdfPreviewOpen} onOpenChange={(open) => { if (!open) setPdfPreviewOpen(false); }}>
+        <DialogContent className="max-w-4xl h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="font-barlow">Pré-visualização da Cotação</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 min-h-0">
+            {pdfBlobUrl && (
+              <iframe src={pdfBlobUrl} className="w-full h-full rounded-md border" title="PDF Preview" />
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPdfPreviewOpen(false)}>Fechar</Button>
+            <Button onClick={handleDownloadPdf}>
+              <Download className="h-4 w-4 mr-2" /> Baixar PDF
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
