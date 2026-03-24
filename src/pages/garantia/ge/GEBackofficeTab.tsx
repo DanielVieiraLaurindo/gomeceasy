@@ -58,6 +58,8 @@ export default function GEBackofficeTab() {
     analysis_reason: '', entry_date: new Date().toISOString().split('T')[0],
     analyst_name: '', status: 'aguardando_analise' as string,
   });
+  const [casePhotos, setCasePhotos] = useState<File[]>([]);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
