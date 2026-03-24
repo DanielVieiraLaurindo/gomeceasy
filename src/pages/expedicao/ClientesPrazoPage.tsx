@@ -377,6 +377,8 @@ export default function ClientesPrazoPage() {
         r.nome_cliente?.toLowerCase().includes(search.toLowerCase()) ||
         r.nome_vendedor?.toLowerCase().includes(search.toLowerCase());
       const matchStatus = statusFilter === 'all' || r.status === statusFilter;
+      // Hide concluído from list unless explicitly filtered or searched by requisição number
+      if (!search && statusFilter === 'all' && r.status === 'concluido') return false;
       return matchSearch && matchStatus;
     });
   }, [requisicoes, search, statusFilter]);
