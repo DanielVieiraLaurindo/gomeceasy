@@ -4,7 +4,8 @@ import {
   Camera, RefreshCw, Briefcase, PenTool, Monitor, Settings, Megaphone,
   TrendingUp, FolderOpen, BookOpen, UserCheck, Columns3, Archive, Scale,
   Truck, MapPin, Bell, Eye, Boxes, CheckSquare, ClipboardList, Route,
-  Send, BarChart2, Globe, Clock, Clipboard, Calculator, Headphones, Headset
+  Send, BarChart2, Globe, Clock, Clipboard, Calculator, Headphones, Headset,
+  ArrowRightLeft
 } from 'lucide-react';
 import type { AppSetor } from '@/types';
 import type { LucideIcon } from 'lucide-react';
