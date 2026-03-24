@@ -38,6 +38,15 @@ export default function NovaRupturaPage() {
     if (!form.numero_pedido || !form.sku || !form.produto) {
       toast.error('Preencha Pedido, SKU e Produto'); return;
     }
+    // Check for duplicate
+    const { data: existing } = await supabase.from('rupturas')
+      .select('id, numero_pedido, sku')
+      .eq('numero_pedido', form.numero_pedido)
+      .eq('sku', form.sku);
+    if (existing && existing.length > 0) {
+      toast.error(`Pedido duplicado! Já existe ruptura para pedido ${form.numero_pedido} com SKU ${form.sku}`);
+      return;
+    }
     const { error } = await supabase.from('rupturas').insert({
       ...form,
       created_by: user?.id,
