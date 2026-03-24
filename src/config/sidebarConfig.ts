@@ -83,7 +83,7 @@ export const SIDEBAR_ITEMS: Record<AppSetor, SidebarItem[]> = {
     { path: '/compras/pedidos', label: 'Pedidos de Compra', icon: FileText },
     { path: '/compras/precificacao', label: 'Calculadora Preços', icon: Calculator },
     { path: '/compras/marcas', label: 'Marcas', icon: Building2 },
-    { path: '/compras/minhas-marcas', label: 'Minhas Marcas', icon: UserCheck },
+    { path: '/compras/marcas-fornecedores', label: 'Marcas e Fornecedores', icon: UserCheck },
   ],
   pre_vendas: [
     { path: '/pre-vendas', label: 'Dashboard Pré-Vendas', icon: LayoutDashboard },
