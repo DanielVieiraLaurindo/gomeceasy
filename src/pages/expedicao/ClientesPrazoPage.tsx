@@ -220,13 +220,23 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, canAuthor
           </div>
 
           {needsAuth && canAuthorize && (
-            <Button className="w-full gap-2" variant="default" onClick={() => onAuthorize(item.id)}>
-              <ShieldCheck className="w-4 h-4" /> Autorizar Pagamento Posterior
-            </Button>
+            <div className="flex gap-2">
+              <Button className="flex-1 gap-2" variant="default" onClick={() => onAuthorize(item.id)}>
+                <ShieldCheck className="w-4 h-4" /> Autorizar
+              </Button>
+              <Button className="flex-1 gap-2" variant="destructive" onClick={() => onDeny(item.id)}>
+                Não Autorizar
+              </Button>
+            </div>
           )}
           {needsAuth && !canAuthorize && (
             <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3 text-sm text-orange-600">
               Aguardando autorização de um Supervisor de Vendas.
+            </div>
+          )}
+          {item.status === 'nao_autorizado' && (
+            <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 text-sm text-destructive font-medium text-center">
+              ❌ Pagamento posterior não autorizado
             </div>
           )}
 
