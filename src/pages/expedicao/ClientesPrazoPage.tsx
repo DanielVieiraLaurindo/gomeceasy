@@ -599,6 +599,7 @@ export default function ClientesPrazoPage() {
         open={!!selectedItem}
         onOpenChange={() => setSelectedItem(null)}
         onAuthorize={handleAuthorize}
+        onDeny={handleDeny}
         canAuthorize={isSupervisor}
         onUpdateLink={handleUpdateLink}
         onAddPayment={handleAddPayment}
