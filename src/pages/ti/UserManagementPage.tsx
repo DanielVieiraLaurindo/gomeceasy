@@ -406,14 +406,14 @@ export default function UserManagementPage() {
                   <SelectContent>{SETOR_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div>
+               <div>
                 <Label>Perfil</Label>
                 <Select value={cRole} onValueChange={v => setCRole(v as UserRole)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="usuario">Usuário</SelectItem>
-                    <SelectItem value="admin">Administrador</SelectItem>
-                    {role === 'master' && <SelectItem value="master">Master</SelectItem>}
+                    <SelectItem value="usuario">Usuário — Acesso operacional aos módulos atribuídos</SelectItem>
+                    <SelectItem value="admin">Administrador — Gerencia usuários e configurações do setor</SelectItem>
+                    {role === 'master' && <SelectItem value="master">Master — Acesso total a todos os módulos e configurações</SelectItem>}
                   </SelectContent>
                 </Select>
               </div>
