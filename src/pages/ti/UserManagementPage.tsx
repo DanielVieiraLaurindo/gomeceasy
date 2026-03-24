@@ -446,9 +446,9 @@ export default function UserManagementPage() {
                 <Select value={eRole} onValueChange={v => setERole(v as UserRole)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="usuario">Usuário</SelectItem>
-                    <SelectItem value="admin">Administrador</SelectItem>
-                    {role === 'master' && <SelectItem value="master">Master</SelectItem>}
+                    <SelectItem value="usuario">Usuário — Acesso operacional</SelectItem>
+                    <SelectItem value="admin">Administrador — Gerencia setor</SelectItem>
+                    {role === 'master' && <SelectItem value="master">Master — Acesso total</SelectItem>}
                   </SelectContent>
                 </Select>
               </div>
