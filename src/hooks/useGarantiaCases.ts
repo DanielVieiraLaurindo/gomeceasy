@@ -16,6 +16,7 @@ export interface GarantiaCaseFilters {
   sentToBackoffice?: 'waiting' | 'not_sent';
   onlyFull?: boolean;
   excludeFinalized?: boolean;
+  origemFilter?: 'backoffice' | 'pos_vendas';
 }
 
 export const useGarantiaCases = (filters?: GarantiaCaseFilters) => {
@@ -46,6 +47,12 @@ export const useGarantiaCases = (filters?: GarantiaCaseFilters) => {
         query = query.not('status', 'in', '("finalizado","arquivado")');
       }
       if (filters?.onlyFull) query = query.eq('is_full', true);
+      if (filters?.origemFilter === 'backoffice') {
+        query = query.or('origem.is.null,origem.eq.backoffice');
+      }
+      if (filters?.origemFilter === 'pos_vendas') {
+        query = query.eq('origem', 'pos_vendas');
+      }
 
       const { data, error } = await query;
       if (error) throw error;
