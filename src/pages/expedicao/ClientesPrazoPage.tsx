@@ -311,7 +311,7 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, canAuthorize, onU
           <Separator />
 
           {/* Ações do Financeiro - registrar pagamento */}
-          {!isConcluido && item.status === 'aguardando_pagamento' && (
+          {!isConcluido && (item.status === 'aguardando_pagamento' || item.status === 'aberto' || item.status === 'autorizado') && (
             <div className="space-y-3 bg-muted/30 rounded-lg p-4 border">
               <p className="text-xs text-muted-foreground uppercase font-bold">Ações do Financeiro</p>
               <div className="space-y-2">
