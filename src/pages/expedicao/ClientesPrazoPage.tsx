@@ -392,8 +392,14 @@ export default function ClientesPrazoPage() {
     .reduce((acc: number, r: any) => acc + ((r.valor || 0) - (r.valor_pago || 0)), 0);
 
   const handleAuthorize = (id: string) => {
-    update.mutate({ id, status: 'aguardando_pagamento', autorizado_por: profile?.nome || 'Supervisor' }, {
-      onSuccess: () => { toast.success('Requisição autorizada — aguardando pagamento'); setSelectedItem(null); },
+    update.mutate({ id, status: 'autorizado', autorizado_por: profile?.nome || 'Supervisor' }, {
+      onSuccess: () => { toast.success('Requisição autorizada'); setSelectedItem(null); },
+    });
+  };
+
+  const handleDeny = (id: string) => {
+    update.mutate({ id, status: 'nao_autorizado', autorizado_por: profile?.nome || 'Supervisor' }, {
+      onSuccess: () => { toast.success('Pagamento posterior não autorizado'); setSelectedItem(null); },
     });
   };
 
