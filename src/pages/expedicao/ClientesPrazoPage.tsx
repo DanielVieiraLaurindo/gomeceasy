@@ -17,7 +17,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { useClientesPrazo } from '@/hooks/useClientesPrazo';
+import { useClientesPrazo, useClientesPrazoPagamentos } from '@/hooks/useClientesPrazo';
 import { useAuth } from '@/contexts/AuthContext';
 import { TableToolbar } from '@/components/TableToolbar';
 import { format, addHours } from 'date-fns';
