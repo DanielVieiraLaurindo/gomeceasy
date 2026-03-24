@@ -109,7 +109,7 @@ export default function GEBackofficeTab() {
     setBulkValue('');
   };
 
-  const handleCreateCase = () => {
+  const handleCreateCase = async () => {
     createCase.mutate({
       client_name: formData.client_name || '-',
       client_document: formData.client_document || '-',
@@ -129,8 +129,27 @@ export default function GEBackofficeTab() {
       sent_to_backoffice: true,
       not_found_erp: false,
     } as any, {
-      onSuccess: () => {
+      onSuccess: async (data: any) => {
+        // Upload photos if any
+        if (casePhotos.length > 0 && data?.id) {
+          for (const photo of casePhotos) {
+            const filePath = `${data.id}/${Date.now()}_${photo.name}`;
+            const { error: uploadError } = await supabase.storage.from('case-photos').upload(filePath, photo);
+            if (!uploadError) {
+              const { data: urlData } = supabase.storage.from('case-photos').getPublicUrl(filePath);
+              await supabase.from('case_photos').insert({
+                case_id: data.id,
+                photo_url: urlData.publicUrl,
+                photo_type: 'produto',
+                original_name: photo.name,
+                file_size: photo.size,
+                created_by: user?.id,
+              });
+            }
+          }
+        }
         setIsNewCaseOpen(false);
+        setCasePhotos([]);
         setFormData({ sale_number: '', marketplace_account: '', business_unit_cnpj: '', client_name: '', client_document: '', case_type: 'DEVOLUCAO', analysis_reason: '', entry_date: new Date().toISOString().split('T')[0], analyst_name: '', status: 'aguardando_analise' });
       }
     });
