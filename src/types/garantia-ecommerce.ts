@@ -48,6 +48,12 @@ export interface ReturnCase {
   reimbursement_value?: number;
   numero_pedido?: string;
   descricao_defeito?: string;
+  chave_pix_valor?: string;
+  chave_pix_tipo?: string;
+  metodo_pagamento?: string;
+  dados_bancarios_json?: any;
+  data_solicitacao_reembolso?: string;
+  descarte_value?: number;
   final_destination?: string;
   creator_name?: string;
 }
