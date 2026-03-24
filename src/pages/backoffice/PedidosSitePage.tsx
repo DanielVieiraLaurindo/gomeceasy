@@ -66,6 +66,8 @@ export default function PedidosSitePage() {
   const [editDialog, setEditDialog] = useState<PedidoSite | null>(null);
   const [newDialog, setNewDialog] = useState(false);
   const [formData, setFormData] = useState<Partial<PedidoSite>>({});
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
 
   const fetchPedidos = useCallback(async () => {
