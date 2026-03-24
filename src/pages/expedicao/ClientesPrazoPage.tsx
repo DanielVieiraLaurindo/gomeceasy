@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { MetricCard } from '@/components/MetricCard';
-import { Clock, DollarSign, AlertTriangle, CheckCircle, Plus, Link2, ShieldCheck, Trash2, Upload, Download, FileText } from 'lucide-react';
+import { Clock, DollarSign, AlertTriangle, CheckCircle, Plus, Link2, ShieldCheck, Trash2, Upload, FileText, CreditCard } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -23,19 +23,17 @@ import { TableToolbar } from '@/components/TableToolbar';
 import { format, addHours } from 'date-fns';
 
 const statusLabels: Record<string, string> = {
-  aberto: 'Aberto',
+  aguardando_link: 'Aguardando Link',
   aguardando_autorizacao: 'Aguardando Autorização',
-  autorizado: 'Autorizado',
-  vencido: 'Vencido',
-  liquidado: 'Liquidado',
+  aguardando_pagamento: 'Aguardando Pagamento',
+  concluido: 'Concluído',
 };
 
 const statusColors: Record<string, string> = {
-  aberto: 'bg-warning/20 text-warning border-warning/30',
+  aguardando_link: 'bg-warning/20 text-warning border-warning/30',
   aguardando_autorizacao: 'bg-orange-500/20 text-orange-600 border-orange-500/30',
-  autorizado: 'bg-blue-500/20 text-blue-600 border-blue-500/30',
-  vencido: 'bg-destructive/20 text-destructive border-destructive/30',
-  liquidado: 'bg-success/20 text-success border-success/30',
+  aguardando_pagamento: 'bg-info/20 text-info border-info/30',
+  concluido: 'bg-success/20 text-success border-success/30',
 };
 
 const ocorrenciaLabels: Record<string, string> = {
@@ -76,7 +74,7 @@ function NovaRequisicaoDialog({ open, onOpenChange, onCreate }: { open: boolean;
       nome_vendedor: form.nome_vendedor || null,
       observacao: form.observacao || null,
       link_pagamento: null,
-      status: isPosterior ? 'aguardando_autorizacao' : 'aberto',
+      status: isPosterior ? 'aguardando_autorizacao' : 'aguardando_link',
     });
     onOpenChange(false);
     setForm({ ocorrencia: 'link_pagamento', requisicao: '', valor: '', codigo_cliente: '', nome_cliente: '', cod_vendedor: '', nome_vendedor: '', observacao: '' });
@@ -91,7 +89,6 @@ function NovaRequisicaoDialog({ open, onOpenChange, onCreate }: { open: boolean;
           <DialogTitle className="text-lg font-barlow">Nova Requisição</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
-          {/* Ocorrência */}
           <div className="space-y-1.5">
             <Label className="text-xs font-bold uppercase text-muted-foreground">Tipo de Ocorrência *</Label>
             <Select value={form.ocorrencia} onValueChange={v => update('ocorrencia', v)}>
@@ -167,11 +164,10 @@ function NovaRequisicaoDialog({ open, onOpenChange, onCreate }: { open: boolean;
   );
 }
 
-function DetalheSheet({ item, open, onOpenChange, onAuthorize, canAuthorize, onUpdateLink, onBaixa, onAddPayment }: {
+function DetalheSheet({ item, open, onOpenChange, onAuthorize, canAuthorize, onUpdateLink, onAddPayment }: {
   item: any; open: boolean; onOpenChange: (v: boolean) => void;
   onAuthorize: (id: string) => void; canAuthorize: boolean;
   onUpdateLink: (id: string, link: string) => void;
-  onBaixa: (id: string) => void;
   onAddPayment: (clientePrazoId: string, valor: number, obs: string) => void;
 }) {
   const [linkInput, setLinkInput] = useState('');
@@ -183,9 +179,8 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, canAuthorize, onU
   if (!item) return null;
   const saldo = (item.valor || 0) - (item.valor_pago || 0);
   const isPosterior = item.ocorrencia === 'pagar_posteriormente';
-  const isLink = item.ocorrencia === 'link_pagamento';
   const needsAuth = isPosterior && item.status === 'aguardando_autorizacao';
-  const isLiquidado = item.status === 'liquidado';
+  const isConcluido = item.status === 'concluido';
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -195,8 +190,6 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, canAuthorize, onU
     const { error } = await supabase.storage.from('requisicoes-prazo').upload(path, file);
     if (error) { toast.error('Erro no upload'); setUploading(false); return; }
     const { data: urlData } = supabase.storage.from('requisicoes-prazo').getPublicUrl(path);
-    onUpdateLink(item.id, ''); // trigger refresh
-    // Save URL to foto_requisicao_url
     await (supabase as any).from('clientes_prazo').update({ foto_requisicao_url: urlData.publicUrl, updated_at: new Date().toISOString() }).eq('id', item.id);
     toast.success('Requisição assinada enviada');
     setUploading(false);
@@ -218,7 +211,7 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, canAuthorize, onU
         </SheetHeader>
         <div className="space-y-5 mt-6">
           <div className="flex items-center gap-3 flex-wrap">
-            <Badge className={cn('text-xs', statusColors[item.status])}>{statusLabels[item.status] || item.status}</Badge>
+            <Badge className={cn('text-xs', statusColors[item.status] || 'bg-muted text-muted-foreground')}>{statusLabels[item.status] || item.status}</Badge>
             <Badge variant="outline" className="text-xs">{ocorrenciaLabels[item.ocorrencia] || item.ocorrencia}</Badge>
           </div>
 
@@ -271,28 +264,31 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, canAuthorize, onU
 
           <Separator />
 
-          <div>
-            <p className="text-xs text-muted-foreground uppercase font-bold">Prazo para Cobrar</p>
-            <p className="text-sm">{item.prazo_cobrar ? format(new Date(item.prazo_cobrar), 'dd/MM/yyyy') : '—'}</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs text-muted-foreground uppercase font-bold">Prazo para Cobrar</p>
+              <p className="text-sm">{item.prazo_cobrar ? format(new Date(item.prazo_cobrar), 'dd/MM/yyyy') : '—'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground uppercase font-bold">Data Lançamento</p>
+              <p className="text-sm">{item.data_hora_lancamento ? format(new Date(item.data_hora_lancamento), 'dd/MM/yyyy HH:mm') : '—'}</p>
+            </div>
           </div>
 
-          <div>
-            <p className="text-xs text-muted-foreground uppercase font-bold">Data Lançamento</p>
-            <p className="text-sm">{item.data_hora_lancamento ? format(new Date(item.data_hora_lancamento), 'dd/MM/yyyy HH:mm') : '—'}</p>
-          </div>
-
-          {/* Link de pagamento */}
+          {/* Link de pagamento - financeiro preenche */}
           <div className="space-y-1.5">
             <p className="text-xs text-muted-foreground uppercase font-bold">Link de Pagamento</p>
             {item.link_pagamento ? (
               <a href={item.link_pagamento} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline break-all">{item.link_pagamento}</a>
-            ) : (
+            ) : item.status === 'aguardando_link' ? (
               <div className="flex gap-2">
                 <Input placeholder="Cole o link aqui" value={linkInput} onChange={e => setLinkInput(e.target.value)} className="text-sm" />
                 <Button size="sm" variant="outline" onClick={() => { if (linkInput.trim()) { onUpdateLink(item.id, linkInput.trim()); setLinkInput(''); } }}>
                   <Link2 className="w-4 h-4" />
                 </Button>
               </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">—</p>
             )}
           </div>
 
@@ -314,32 +310,26 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, canAuthorize, onU
 
           <Separator />
 
-          {/* Ações do Financeiro */}
-          {!isLiquidado && (
+          {/* Ações do Financeiro - registrar pagamento */}
+          {!isConcluido && item.status === 'aguardando_pagamento' && (
             <div className="space-y-3 bg-muted/30 rounded-lg p-4 border">
               <p className="text-xs text-muted-foreground uppercase font-bold">Ações do Financeiro</p>
-
-              {isLink && item.link_pagamento && (
-                <Button className="w-full gap-2" onClick={() => onBaixa(item.id)}>
-                  <Download className="w-4 h-4" /> Baixar Requisição (Link Pago)
-                </Button>
-              )}
-
-              {isPosterior && (item.status === 'autorizado' || item.status === 'aberto') && (
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold">Registrar Pagamento</p>
-                  <div className="flex gap-2">
-                    <Input type="number" step="0.01" placeholder="Valor pago (R$)" value={valorPago} onChange={e => setValorPago(e.target.value)} className="text-sm" />
-                    <Button size="sm" onClick={handlePaymentSubmit}>Registrar</Button>
-                  </div>
-                  <Input placeholder="Observação (opcional)" value={obsPagamento} onChange={e => setObsPagamento(e.target.value)} className="text-sm" />
-                  {saldo <= 0 ? null : (
-                    <Button variant="outline" className="w-full gap-2 mt-2" onClick={() => onBaixa(item.id)}>
-                      <Download className="w-4 h-4" /> Baixar Requisição
-                    </Button>
-                  )}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold">Registrar Pagamento</p>
+                <div className="flex gap-2">
+                  <Input type="number" step="0.01" placeholder="Valor pago (R$)" value={valorPago} onChange={e => setValorPago(e.target.value)} className="text-sm" />
+                  <Button size="sm" onClick={handlePaymentSubmit} className="gap-1">
+                    <CreditCard className="w-3.5 h-3.5" /> Registrar
+                  </Button>
                 </div>
-              )}
+                <Input placeholder="Observação (opcional)" value={obsPagamento} onChange={e => setObsPagamento(e.target.value)} className="text-sm" />
+              </div>
+            </div>
+          )}
+
+          {isConcluido && (
+            <div className="bg-success/10 border border-success/30 rounded-lg p-3 text-sm text-success font-medium text-center">
+              ✅ Requisição concluída — Pagamento recebido
             </div>
           )}
 
@@ -364,7 +354,6 @@ export default function ClientesPrazoPage() {
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  // Supervisor de vendas can authorize
   const isSupervisor = profile?.role === 'master' || profile?.role === 'admin' || (profile?.nome?.toLowerCase().includes('supervisor'));
 
   const filtered = useMemo(() => {
@@ -378,20 +367,46 @@ export default function ClientesPrazoPage() {
     });
   }, [requisicoes, search, statusFilter]);
 
-  const totalAberto = filtered.filter((r: any) => r.status === 'aberto' || r.status === 'aguardando_autorizacao' || r.status === 'autorizado').length;
-  const valorTotal = filtered.reduce((acc: number, r: any) => acc + (r.valor || 0), 0);
-  const vencidos = filtered.filter((r: any) => r.status === 'vencido').length;
-  const liquidados = filtered.filter((r: any) => r.status === 'liquidado').length;
+  // Metrics
+  const aguardandoLink = filtered.filter((r: any) => r.status === 'aguardando_link').length;
+  const aguardandoPagamento = filtered.filter((r: any) => r.status === 'aguardando_pagamento' || r.status === 'aguardando_autorizacao').length;
+  const concluidos = filtered.filter((r: any) => r.status === 'concluido').length;
+
+  // Saldo devedor: sum of (valor - valor_pago) for non-concluido items
+  const saldoDevedor = filtered
+    .filter((r: any) => r.status !== 'concluido')
+    .reduce((acc: number, r: any) => acc + ((r.valor || 0) - (r.valor_pago || 0)), 0);
 
   const handleAuthorize = (id: string) => {
-    update.mutate({ id, status: 'autorizado', autorizado_por: profile?.nome || 'Supervisor' }, {
-      onSuccess: () => { toast.success('Requisição autorizada'); setSelectedItem(null); },
+    update.mutate({ id, status: 'aguardando_pagamento', autorizado_por: profile?.nome || 'Supervisor' }, {
+      onSuccess: () => { toast.success('Requisição autorizada — aguardando pagamento'); setSelectedItem(null); },
     });
   };
 
   const handleUpdateLink = (id: string, link: string) => {
-    update.mutate({ id, link_pagamento: link }, {
-      onSuccess: () => { toast.success('Link de pagamento salvo'); setSelectedItem(null); },
+    // When financeiro inserts link → status changes to aguardando_pagamento
+    update.mutate({ id, link_pagamento: link, status: 'aguardando_pagamento' }, {
+      onSuccess: () => { toast.success('Link salvo — status alterado para Aguardando Pagamento'); setSelectedItem(null); },
+    });
+  };
+
+  const handleAddPayment = (clientePrazoId: string, valor: number, _obs: string) => {
+    const item = requisicoes.find((r: any) => r.id === clientePrazoId);
+    if (!item) return;
+    const currentPago = (item as any).valor_pago || 0;
+    const newPago = currentPago + valor;
+    const totalValor = (item as any).valor || 0;
+    // If fully paid → concluido
+    const newStatus = newPago >= totalValor ? 'concluido' : 'aguardando_pagamento';
+    update.mutate({ id: clientePrazoId, valor_pago: newPago, status: newStatus, updated_at: new Date().toISOString() }, {
+      onSuccess: () => {
+        if (newStatus === 'concluido') {
+          toast.success('Pagamento registrado — Requisição concluída!');
+        } else {
+          toast.success(`Pagamento de R$ ${valor.toFixed(2)} registrado — Saldo restante: R$ ${(totalValor - newPago).toFixed(2)}`);
+        }
+        setSelectedItem(null);
+      },
     });
   };
 
@@ -417,11 +432,45 @@ export default function ClientesPrazoPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <MetricCard title="Em Aberto" value={totalAberto} subtitle="requisições ativas" icon={Clock} variant="warning" delay={0} />
-        <MetricCard title="Valor Total" value={`R$ ${valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} subtitle="a receber" icon={DollarSign} variant="info" delay={0.08} />
-        <MetricCard title="Vencidas" value={vencidos} subtitle="aguardando cobrança" icon={AlertTriangle} variant="danger" delay={0.16} />
-        <MetricCard title="Liquidadas" value={liquidados} subtitle="pagas" icon={CheckCircle} variant="success" delay={0.24} />
+        <MetricCard title="Aguardando Link" value={aguardandoLink} subtitle="financeiro gerar link" icon={Clock} variant="warning" delay={0} />
+        <MetricCard title="Aguardando Pagamento" value={aguardandoPagamento} subtitle="link ou posterior" icon={DollarSign} variant="info" delay={0.08} />
+        <MetricCard title="Saldo Devedor" value={`R$ ${saldoDevedor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} subtitle="a receber" icon={AlertTriangle} variant="danger" delay={0.16} />
+        <MetricCard title="Concluídos" value={concluidos} subtitle="pagos" icon={CheckCircle} variant="success" delay={0.24} />
       </div>
+
+      {/* Cards de saldo pendente por cliente */}
+      {(() => {
+        const clientesComSaldo = filtered
+          .filter((r: any) => r.status !== 'concluido' && (r.valor_pago || 0) > 0 && (r.valor_pago || 0) < (r.valor || 0))
+          .map((r: any) => ({
+            id: r.id,
+            requisicao: r.requisicao,
+            nome_cliente: r.nome_cliente,
+            valor: r.valor,
+            valor_pago: r.valor_pago,
+            saldo: (r.valor || 0) - (r.valor_pago || 0),
+          }));
+        if (clientesComSaldo.length === 0) return null;
+        return (
+          <div className="card-base p-4 border-warning/30 bg-warning/5">
+            <p className="text-xs font-bold uppercase text-muted-foreground mb-3 flex items-center gap-2">
+              <CreditCard className="w-4 h-4 text-warning" /> Clientes com Saldo Pendente
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {clientesComSaldo.map((c) => (
+                <div key={c.id} className="bg-background rounded-lg border p-3 space-y-1">
+                  <p className="text-sm font-semibold">{c.nome_cliente}</p>
+                  <p className="text-xs text-muted-foreground">Req: {c.requisicao}</p>
+                  <div className="flex justify-between text-xs">
+                    <span>Pago: <span className="text-success font-mono">R$ {(c.valor_pago || 0).toFixed(2)}</span></span>
+                    <span>Saldo: <span className="text-destructive font-mono font-bold">R$ {c.saldo.toFixed(2)}</span></span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       <div className="card-base p-5">
         <div className="flex items-center justify-between mb-4">
@@ -444,7 +493,7 @@ export default function ClientesPrazoPage() {
           onBulkDelete={handleBulkDelete}
         >
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px] h-8 text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectTrigger className="w-[200px] h-8 text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os status</SelectItem>
               {Object.entries(statusLabels).map(([k, v]) => (
@@ -466,6 +515,7 @@ export default function ClientesPrazoPage() {
                 <TableHead>CLIENTE</TableHead>
                 <TableHead>VENDEDOR</TableHead>
                 <TableHead className="text-right">VALOR</TableHead>
+                <TableHead className="text-right">SALDO</TableHead>
                 <TableHead>COBRAR EM</TableHead>
                 <TableHead>STATUS</TableHead>
                 <TableHead className="w-10" />
@@ -473,36 +523,48 @@ export default function ClientesPrazoPage() {
             </TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={9} className="text-center py-12 text-muted-foreground">Nenhuma requisição encontrada</TableCell></TableRow>
+                <TableRow><TableCell colSpan={10} className="text-center py-12 text-muted-foreground">Nenhuma requisição encontrada</TableCell></TableRow>
               ) : (
-                filtered.map((req: any, i: number) => (
-                  <motion.tr
-                    key={req.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: i * 0.02 }}
-                    className="border-b hover:bg-table-hover transition-colors cursor-pointer"
-                    onClick={() => setSelectedItem(req)}
-                  >
-                    <TableCell onClick={e => e.stopPropagation()}>
-                      <Checkbox checked={selectedIds.has(req.id)} onCheckedChange={() => toggleSelect(req.id)} />
-                    </TableCell>
-                    <TableCell className="font-mono-data text-sm">{req.requisicao}</TableCell>
-                    <TableCell className="text-xs">{ocorrenciaLabels[req.ocorrencia] || req.ocorrencia || '—'}</TableCell>
-                    <TableCell className="text-sm font-medium">{req.nome_cliente}</TableCell>
-                    <TableCell className="text-sm text-primary font-medium">{req.nome_vendedor || '—'}</TableCell>
-                    <TableCell className="text-right font-mono-data text-sm">R$ {(req.valor || 0).toFixed(2)}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{req.prazo_cobrar ? format(new Date(req.prazo_cobrar), 'dd/MM/yyyy') : '—'}</TableCell>
-                    <TableCell>
-                      <Badge className={cn('text-xs', statusColors[req.status])}>{statusLabels[req.status] || req.status}</Badge>
-                    </TableCell>
-                    <TableCell onClick={e => e.stopPropagation()}>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => remove.mutate(req.id)}>
-                        <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                      </Button>
-                    </TableCell>
-                  </motion.tr>
-                ))
+                filtered.map((req: any, i: number) => {
+                  const saldoRow = (req.valor || 0) - (req.valor_pago || 0);
+                  return (
+                    <motion.tr
+                      key={req.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: i * 0.02 }}
+                      className="border-b hover:bg-table-hover transition-colors cursor-pointer"
+                      onClick={() => setSelectedItem(req)}
+                    >
+                      <TableCell onClick={e => e.stopPropagation()}>
+                        <Checkbox checked={selectedIds.has(req.id)} onCheckedChange={() => toggleSelect(req.id)} />
+                      </TableCell>
+                      <TableCell className="font-mono-data text-sm">{req.requisicao}</TableCell>
+                      <TableCell className="text-xs">{ocorrenciaLabels[req.ocorrencia] || req.ocorrencia || '—'}</TableCell>
+                      <TableCell className="text-sm font-medium">{req.nome_cliente}</TableCell>
+                      <TableCell className="text-sm text-primary font-medium">{req.nome_vendedor || '—'}</TableCell>
+                      <TableCell className="text-right font-mono-data text-sm">R$ {(req.valor || 0).toFixed(2)}</TableCell>
+                      <TableCell className="text-right font-mono-data text-sm">
+                        {req.status === 'concluido' ? (
+                          <span className="text-success">R$ 0,00</span>
+                        ) : saldoRow > 0 && saldoRow < (req.valor || 0) ? (
+                          <span className="text-destructive font-bold">R$ {saldoRow.toFixed(2)}</span>
+                        ) : (
+                          <span>R$ {saldoRow.toFixed(2)}</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{req.prazo_cobrar ? format(new Date(req.prazo_cobrar), 'dd/MM/yyyy') : '—'}</TableCell>
+                      <TableCell>
+                        <Badge className={cn('text-xs', statusColors[req.status] || 'bg-muted text-muted-foreground')}>{statusLabels[req.status] || req.status}</Badge>
+                      </TableCell>
+                      <TableCell onClick={e => e.stopPropagation()}>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => remove.mutate(req.id)}>
+                          <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                        </Button>
+                      </TableCell>
+                    </motion.tr>
+                  );
+                })
               )}
             </TableBody>
           </Table>
@@ -517,18 +579,7 @@ export default function ClientesPrazoPage() {
         onAuthorize={handleAuthorize}
         canAuthorize={isSupervisor}
         onUpdateLink={handleUpdateLink}
-        onBaixa={(id: string) => {
-          update.mutate({ id, status: 'liquidado' }, {
-            onSuccess: () => { toast.success('Requisição baixada com sucesso'); setSelectedItem(null); },
-          });
-        }}
-        onAddPayment={(clientePrazoId: string, valor: number, obs: string) => {
-          const currentPago = selectedItem?.valor_pago || 0;
-          const newPago = currentPago + valor;
-          update.mutate({ id: clientePrazoId, valor_pago: newPago, updated_at: new Date().toISOString() }, {
-            onSuccess: () => { toast.success(`Pagamento de R$ ${valor.toFixed(2)} registrado`); setSelectedItem(null); },
-          });
-        }}
+        onAddPayment={handleAddPayment}
       />
     </div>
   );
