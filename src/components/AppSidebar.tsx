@@ -130,24 +130,26 @@ export function AppSidebar() {
 
   const renderMasterSidebar = () => (
     <div className="space-y-1">
-      <motion.button
-        onClick={() => navigate('/master')}
-        whileHover={{ x: 4 }}
-        onContextMenu={e => handleContextMenu(e, '/master')}
-        className={cn(
-          'relative flex items-center w-full gap-3 px-4 py-2.5 text-sm transition-colors',
-          'hover:bg-sidebar-accent/10',
-          isActive('/master')
-            ? 'text-primary bg-[hsl(25_95%_55%/0.15)]'
-            : 'text-sidebar-foreground'
-        )}
-      >
-        {isActive('/master') && (
-          <motion.div layoutId="activeIndicator" className="absolute left-0 top-0 bottom-0 w-[3px] bg-primary rounded-r" />
-        )}
-        <LayoutDashboard className="w-4 h-4 shrink-0" />
-        {!collapsed && <span className="font-medium text-[13px]">Dashboard Master</span>}
-      </motion.button>
+      {isMaster && (
+        <motion.button
+          onClick={() => navigate('/master')}
+          whileHover={{ x: 4 }}
+          onContextMenu={e => handleContextMenu(e, '/master')}
+          className={cn(
+            'relative flex items-center w-full gap-3 px-4 py-2.5 text-sm transition-colors',
+            'hover:bg-sidebar-accent/10',
+            isActive('/master')
+              ? 'text-primary bg-[hsl(25_95%_55%/0.15)]'
+              : 'text-sidebar-foreground'
+          )}
+        >
+          {isActive('/master') && (
+            <motion.div layoutId="activeIndicator" className="absolute left-0 top-0 bottom-0 w-[3px] bg-primary rounded-r" />
+          )}
+          <LayoutDashboard className="w-4 h-4 shrink-0" />
+          {!collapsed && <span className="font-medium text-[13px]">Dashboard Master</span>}
+        </motion.button>
+      )}
 
       {!collapsed && MASTER_SIDEBAR_GROUPS.map(group => {
         const groupKey = group.setor || group.label;
