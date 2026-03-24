@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import { exportToExcel } from '@/lib/export-utils';
 import {
   Plus, Search, Package, Clock, Truck, CheckCircle2, XCircle,
-  AlertTriangle, RotateCcw, Edit, Download, Upload, FileUp,
+  AlertTriangle, RotateCcw, Edit, Download, Upload, FileUp, Trash2,
 } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
 import * as XLSX from 'xlsx';
