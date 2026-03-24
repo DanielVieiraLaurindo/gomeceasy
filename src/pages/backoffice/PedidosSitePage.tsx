@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import { exportToExcel } from '@/lib/export-utils';
 import {
   Plus, Search, Package, Clock, Truck, CheckCircle2, XCircle,
-  AlertTriangle, RotateCcw, Edit, Download, Upload, FileUp,
+  AlertTriangle, RotateCcw, Edit, Download, Upload, FileUp, Trash2,
 } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
 import * as XLSX from 'xlsx';
@@ -66,6 +66,8 @@ export default function PedidosSitePage() {
   const [editDialog, setEditDialog] = useState<PedidoSite | null>(null);
   const [newDialog, setNewDialog] = useState(false);
   const [formData, setFormData] = useState<Partial<PedidoSite>>({});
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
 
   const fetchPedidos = useCallback(async () => {
@@ -180,6 +182,39 @@ export default function PedidosSitePage() {
     if (error) { toast.error('Erro ao excluir'); return; }
     toast.success('Pedido excluído');
     fetchPedidos();
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    setDeleting(true);
+    try {
+      const ids = Array.from(selectedIds);
+      const { error } = await (supabase as any).from('pedidos_site').delete().in('id', ids);
+      if (error) throw error;
+      toast.success(`${ids.length} pedido(s) excluído(s)`);
+      setSelectedIds(new Set());
+      fetchPedidos();
+    } catch {
+      toast.error('Erro ao excluir pedidos');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filtered.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map(p => p.id)));
+    }
   };
 
   const handleExport = () => {
@@ -347,13 +382,27 @@ export default function PedidosSitePage() {
       {/* Table */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg flex items-center gap-2"><Package className="w-5 h-5" />Pedidos ({filtered.length})</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg flex items-center gap-2"><Package className="w-5 h-5" />Pedidos ({filtered.length})</CardTitle>
+            {selectedIds.size > 0 && (
+              <Button variant="destructive" size="sm" disabled={deleting} onClick={handleBulkDelete} className="gap-2">
+                <Trash2 className="w-4 h-4" />
+                Excluir {selectedIds.size} selecionado(s)
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={filtered.length > 0 && selectedIds.size === filtered.length}
+                      onCheckedChange={toggleSelectAll}
+                    />
+                  </TableHead>
                   <TableHead>ID Site</TableHead>
                   <TableHead>ID Signus</TableHead>
                   <TableHead>Faturar?</TableHead>
@@ -373,15 +422,18 @@ export default function PedidosSitePage() {
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={15} className="text-center py-8 text-muted-foreground">Carregando...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={16} className="text-center py-8 text-muted-foreground">Carregando...</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={15} className="text-center py-8 text-muted-foreground">Nenhum pedido encontrado</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={16} className="text-center py-8 text-muted-foreground">Nenhum pedido encontrado</TableCell></TableRow>
                 ) : filtered.map(p => {
                   const statusConf = STATUS_CONFIG[p.status as PedidoStatus] || STATUS_CONFIG.pendente;
                   const atrasado = isEntregaAtrasada(p);
                   const rastreioLink = getRastreioLink(p.codigo_rastreio);
                   return (
-                    <TableRow key={p.id} className={`cursor-pointer hover:bg-muted/50 ${atrasado ? 'bg-destructive/5' : ''}`} onClick={() => openEdit(p)}>
+                    <TableRow key={p.id} className={`cursor-pointer hover:bg-muted/50 ${atrasado ? 'bg-destructive/5' : ''} ${selectedIds.has(p.id) ? 'bg-primary/5' : ''}`} onClick={() => openEdit(p)}>
+                      <TableCell onClick={e => e.stopPropagation()}>
+                        <Checkbox checked={selectedIds.has(p.id)} onCheckedChange={() => toggleSelect(p.id)} />
+                      </TableCell>
                       <TableCell className="font-mono text-xs">{p.numero_pedido_site}</TableCell>
                       <TableCell className="font-mono text-xs">{p.pedido_id_erp}</TableCell>
                       <TableCell>
