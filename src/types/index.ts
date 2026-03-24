@@ -4,6 +4,7 @@ export type UserRole = 'master' | 'admin' | 'usuario';
 export type AppSetor =
   | 'pos_vendas' | 'pre_vendas' | 'criacao' | 'backoffice'
   | 'compras' | 'ti' | 'garantia_loja' | 'garantia_ecommerce' | 'financeiro_fiscal'
+  | 'financeiro' | 'fiscal'
   | 'expedicao_loja' | 'expedicao_ecommerce';
 
 export const ROLE_LABELS: Record<UserRole, string> = {
