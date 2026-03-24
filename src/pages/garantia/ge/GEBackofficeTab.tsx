@@ -415,7 +415,7 @@ export default function GEBackofficeTab() {
               </TableHeader>
               <TableBody>
                 {filteredCases.length === 0 ? (
-                  <TableRow><TableCell colSpan={11} className="text-center py-12 text-muted-foreground">Nenhum caso encontrado</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={activeTab === 'fullfilment' ? 13 : 11} className="text-center py-12 text-muted-foreground">Nenhum caso encontrado</TableCell></TableRow>
                 ) : filteredCases.map(c => (
                   <TableRow key={c.id} className={cn("hover:bg-table-hover cursor-pointer", selectedIds.has(c.id) && "bg-primary/5")}>
                     <TableCell onClick={e => e.stopPropagation()}>
