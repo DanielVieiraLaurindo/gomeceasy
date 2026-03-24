@@ -511,10 +511,12 @@ export type Database = {
           data_hora_lancamento: string
           foto_requisicao_url: string | null
           id: string
+          link_pagamento: string | null
           motivo_prazo: string | null
           nome_cliente: string
           nome_vendedor: string | null
           observacao: string | null
+          ocorrencia: string
           prazo_cobrar: string | null
           requisicao: string
           status: string
@@ -532,10 +534,12 @@ export type Database = {
           data_hora_lancamento?: string
           foto_requisicao_url?: string | null
           id?: string
+          link_pagamento?: string | null
           motivo_prazo?: string | null
           nome_cliente: string
           nome_vendedor?: string | null
           observacao?: string | null
+          ocorrencia?: string
           prazo_cobrar?: string | null
           requisicao: string
           status?: string
@@ -553,10 +557,12 @@ export type Database = {
           data_hora_lancamento?: string
           foto_requisicao_url?: string | null
           id?: string
+          link_pagamento?: string | null
           motivo_prazo?: string | null
           nome_cliente?: string
           nome_vendedor?: string | null
           observacao?: string | null
+          ocorrencia?: string
           prazo_cobrar?: string | null
           requisicao?: string
           status?: string
