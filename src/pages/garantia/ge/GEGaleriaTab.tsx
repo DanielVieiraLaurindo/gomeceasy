@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Search, Camera, X, ZoomIn } from 'lucide-react';
+import { Search, Camera, ZoomIn } from 'lucide-react';
 
 export default function GEGaleriaTab() {
   const [search, setSearch] = useState('');
@@ -19,15 +19,13 @@ export default function GEGaleriaTab() {
         .from('return_cases')
         .select('id, case_number, client_name, photo_product_1, photo_product_2, photo_product_3, photo_label, photo_package, status, case_type')
         .or('photo_product_1.neq.,photo_product_2.neq.,photo_product_3.neq.,photo_label.neq.,photo_package.neq.')
-        .order('created_at', { ascending: false })
-        .limit(200);
+        .order('created_at', { ascending: false });
       if (error) throw error;
 
       const { data: casePhotos } = await supabase
         .from('case_photos')
         .select('*')
-        .order('created_at', { ascending: false })
-        .limit(500);
+        .order('created_at', { ascending: false });
 
       const allPhotos: any[] = [];
 
