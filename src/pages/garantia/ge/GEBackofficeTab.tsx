@@ -160,23 +160,81 @@ export default function GEBackofficeTab() {
       const data = await file.arrayBuffer();
       const wb = XLSX.read(data);
       const ws = wb.Sheets[wb.SheetNames[0]];
-      const json = XLSX.utils.sheet_to_json<any>(ws);
-      let imported = 0;
-      for (const row of json) {
-        await supabase.from('return_cases').insert({
-          client_name: row['Cliente'] || row['client_name'] || '-',
-          sale_number: row['Venda'] || row['sale_number'] || '-',
-          case_type: row['Tipo'] || row['case_type'] || 'DEVOLUCAO',
-          status: 'aguardando_analise',
-          entry_date: row['Entrada'] || row['entry_date'] || new Date().toISOString().split('T')[0],
-          created_by: user?.id,
-          sent_to_backoffice: true,
-        } as any);
-        imported++;
+
+      // Try reading with header at row 6 (Mercado Livre spreadsheet format)
+      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+      let json: any[] = [];
+      const isMeliFormat = ws['A6'] || ws['T6'] || ws['AH6'];
+
+      if (isMeliFormat) {
+        // Mercado Livre format: header row 6 (0-indexed row 5)
+        json = XLSX.utils.sheet_to_json<any>(ws, { header: 1, range: 5 });
+        const headers = json[0] as string[];
+        const rows = json.slice(1);
+
+        // Map column indices
+        const colA = 0;   // N.º de venda
+        const colT = 19;  // SKU
+        const colAH = 33; // Comprador
+        const colAJ = 35; // CPF
+        const colBA = 52; // Número de rastreio
+
+        let imported = 0;
+        let errors = 0;
+        for (const row of rows) {
+          const arr = row as any[];
+          const saleNumber = arr[colA] ? String(arr[colA]).trim() : '';
+          if (!saleNumber) continue;
+
+          const { error } = await supabase.from('return_cases').insert({
+            sale_number: saleNumber,
+            product_sku: arr[colT] ? String(arr[colT]).trim() : '',
+            client_name: arr[colAH] ? String(arr[colAH]).trim() : '-',
+            client_document: arr[colAJ] ? String(arr[colAJ]).trim() : '',
+            fullfilment_tracking: arr[colBA] ? String(arr[colBA]).trim() : '',
+            marketplace: 'Mercado Livre',
+            marketplace_account: 'MELI_GOMEC',
+            case_type: 'DEVOLUCAO',
+            status: 'antecipado',
+            is_full: true,
+            entry_date: new Date().toISOString().split('T')[0],
+            created_by: user?.id,
+            sent_to_backoffice: true,
+          } as any);
+          if (error) { errors++; console.error('Import error:', error); }
+          else imported++;
+        }
+        toast.success(`${imported} casos importados${errors ? ` (${errors} erros)` : ''}`);
+      } else {
+        // Generic format with named columns
+        json = XLSX.utils.sheet_to_json<any>(ws);
+        let imported = 0;
+        for (const row of json) {
+          const saleNumber = row['N.º de venda'] || row['Venda'] || row['sale_number'] || row['Cliente'] || '';
+          if (!saleNumber) continue;
+          const { error } = await supabase.from('return_cases').insert({
+            client_name: row['Comprador'] || row['Cliente'] || row['client_name'] || '-',
+            client_document: row['CPF'] || row['client_document'] || '',
+            sale_number: String(saleNumber),
+            product_sku: row['SKU'] || row['product_sku'] || '',
+            fullfilment_tracking: row['Rastreio'] || row['fullfilment_tracking'] || '',
+            marketplace: 'Mercado Livre',
+            marketplace_account: 'MELI_GOMEC',
+            case_type: row['Tipo'] || 'DEVOLUCAO',
+            status: 'antecipado',
+            is_full: true,
+            entry_date: new Date().toISOString().split('T')[0],
+            created_by: user?.id,
+            sent_to_backoffice: true,
+          } as any);
+          if (!error) imported++;
+        }
+        toast.success(`${imported} casos importados`);
       }
-      toast.success(`${imported} casos importados`);
+
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (err) {
+      console.error('Import error:', err);
       toast.error('Erro ao importar arquivo');
     }
   };
@@ -331,6 +389,7 @@ export default function GEBackofficeTab() {
               <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
                 <Upload className="w-4 h-4 mr-1" />Importar Devoluções
               </Button>
+              <p className="text-xs text-muted-foreground">Planilha Mercado Livre (cabeçalho linha 6)</p>
             </div>
           )}
           <div className="card-base overflow-hidden">
@@ -343,6 +402,8 @@ export default function GEBackofficeTab() {
                   <TableHead>#</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Venda</TableHead>
+                  {activeTab === 'fullfilment' && <TableHead>SKU</TableHead>}
+                  {activeTab === 'fullfilment' && <TableHead>Rastreio</TableHead>}
                   <TableHead>Unidade</TableHead>
                   <TableHead>Marketplace</TableHead>
                   <TableHead>Tipo</TableHead>
@@ -354,7 +415,7 @@ export default function GEBackofficeTab() {
               </TableHeader>
               <TableBody>
                 {filteredCases.length === 0 ? (
-                  <TableRow><TableCell colSpan={11} className="text-center py-12 text-muted-foreground">Nenhum caso encontrado</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={activeTab === 'fullfilment' ? 13 : 11} className="text-center py-12 text-muted-foreground">Nenhum caso encontrado</TableCell></TableRow>
                 ) : filteredCases.map(c => (
                   <TableRow key={c.id} className={cn("hover:bg-table-hover cursor-pointer", selectedIds.has(c.id) && "bg-primary/5")}>
                     <TableCell onClick={e => e.stopPropagation()}>
@@ -368,6 +429,8 @@ export default function GEBackofficeTab() {
                       </div>
                     </TableCell>
                     <TableCell className="font-mono-data text-sm" onClick={() => setViewingCase(c)}>{c.sale_number || c.numero_pedido || '—'}</TableCell>
+                    {activeTab === 'fullfilment' && <TableCell className="font-mono-data text-xs" onClick={() => setViewingCase(c)}>{(c as any).product_sku || '—'}</TableCell>}
+                    {activeTab === 'fullfilment' && <TableCell className="font-mono-data text-xs" onClick={() => setViewingCase(c)}>{(c as any).fullfilment_tracking || '—'}</TableCell>}
                     <TableCell onClick={() => setViewingCase(c)}><Badge variant="outline" className="text-[10px]">{BUSINESS_UNIT_DISPLAY_LABELS[c.business_unit_cnpj || c.business_unit] || c.business_unit}</Badge></TableCell>
                     <TableCell className="text-sm" onClick={() => setViewingCase(c)}>{MARKETPLACE_ACCOUNT_LABELS[c.marketplace_account as MarketplaceAccount] || c.marketplace || '—'}</TableCell>
                     <TableCell onClick={() => setViewingCase(c)}><Badge variant="secondary" className="text-[10px]">{CASE_TYPE_LABELS[c.case_type] || c.case_type}</Badge></TableCell>
@@ -472,6 +535,9 @@ export default function GEBackofficeTab() {
                 <div className="grid grid-cols-2 gap-4">
                   <div><p className="text-xs text-muted-foreground">Cliente</p><p className="font-medium">{viewingCase.client_name}</p></div>
                   <div><p className="text-xs text-muted-foreground">Venda</p><p className="font-mono text-sm">{viewingCase.sale_number || viewingCase.numero_pedido || '—'}</p></div>
+                  <div><p className="text-xs text-muted-foreground">CPF/CNPJ</p><p className="font-mono text-sm">{viewingCase.client_document || '—'}</p></div>
+                  <div><p className="text-xs text-muted-foreground">SKU</p><p className="font-mono text-sm">{(viewingCase as any).product_sku || '—'}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Rastreio</p><p className="font-mono text-sm">{(viewingCase as any).fullfilment_tracking || '—'}</p></div>
                   <div><p className="text-xs text-muted-foreground">Tipo</p><Badge variant="secondary">{CASE_TYPE_LABELS[viewingCase.case_type]}</Badge></div>
                   <div><p className="text-xs text-muted-foreground">Marketplace</p><p>{MARKETPLACE_ACCOUNT_LABELS[viewingCase.marketplace_account as MarketplaceAccount] || viewingCase.marketplace || '—'}</p></div>
                   <div><p className="text-xs text-muted-foreground">Entrada</p><p>{viewingCase.entry_date ? format(new Date(viewingCase.entry_date), 'dd/MM/yyyy', { locale: ptBR }) : '—'}</p></div>
