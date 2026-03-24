@@ -251,6 +251,7 @@ export default function NovaRupturaPage() {
                           <TableHead>Canal</TableHead>
                           <TableHead>Qtd</TableHead>
                           <TableHead>Valor</TableHead>
+                          <TableHead>Status</TableHead>
                           <TableHead></TableHead>
                         </TableRow>
                       </TableHeader>
