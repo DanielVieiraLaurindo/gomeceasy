@@ -69,10 +69,10 @@ export interface Profile {
   created_at: string;
 }
 
-// Helper: can delete?
-export const canDelete = (role: UserRole) => role === 'master' || role === 'admin';
+// Helper: can delete? — all authenticated users can delete
+export const canDelete = (_role: UserRole) => true;
 export const canManageUsers = (role: UserRole) => role === 'master' || role === 'admin';
-export const canBulkDelete = (role: UserRole) => role === 'master' || role === 'admin';
+export const canBulkDelete = (_role: UserRole) => true;
 export const canSeeAll = (role: UserRole) => role === 'master' || role === 'admin';
 export const isMaster = (role: UserRole) => role === 'master';
 
