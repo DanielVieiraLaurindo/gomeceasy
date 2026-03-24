@@ -565,12 +565,12 @@ export default function ClientesPrazoPage() {
                       <TableCell className="text-sm text-primary font-medium">{req.nome_vendedor || '—'}</TableCell>
                       <TableCell className="text-right font-mono-data text-sm">R$ {(req.valor || 0).toFixed(2)}</TableCell>
                       <TableCell className="text-right font-mono-data text-sm">
-                        {req.status === 'concluido' ? (
-                          <span className="text-success">R$ 0,00</span>
-                        ) : saldoRow > 0 && saldoRow < (req.valor || 0) ? (
-                          <span className="text-destructive font-bold">R$ {saldoRow.toFixed(2)}</span>
+                        {saldoRow === 0 || req.status === 'concluido' ? (
+                          <span className="text-muted-foreground">R$ 0,00</span>
+                        ) : saldoRow > 0 ? (
+                          <span className="text-destructive font-bold">- R$ {saldoRow.toFixed(2)}</span>
                         ) : (
-                          <span>R$ {saldoRow.toFixed(2)}</span>
+                          <span className="text-success font-bold">+ R$ {Math.abs(saldoRow).toFixed(2)}</span>
                         )}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">{req.prazo_cobrar ? format(new Date(req.prazo_cobrar), 'dd/MM/yyyy') : '—'}</TableCell>
