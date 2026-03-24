@@ -429,6 +429,8 @@ export default function GEBackofficeTab() {
                       </div>
                     </TableCell>
                     <TableCell className="font-mono-data text-sm" onClick={() => setViewingCase(c)}>{c.sale_number || c.numero_pedido || '—'}</TableCell>
+                    {activeTab === 'fullfilment' && <TableCell className="font-mono-data text-xs" onClick={() => setViewingCase(c)}>{(c as any).product_sku || '—'}</TableCell>}
+                    {activeTab === 'fullfilment' && <TableCell className="font-mono-data text-xs" onClick={() => setViewingCase(c)}>{(c as any).fullfilment_tracking || '—'}</TableCell>}
                     <TableCell onClick={() => setViewingCase(c)}><Badge variant="outline" className="text-[10px]">{BUSINESS_UNIT_DISPLAY_LABELS[c.business_unit_cnpj || c.business_unit] || c.business_unit}</Badge></TableCell>
                     <TableCell className="text-sm" onClick={() => setViewingCase(c)}>{MARKETPLACE_ACCOUNT_LABELS[c.marketplace_account as MarketplaceAccount] || c.marketplace || '—'}</TableCell>
                     <TableCell onClick={() => setViewingCase(c)}><Badge variant="secondary" className="text-[10px]">{CASE_TYPE_LABELS[c.case_type] || c.case_type}</Badge></TableCell>
