@@ -22,6 +22,7 @@ interface PurchaseRequest {
 
 export default function UsoConsumoDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [requests, setRequests] = useState<PurchaseRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
