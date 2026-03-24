@@ -188,27 +188,24 @@ export default function PedidosSitePage() {
   };
 
   const handleDelete = async (id: string) => {
-    const { error } = await (supabase as any).from('pedidos_site').delete().eq('id', id);
-    if (error) { toast.error('Erro ao excluir'); return; }
+    const { error } = await supabase.from('pedidos_site' as any).delete().eq('id', id);
+    if (error) { console.error('Delete error:', error); toast.error('Erro ao excluir: ' + error.message); return; }
     toast.success('Pedido excluído');
-    fetchPedidos();
+    setPedidos(prev => prev.filter(p => p.id !== id));
   };
 
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
     setDeleting(true);
-    try {
-      const ids = Array.from(selectedIds);
-      const { error } = await (supabase as any).from('pedidos_site').delete().in('id', ids);
-      if (error) throw error;
+    const ids = Array.from(selectedIds);
+    const { error } = await supabase.from('pedidos_site' as any).delete().in('id', ids);
+    if (error) { console.error('Bulk delete error:', error); toast.error('Erro ao excluir: ' + error.message); }
+    else {
       toast.success(`${ids.length} pedido(s) excluído(s)`);
       setSelectedIds(new Set());
-      fetchPedidos();
-    } catch {
-      toast.error('Erro ao excluir pedidos');
-    } finally {
-      setDeleting(false);
+      setPedidos(prev => prev.filter(p => !ids.includes(p.id)));
     }
+    setDeleting(false);
   };
 
   const toggleSelect = (id: string) => {
