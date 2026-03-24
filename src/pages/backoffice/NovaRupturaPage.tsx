@@ -98,22 +98,51 @@ export default function NovaRupturaPage() {
     setImportedRows(prev => prev.filter(r => r._idx !== idx));
   };
 
+  const mapImportStatus = (rawStatus: string): string => {
+    const s = (rawStatus || '').toLowerCase().trim();
+    if (s.includes('revertid')) return 'revertida';
+    if (s.includes('cancelad')) return 'cancelada';
+    if (s.includes('aguardando compra') || s.includes('aguardando_compra')) return 'aguardando_compras';
+    if (s.includes('aguardando retorno') || s.includes('aguardando_retorno')) return 'aguardando_retorno_cliente';
+    if (s.includes('solicitado compra') || s.includes('solicitado_compra')) return 'solicitado_compra';
+    if (s.includes('solicitado transferencia') || s.includes('solicitado_transferencia') || s.includes('transferência')) return 'solicitado_transferencia';
+    return 'ruptura_identificada';
+  };
+
   const handleImportSave = async () => {
     if (!importedRows.length) { toast.error('Nenhuma linha para importar'); return; }
     const valid = importedRows.filter(r => r.numero_pedido && r.sku && r.produto);
     if (!valid.length) { toast.error('Nenhuma linha válida (pedido, SKU e produto obrigatórios)'); return; }
 
     setImporting(true);
-    const toInsert = valid.map(({ _idx, ...rest }) => ({
+
+    // Check for duplicates
+    const pedidoSkuPairs = valid.map(r => `${r.numero_pedido}|${r.sku}`);
+    const { data: existingRupturas } = await supabase.from('rupturas').select('numero_pedido, sku');
+    const existingSet = new Set((existingRupturas || []).map((r: any) => `${r.numero_pedido}|${r.sku}`));
+    const duplicates = valid.filter(r => existingSet.has(`${r.numero_pedido}|${r.sku}`));
+    const newItems = valid.filter(r => !existingSet.has(`${r.numero_pedido}|${r.sku}`));
+
+    if (duplicates.length > 0) {
+      toast.warning(`${duplicates.length} pedido(s) duplicado(s) ignorado(s)`);
+    }
+
+    if (newItems.length === 0) {
+      toast.error('Todos os pedidos já existem no sistema');
+      setImporting(false);
+      return;
+    }
+
+    const toInsert = newItems.map(({ _idx, ...rest }) => ({
       ...rest,
       created_by: user?.id,
-      status: 'ruptura_identificada',
+      status: mapImportStatus(rest.observacoes || ''),
     }));
 
     const { error } = await supabase.from('rupturas').insert(toInsert);
     setImporting(false);
     if (error) { toast.error('Erro ao importar: ' + error.message); return; }
-    toast.success(`${toInsert.length} rupturas importadas`);
+    toast.success(`${toInsert.length} rupturas importadas${duplicates.length > 0 ? ` (${duplicates.length} duplicadas ignoradas)` : ''}`);
     navigate('/backoffice/rupturas');
   };
 

@@ -72,12 +72,22 @@ export default function PedidosSitePage() {
 
   const fetchPedidos = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await (supabase as any)
-      .from('pedidos_site')
-      .select('*')
-      .order('criado_em', { ascending: false });
-    if (error) toast.error('Erro ao carregar pedidos');
-    setPedidos((data || []) as PedidoSite[]);
+    const allRows: PedidoSite[] = [];
+    const PAGE_SIZE = 1000;
+    let from = 0;
+    let hasMore = true;
+    while (hasMore) {
+      const { data, error } = await (supabase as any)
+        .from('pedidos_site')
+        .select('*')
+        .order('criado_em', { ascending: false })
+        .range(from, from + PAGE_SIZE - 1);
+      if (error) { toast.error('Erro ao carregar pedidos'); break; }
+      if (data) allRows.push(...(data as PedidoSite[]));
+      hasMore = (data?.length || 0) === PAGE_SIZE;
+      from += PAGE_SIZE;
+    }
+    setPedidos(allRows);
     setLoading(false);
   }, []);
 
