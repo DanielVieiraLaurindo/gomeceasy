@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useGarantiaCases, useCreateGarantiaCase, useDeleteGarantiaCase, useSendToBackoffice, useUpdateGarantiaCase, GarantiaCaseFilters } from '@/hooks/useGarantiaCases';
 import { ReturnCase, STATUS_LABELS, STATUS_CLASSES, CASE_TYPE_LABELS, BUSINESS_UNIT_DISPLAY_LABELS, MARKETPLACE_ACCOUNT_LABELS } from '@/types/garantia-ecommerce';
 import { useAuth } from '@/contexts/AuthContext';
@@ -17,7 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
-import { Plus, Headset, MoreHorizontal, Eye, Trash2, Send, Search, ArrowRight, AlertTriangle } from 'lucide-react';
+import { Plus, Headset, MoreHorizontal, Eye, Trash2, Send, Search, ArrowRight, AlertTriangle, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -34,7 +34,6 @@ function detectPixKeyType(key: string): string {
   if (!key) return '';
   const cleaned = key.replace(/[\s\-\.\/]/g, '');
   if (/^\d{11}$/.test(cleaned)) {
-    // Could be CPF or phone
     if (/^[1-9]{2}9/.test(cleaned)) return 'Telefone';
     return 'CPF';
   }
@@ -47,7 +46,7 @@ function detectPixKeyType(key: string): string {
 
 export default function GEPosVendasTab() {
   const { user } = useAuth();
-  const [filters, setFilters] = useState<GarantiaCaseFilters>({});
+  const [filters, setFilters] = useState<GarantiaCaseFilters>({ origemFilter: 'pos_vendas' });
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [viewingCase, setViewingCase] = useState<ReturnCase | null>(null);
   const [editingCase, setEditingCase] = useState<ReturnCase | null>(null);
@@ -56,6 +55,8 @@ export default function GEPosVendasTab() {
   const [unitTab, setUnitTab] = useState('SP');
   const [atendenteFilter, setAtendenteFilter] = useState('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [editFormData, setEditFormData] = useState<Record<string, any>>({});
 
   const { data: cases, isLoading } = useGarantiaCases(filters);
   const createCase = useCreateGarantiaCase();
@@ -72,7 +73,7 @@ export default function GEPosVendasTab() {
     product_description: '', is_company: false,
     numero_antecipacao: '', numero_cadastro_jacsys: '',
     reimbursement_value: '',
-    // Financial / reembolso fields
+    is_antecipado: false, is_jacsys: false,
     financial_type: '' as '' | 'reembolso' | 'ressarcimento_mo',
     chave_pix: '', chave_pix_tipo: '',
     titular_nome: '', instituicao: '',
@@ -85,9 +86,8 @@ export default function GEPosVendasTab() {
 
   const [formData, setFormData] = useState(defaultFormData);
   const [casePhotos, setCasePhotos] = useState<File[]>([]);
-  const photoInputRef = React.useRef<HTMLInputElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-detect PIX key type
   useEffect(() => {
     const tipo = detectPixKeyType(formData.chave_pix);
     if (tipo !== formData.chave_pix_tipo) {
@@ -113,13 +113,22 @@ export default function GEPosVendasTab() {
     return c.analyst_name === atendenteFilter;
   });
 
-  // Split into sub-tabs
   const activeCases = atendenteFiltered.filter(c => !['finalizado', 'arquivado', 'aguardando_conferencia', 'conferencia_garantia', 'analise_lider', 'analise_fiscal', 'financeiro_pagamento', 'pago', 'correcao_solicitada', 'em_reembolso', 'ressarcimento_mo'].includes(c.status));
   const emReembolsoCases = atendenteFiltered.filter(c => ['aguardando_conferencia', 'conferencia_garantia', 'analise_lider', 'analise_fiscal', 'financeiro_pagamento', 'pago', 'correcao_solicitada'].includes(c.status) && c.metodo_pagamento !== 'ressarcimento_mo');
   const ressarcimentoMOCases = atendenteFiltered.filter(c => c.metodo_pagamento === 'ressarcimento_mo');
   const archivedCases = atendenteFiltered.filter(c => ['finalizado', 'arquivado'].includes(c.status));
 
   const handleCreate = () => {
+    // Validate required fields
+    if (formData.is_antecipado && !formData.numero_antecipacao.trim()) {
+      toast.error('ID da Antecipação é obrigatório quando marcado como Antecipado');
+      return;
+    }
+    if (formData.is_jacsys && !formData.numero_cadastro_jacsys.trim()) {
+      toast.error('ID do Cadastro Jacsys é obrigatório quando marcado como Cadastrado no Jacsys');
+      return;
+    }
+
     const financialData: any = {};
     if (formData.financial_type) {
       financialData.chave_pix_valor = formData.chave_pix;
@@ -140,7 +149,6 @@ export default function GEPosVendasTab() {
         nf_garantia: formData.nf_garantia,
         numero_pedido: formData.numero_pedido_fin,
       };
-      // Set initial status based on type
       financialData.status = 'aguardando_conferencia';
     }
 
@@ -162,18 +170,16 @@ export default function GEPosVendasTab() {
       nf_requested: false,
       sent_to_backoffice: false,
       not_found_erp: false,
-      quantity: parseInt(formData.quantity) || 1,
       fullfilment_tracking: formData.fullfilment_tracking,
       product_description: formData.product_description,
-      numero_antecipacao: formData.numero_antecipacao,
-      numero_cadastro_jacsys: formData.numero_cadastro_jacsys,
+      numero_antecipacao: formData.is_antecipado ? formData.numero_antecipacao : '',
+      numero_cadastro_jacsys: formData.is_jacsys ? formData.numero_cadastro_jacsys : '',
       numero_pedido: formData.numero_pedido_fin,
       product_sku: formData.sku_produto,
       origem: 'pos_vendas',
       ...financialData,
     } as any, {
       onSuccess: async (data: any) => {
-        // Upload photos
         if (casePhotos.length > 0 && data?.id) {
           for (const photo of casePhotos) {
             const filePath = `${data.id}/${Date.now()}_${photo.name}`;
@@ -218,19 +224,82 @@ export default function GEPosVendasTab() {
     setSelectedIds(new Set());
   };
 
+  const openView = useCallback((c: ReturnCase) => {
+    setEditingCase(null);
+    setViewingCase(c);
+  }, []);
+
+  const openEdit = useCallback((c: ReturnCase) => {
+    setEditFormData({
+      client_name: c.client_name || '',
+      client_document: c.client_document || '',
+      sale_number: c.sale_number || '',
+      case_type: c.case_type || 'DEVOLUCAO',
+      status: c.status || 'aguardando_analise',
+      analyst_name: c.analyst_name || '',
+      analysis_reason: c.analysis_reason || '',
+      marketplace_account: c.marketplace_account || '',
+      business_unit: c.business_unit_cnpj || c.business_unit || '',
+      fullfilment_tracking: c.fullfilment_tracking || '',
+      product_description: c.product_description || '',
+      numero_antecipacao: (c as any).numero_antecipacao || '',
+      numero_cadastro_jacsys: (c as any).numero_cadastro_jacsys || '',
+    });
+    setEditingCase(c);
+    setViewingCase(c);
+  }, []);
+
+  const handleCardClick = useCallback((c: ReturnCase) => {
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+      openEdit(c);
+    } else {
+      clickTimerRef.current = setTimeout(() => {
+        clickTimerRef.current = null;
+        openView(c);
+      }, 300);
+    }
+  }, [openView, openEdit]);
+
+  const handleSaveEdit = () => {
+    if (!editingCase) return;
+    updateCase.mutate({
+      id: editingCase.id,
+      client_name: editFormData.client_name,
+      client_document: editFormData.client_document,
+      sale_number: editFormData.sale_number,
+      case_type: editFormData.case_type,
+      status: editFormData.status,
+      analyst_name: editFormData.analyst_name,
+      analysis_reason: editFormData.analysis_reason,
+      marketplace_account: editFormData.marketplace_account,
+      business_unit_cnpj: editFormData.business_unit,
+      fullfilment_tracking: editFormData.fullfilment_tracking,
+      product_description: editFormData.product_description,
+      numero_antecipacao: editFormData.numero_antecipacao,
+      numero_cadastro_jacsys: editFormData.numero_cadastro_jacsys,
+    }, {
+      onSuccess: () => { setViewingCase(null); setEditingCase(null); toast.success('Caso atualizado'); },
+    });
+  };
+
   const renderCaseCard = (c: ReturnCase) => (
-    <Card key={c.id} className={cn("hover:shadow-md transition-shadow border-l-4 border-l-primary/30", selectedIds.has(c.id) && "ring-2 ring-primary/30")}>
+    <Card key={c.id} className={cn("hover:shadow-md transition-shadow border-l-4 border-l-primary/30 cursor-pointer", selectedIds.has(c.id) && "ring-2 ring-primary/30")}
+      onClick={() => handleCardClick(c)}>
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
-          <Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => {
-            setSelectedIds(prev => { const n = new Set(prev); n.has(c.id) ? n.delete(c.id) : n.add(c.id); return n; });
-          }} className="mt-1" />
+          <div onClick={e => e.stopPropagation()}>
+            <Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => {
+              setSelectedIds(prev => { const n = new Set(prev); n.has(c.id) ? n.delete(c.id) : n.add(c.id); return n; });
+            }} className="mt-1" />
+          </div>
           <div className="flex-1 space-y-3">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-bold text-lg">#{c.case_number}</span>
               <Badge variant="outline" className="text-xs">{BUSINESS_UNIT_DISPLAY_LABELS[c.business_unit_cnpj || c.business_unit] || c.business_unit}</Badge>
               <Badge className={cn('text-xs', STATUS_CLASSES[c.status] || 'bg-muted text-muted-foreground')}>{STATUS_LABELS[c.status] || c.status}</Badge>
-              <span className="text-xs text-muted-foreground">📅 {c.entry_date ? format(new Date(c.entry_date), 'dd/MM/yyyy') : ''}</span>
+              <span className="text-xs text-muted-foreground">{c.entry_date ? format(new Date(c.entry_date), 'dd/MM/yyyy') : ''}</span>
               <Badge variant="secondary" className="text-xs">{CASE_TYPE_LABELS[c.case_type] || c.case_type}</Badge>
               {c.reimbursement_value && c.reimbursement_value > 0 && (
                 <Badge variant="outline" className="text-xs text-success border-success/30">R$ {c.reimbursement_value.toFixed(2)}</Badge>
@@ -244,16 +313,19 @@ export default function GEPosVendasTab() {
               <div><p className="text-muted-foreground text-xs">Criador</p><p>{c.creator_name || '—'}</p></div>
             </div>
             {c.product_description && <p className="text-xs text-muted-foreground">Produto: {c.product_description}</p>}
+            <p className="text-[10px] text-muted-foreground/60 italic">Clique 1x para visualizar, 2x para editar</p>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="w-4 h-4" /></Button></DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setViewingCase(c)}><Eye className="w-4 h-4 mr-2" />Visualizar</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { setEditingCase(c); setViewingCase(c); }}><Eye className="w-4 h-4 mr-2" />Editar</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleSendToBackoffice(c)}><ArrowRight className="w-4 h-4 mr-2" />Enviar p/ Backoffice</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setDeletingCase(c)} className="text-destructive"><Trash2 className="w-4 h-4 mr-2" />Excluir</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div onClick={e => e.stopPropagation()}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="w-4 h-4" /></Button></DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => openView(c)}><Eye className="w-4 h-4 mr-2" />Visualizar</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => openEdit(c)}><Pencil className="w-4 h-4 mr-2" />Editar</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleSendToBackoffice(c)}><ArrowRight className="w-4 h-4 mr-2" />Enviar p/ Backoffice</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setDeletingCase(c)} className="text-destructive"><Trash2 className="w-4 h-4 mr-2" />Excluir</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -338,10 +410,12 @@ export default function GEPosVendasTab() {
         <TabsContent value="arquivados">
           <div className="grid gap-4 mt-4">
             {archivedCases.map(c => (
-              <Card key={c.id} className="opacity-70 hover:opacity-100 transition-opacity">
+              <Card key={c.id} className="opacity-70 hover:opacity-100 transition-opacity cursor-pointer" onClick={() => handleCardClick(c)}>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
-                    <Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => setSelectedIds(prev => { const n = new Set(prev); n.has(c.id) ? n.delete(c.id) : n.add(c.id); return n; })} />
+                    <div onClick={e => e.stopPropagation()}>
+                      <Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => setSelectedIds(prev => { const n = new Set(prev); n.has(c.id) ? n.delete(c.id) : n.add(c.id); return n; })} />
+                    </div>
                     <span className="font-bold">#{c.case_number}</span>
                     <Badge className={cn('text-xs', STATUS_CLASSES[c.status])}>{STATUS_LABELS[c.status]}</Badge>
                     <span className="text-sm">{c.client_name}</span>
@@ -406,24 +480,38 @@ export default function GEPosVendasTab() {
                 <Label htmlFor="is_company">Pessoa Jurídica</Label>
               </div>
               <div className="flex items-center gap-2 px-3 py-1 rounded border border-warning/40 bg-warning/5">
-                <Checkbox id="antecipado" checked={!!formData.numero_antecipacao} onCheckedChange={v => setFormData(f => ({ ...f, numero_antecipacao: v ? ' ' : '' }))} />
+                <Checkbox id="antecipado" checked={formData.is_antecipado} onCheckedChange={v => setFormData(f => ({ ...f, is_antecipado: !!v, numero_antecipacao: !!v ? f.numero_antecipacao : '' }))} />
                 <Label htmlFor="antecipado" className="text-warning font-medium">Antecipado</Label>
               </div>
               <div className="flex items-center gap-2 px-3 py-1 rounded border border-success/40 bg-success/5">
-                <Checkbox id="jacsys" checked={!!formData.numero_cadastro_jacsys} onCheckedChange={v => setFormData(f => ({ ...f, numero_cadastro_jacsys: v ? ' ' : '' }))} />
-                <Label htmlFor="jacsys" className="text-success font-medium">Cadastro Jacsys</Label>
+                <Checkbox id="jacsys" checked={formData.is_jacsys} onCheckedChange={v => setFormData(f => ({ ...f, is_jacsys: !!v, numero_cadastro_jacsys: !!v ? f.numero_cadastro_jacsys : '' }))} />
+                <Label htmlFor="jacsys" className="text-success font-medium">Cadastrado no Jacsys</Label>
               </div>
             </div>
+
+            {formData.is_antecipado && (
+              <div className="border border-warning/30 rounded-lg p-3 bg-warning/5">
+                <Label className="text-warning font-medium">ID da Antecipação *</Label>
+                <Input value={formData.numero_antecipacao} onChange={e => setFormData(f => ({ ...f, numero_antecipacao: e.target.value }))} placeholder="Informe o ID da antecipação (obrigatório)" className="mt-1" />
+              </div>
+            )}
+
+            {formData.is_jacsys && (
+              <div className="border border-success/30 rounded-lg p-3 bg-success/5">
+                <Label className="text-success font-medium">ID do Cadastro Jacsys *</Label>
+                <Input value={formData.numero_cadastro_jacsys} onChange={e => setFormData(f => ({ ...f, numero_cadastro_jacsys: e.target.value }))} placeholder="Informe o ID do cadastro (obrigatório)" className="mt-1" />
+              </div>
+            )}
 
             {/* Financial Type Selection */}
             <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
               <Label className="text-base font-semibold">Dados Financeiros / Reembolso</Label>
               <div className="flex gap-3">
                 <Button type="button" variant={formData.financial_type === 'reembolso' ? 'default' : 'outline'} size="sm" onClick={() => setFormData(f => ({ ...f, financial_type: f.financial_type === 'reembolso' ? '' : 'reembolso' }))}>
-                  💰 Reembolso
+                  Reembolso
                 </Button>
                 <Button type="button" variant={formData.financial_type === 'ressarcimento_mo' ? 'default' : 'outline'} size="sm" onClick={() => setFormData(f => ({ ...f, financial_type: f.financial_type === 'ressarcimento_mo' ? '' : 'ressarcimento_mo' }))}>
-                  🔧 Ressarcimento M.O.
+                  Ressarcimento M.O.
                 </Button>
               </div>
 
@@ -522,18 +610,24 @@ export default function GEPosVendasTab() {
       {/* View/Edit Dialog */}
       <Dialog open={!!viewingCase} onOpenChange={() => { setViewingCase(null); setEditingCase(null); }}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-          {viewingCase && (
+          {viewingCase && !editingCase && (
             <>
-              <DialogHeader><DialogTitle>{editingCase ? 'Editar' : 'Visualizar'} Caso #{viewingCase.case_number}</DialogTitle></DialogHeader>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-3">
+                  Caso #{viewingCase.case_number}
+                  <Badge className={cn('text-xs', STATUS_CLASSES[viewingCase.status] || '')}>{STATUS_LABELS[viewingCase.status] || viewingCase.status}</Badge>
+                  <Button variant="outline" size="sm" className="ml-auto" onClick={() => openEdit(viewingCase)}><Pencil className="w-4 h-4 mr-1" />Editar</Button>
+                </DialogTitle>
+              </DialogHeader>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div><p className="text-muted-foreground text-xs">Cliente</p><p className="font-medium">{viewingCase.client_name}</p></div>
                 <div><p className="text-muted-foreground text-xs">CPF/CNPJ</p><p>{viewingCase.client_document || '—'}</p></div>
                 <div><p className="text-muted-foreground text-xs">Venda</p><p className="font-mono">{viewingCase.sale_number || '—'}</p></div>
                 <div><p className="text-muted-foreground text-xs">Tipo</p><Badge variant="secondary">{CASE_TYPE_LABELS[viewingCase.case_type]}</Badge></div>
                 <div><p className="text-muted-foreground text-xs">Marketplace</p><p>{MARKETPLACE_ACCOUNT_LABELS[viewingCase.marketplace_account as any] || viewingCase.marketplace || '—'}</p></div>
-                <div><p className="text-muted-foreground text-xs">Status</p><Badge className={cn('text-xs', STATUS_CLASSES[viewingCase.status] || '')}>{STATUS_LABELS[viewingCase.status] || viewingCase.status}</Badge></div>
                 <div><p className="text-muted-foreground text-xs">Atendente</p><p>{viewingCase.analyst_name || '—'}</p></div>
                 <div><p className="text-muted-foreground text-xs">Rastreio</p><p className="font-mono">{viewingCase.fullfilment_tracking || '—'}</p></div>
+                <div><p className="text-muted-foreground text-xs">Produto</p><p>{viewingCase.product_description || '—'}</p></div>
               </div>
               {viewingCase.chave_pix_valor && (
                 <div className="mt-4 p-3 rounded-lg bg-success/5 border border-success/20">
@@ -547,6 +641,69 @@ export default function GEPosVendasTab() {
                 </div>
               )}
               {viewingCase.analysis_reason && <div className="mt-4"><p className="text-xs text-muted-foreground">Observações</p><p className="text-sm bg-muted/50 p-3 rounded-lg mt-1">{viewingCase.analysis_reason}</p></div>}
+            </>
+          )}
+          {viewingCase && editingCase && (
+            <>
+              <DialogHeader><DialogTitle>Editar Caso #{editingCase.case_number}</DialogTitle></DialogHeader>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Cliente</Label><Input value={editFormData.client_name} onChange={e => setEditFormData(f => ({ ...f, client_name: e.target.value }))} /></div>
+                  <div><Label>CPF/CNPJ</Label><Input value={editFormData.client_document} onChange={e => setEditFormData(f => ({ ...f, client_document: e.target.value }))} /></div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Nº Venda</Label><Input value={editFormData.sale_number} onChange={e => setEditFormData(f => ({ ...f, sale_number: e.target.value }))} /></div>
+                  <div><Label>Rastreio</Label><Input value={editFormData.fullfilment_tracking} onChange={e => setEditFormData(f => ({ ...f, fullfilment_tracking: e.target.value }))} /></div>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div><Label>Tipo</Label>
+                    <Select value={editFormData.case_type} onValueChange={v => setEditFormData(f => ({ ...f, case_type: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="GARANTIA">Garantia</SelectItem>
+                        <SelectItem value="DEVOLUCAO">Devolução</SelectItem>
+                        <SelectItem value="DESCARTE">Descarte</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div><Label>Status</Label>
+                    <Select value={editFormData.status} onValueChange={v => setEditFormData(f => ({ ...f, status: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{Object.entries(STATUS_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div><Label>Atendente</Label>
+                    <Select value={editFormData.analyst_name} onValueChange={v => setEditFormData(f => ({ ...f, analyst_name: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{ATENDENTES.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Marketplace</Label>
+                    <Select value={editFormData.marketplace_account} onValueChange={v => setEditFormData(f => ({ ...f, marketplace_account: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{CANAIS_VENDA.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div><Label>Unidade</Label>
+                    <Select value={editFormData.business_unit} onValueChange={v => setEditFormData(f => ({ ...f, business_unit: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{UNIDADES.map(u => <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div><Label>Descrição Produto</Label><Input value={editFormData.product_description} onChange={e => setEditFormData(f => ({ ...f, product_description: e.target.value }))} /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>ID Antecipação</Label><Input value={editFormData.numero_antecipacao} onChange={e => setEditFormData(f => ({ ...f, numero_antecipacao: e.target.value }))} /></div>
+                  <div><Label>ID Cadastro Jacsys</Label><Input value={editFormData.numero_cadastro_jacsys} onChange={e => setEditFormData(f => ({ ...f, numero_cadastro_jacsys: e.target.value }))} /></div>
+                </div>
+                <div><Label>Observações</Label><Textarea value={editFormData.analysis_reason} onChange={e => setEditFormData(f => ({ ...f, analysis_reason: e.target.value }))} rows={3} /></div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setEditingCase(null)}>Cancelar</Button>
+                <Button onClick={handleSaveEdit} disabled={updateCase.isPending}>Salvar</Button>
+              </DialogFooter>
             </>
           )}
         </DialogContent>

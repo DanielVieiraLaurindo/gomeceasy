@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { useGarantiaCases, useUpdateGarantiaCase, useDeleteGarantiaCase, useCreateGarantiaCase, GarantiaCaseFilters } from '@/hooks/useGarantiaCases';
 import { ReturnCase, STATUS_LABELS, STATUS_CLASSES, CASE_TYPE_LABELS, BUSINESS_UNIT_DISPLAY_LABELS, CaseStatus, MARKETPLACE_ACCOUNT_LABELS, BUSINESS_UNIT_CNPJ_LABELS, MarketplaceAccount, CaseType } from '@/types/garantia-ecommerce';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -15,7 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Search, X, Store, Building2, Zap, MoreHorizontal, Eye, DollarSign, CheckSquare, Headphones, Plus, Download, Upload, ArrowRight, ListChecks, Trash2 } from 'lucide-react';
+import { Search, X, Store, Building2, Zap, MoreHorizontal, Eye, DollarSign, CheckSquare, Headphones, Plus, Download, Upload, ArrowRight, ListChecks, Trash2, LayoutGrid, List, Pencil, GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,27 +33,38 @@ const BACKOFFICE_TABS: { key: string; label: string; statuses: CaseStatus[] }[] 
   { key: 'finalizados', label: 'Finalizados', statuses: ['finalizado', 'arquivado'] },
 ];
 
+const KANBAN_COLUMNS: { key: string; label: string; status: CaseStatus; color: string }[] = [
+  { key: 'pendentes', label: 'Pendentes', status: 'aguardando_analise', color: 'border-t-warning' },
+  { key: 'sem_antecipacao', label: 'Sem Antecipação', status: 'em_analise', color: 'border-t-info' },
+  { key: 'antecipados', label: 'Antecipados', status: 'antecipado', color: 'border-t-purple-500' },
+  { key: 'em_mediacao', label: 'Em Mediação', status: 'em_mediacao', color: 'border-t-pink-500' },
+  { key: 'finalizados', label: 'Finalizados', status: 'finalizado', color: 'border-t-success' },
+];
+
 export default function GEBackofficeTab() {
   const { user } = useAuth();
-  const [filters, setFilters] = useState<GarantiaCaseFilters>({});
+  const [filters, setFilters] = useState<GarantiaCaseFilters>({ origemFilter: 'backoffice' });
   const [activeTab, setActiveTab] = useState('pendentes');
   const [searchInput, setSearchInput] = useState('');
   const [viewingCase, setViewingCase] = useState<ReturnCase | null>(null);
+  const [editingCase, setEditingCase] = useState<ReturnCase | null>(null);
+  const [editFormData, setEditFormData] = useState<Record<string, any>>({});
   const [reimbursementDialog, setReimbursementDialog] = useState<ReturnCase | null>(null);
   const [reimbursementValue, setReimbursementValue] = useState('');
   const [isNewCaseOpen, setIsNewCaseOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkAction, setBulkAction] = useState<'status' | 'type' | 'marketplace' | null>(null);
   const [bulkValue, setBulkValue] = useState('');
+  const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: allCases, isLoading } = useGarantiaCases(filters);
   const updateCase = useUpdateGarantiaCase();
   const createCase = useCreateGarantiaCase();
   const deleteCase = useDeleteGarantiaCase();
 
-  // New case form
   const [formData, setFormData] = useState({
     sale_number: '', marketplace_account: '' as string, business_unit_cnpj: '' as string,
     client_name: '', client_document: '', case_type: 'DEVOLUCAO' as string,
@@ -128,9 +141,9 @@ export default function GEBackofficeTab() {
       nf_requested: false,
       sent_to_backoffice: true,
       not_found_erp: false,
+      origem: 'backoffice',
     } as any, {
       onSuccess: async (data: any) => {
-        // Upload photos if any
         if (casePhotos.length > 0 && data?.id) {
           for (const photo of casePhotos) {
             const filePath = `${data.id}/${Date.now()}_${photo.name}`;
@@ -138,12 +151,8 @@ export default function GEBackofficeTab() {
             if (!uploadError) {
               const { data: urlData } = supabase.storage.from('case-photos').getPublicUrl(filePath);
               await supabase.from('case_photos').insert({
-                case_id: data.id,
-                photo_url: urlData.publicUrl,
-                photo_type: 'produto',
-                original_name: photo.name,
-                file_size: photo.size,
-                created_by: user?.id,
+                case_id: data.id, photo_url: urlData.publicUrl, photo_type: 'produto',
+                original_name: photo.name, file_size: photo.size, created_by: user?.id,
               });
             }
           }
@@ -181,78 +190,42 @@ export default function GEBackofficeTab() {
       const data = await file.arrayBuffer();
       const wb = XLSX.read(data);
       const ws = wb.Sheets[wb.SheetNames[0]];
-
-      // Try reading with header at row 6 (Mercado Livre spreadsheet format)
-      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-      let json: any[] = [];
       const isMeliFormat = ws['A6'] || ws['T6'] || ws['AH6'];
-
       if (isMeliFormat) {
-        // Mercado Livre format: header row 6 (0-indexed row 5)
-        json = XLSX.utils.sheet_to_json<any>(ws, { header: 1, range: 5 });
-        const headers = json[0] as string[];
+        const json = XLSX.utils.sheet_to_json<any>(ws, { header: 1, range: 5 });
         const rows = json.slice(1);
-
-        // Map column indices
-        const colA = 0;   // N.º de venda
-        const colT = 19;  // SKU
-        const colAH = 33; // Comprador
-        const colAJ = 35; // CPF
-        const colBA = 52; // Número de rastreio
-
-        let imported = 0;
-        let errors = 0;
+        let imported = 0, errors = 0;
         for (const row of rows) {
           const arr = row as any[];
-          const saleNumber = arr[colA] ? String(arr[colA]).trim() : '';
+          const saleNumber = arr[0] ? String(arr[0]).trim() : '';
           if (!saleNumber) continue;
-
           const { error } = await supabase.from('return_cases').insert({
-            sale_number: saleNumber,
-            product_sku: arr[colT] ? String(arr[colT]).trim() : '',
-            client_name: arr[colAH] ? String(arr[colAH]).trim() : '-',
-            client_document: arr[colAJ] ? String(arr[colAJ]).trim() : '',
-            fullfilment_tracking: arr[colBA] ? String(arr[colBA]).trim() : '',
-            marketplace: 'Mercado Livre',
-            marketplace_account: 'MELI_GOMEC',
-            case_type: 'DEVOLUCAO',
-            status: 'antecipado',
-            is_full: true,
-            entry_date: new Date().toISOString().split('T')[0],
-            created_by: user?.id,
-            sent_to_backoffice: true,
+            sale_number: saleNumber, product_sku: arr[19] ? String(arr[19]).trim() : '',
+            client_name: arr[33] ? String(arr[33]).trim() : '-', client_document: arr[35] ? String(arr[35]).trim() : '',
+            fullfilment_tracking: arr[52] ? String(arr[52]).trim() : '', marketplace: 'Mercado Livre',
+            marketplace_account: 'MELI_GOMEC', case_type: 'DEVOLUCAO', status: 'antecipado', is_full: true,
+            entry_date: new Date().toISOString().split('T')[0], created_by: user?.id, sent_to_backoffice: true, origem: 'backoffice',
           } as any);
-          if (error) { errors++; console.error('Import error:', error); }
-          else imported++;
+          if (error) errors++; else imported++;
         }
         toast.success(`${imported} casos importados${errors ? ` (${errors} erros)` : ''}`);
       } else {
-        // Generic format with named columns
-        json = XLSX.utils.sheet_to_json<any>(ws);
+        const json = XLSX.utils.sheet_to_json<any>(ws);
         let imported = 0;
         for (const row of json) {
-          const saleNumber = row['N.º de venda'] || row['Venda'] || row['sale_number'] || row['Cliente'] || '';
+          const saleNumber = row['N.º de venda'] || row['Venda'] || row['sale_number'] || '';
           if (!saleNumber) continue;
           const { error } = await supabase.from('return_cases').insert({
-            client_name: row['Comprador'] || row['Cliente'] || row['client_name'] || '-',
-            client_document: row['CPF'] || row['client_document'] || '',
-            sale_number: String(saleNumber),
-            product_sku: row['SKU'] || row['product_sku'] || '',
-            fullfilment_tracking: row['Rastreio'] || row['fullfilment_tracking'] || '',
-            marketplace: 'Mercado Livre',
-            marketplace_account: 'MELI_GOMEC',
-            case_type: row['Tipo'] || 'DEVOLUCAO',
-            status: 'antecipado',
-            is_full: true,
-            entry_date: new Date().toISOString().split('T')[0],
-            created_by: user?.id,
-            sent_to_backoffice: true,
+            client_name: row['Comprador'] || row['Cliente'] || '-', client_document: row['CPF'] || '',
+            sale_number: String(saleNumber), product_sku: row['SKU'] || '', fullfilment_tracking: row['Rastreio'] || '',
+            marketplace: 'Mercado Livre', marketplace_account: 'MELI_GOMEC', case_type: row['Tipo'] || 'DEVOLUCAO',
+            status: 'antecipado', is_full: true, entry_date: new Date().toISOString().split('T')[0],
+            created_by: user?.id, sent_to_backoffice: true, origem: 'backoffice',
           } as any);
           if (!error) imported++;
         }
         toast.success(`${imported} casos importados`);
       }
-
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (err) {
       console.error('Import error:', err);
@@ -270,8 +243,58 @@ export default function GEBackofficeTab() {
     }
   };
 
-  const clearFilters = () => { setSearchInput(''); setFilters({}); };
-  const hasFilters = Object.values(filters).some(v => v !== undefined && v !== '');
+  const openView = useCallback((c: ReturnCase) => {
+    setEditingCase(null);
+    setViewingCase(c);
+  }, []);
+
+  const openEdit = useCallback((c: ReturnCase) => {
+    setEditFormData({
+      client_name: c.client_name || '', client_document: c.client_document || '',
+      sale_number: c.sale_number || '', case_type: c.case_type || 'DEVOLUCAO',
+      status: c.status || 'aguardando_analise', analyst_name: c.analyst_name || '',
+      analysis_reason: c.analysis_reason || '', marketplace_account: c.marketplace_account || '',
+      business_unit_cnpj: c.business_unit_cnpj || c.business_unit || '',
+      fullfilment_tracking: c.fullfilment_tracking || '',
+    });
+    setEditingCase(c);
+    setViewingCase(c);
+  }, []);
+
+  const handleRowClick = useCallback((c: ReturnCase) => {
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+      openEdit(c);
+    } else {
+      clickTimerRef.current = setTimeout(() => {
+        clickTimerRef.current = null;
+        openView(c);
+      }, 300);
+    }
+  }, [openView, openEdit]);
+
+  const handleSaveEdit = () => {
+    if (!editingCase) return;
+    updateCase.mutate({
+      id: editingCase.id, ...editFormData,
+    }, {
+      onSuccess: () => { setViewingCase(null); setEditingCase(null); toast.success('Caso atualizado'); },
+    });
+  };
+
+  const handleDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+    const caseId = result.draggableId;
+    const destCol = KANBAN_COLUMNS.find(c => c.key === result.destination!.droppableId);
+    if (!destCol) return;
+    updateCase.mutate({ id: caseId, status: destCol.status }, {
+      onSuccess: () => toast.success(`Caso movido para ${destCol.label}`),
+    });
+  };
+
+  const clearFilters = () => { setSearchInput(''); setFilters({ origemFilter: 'backoffice' }); };
+  const hasFilters = Object.entries(filters).some(([k, v]) => k !== 'origemFilter' && v !== undefined && v !== '');
 
   if (isLoading) {
     return <div className="space-y-4"><Skeleton className="h-8 w-48" /><Skeleton className="h-16" /><Skeleton className="h-96" /></div>;
@@ -293,6 +316,10 @@ export default function GEBackofficeTab() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <div className="flex items-center border rounded-lg overflow-hidden">
+            <Button variant={viewMode === 'table' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('table')} className="rounded-none"><List className="w-4 h-4" /></Button>
+            <Button variant={viewMode === 'kanban' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('kanban')} className="rounded-none"><LayoutGrid className="w-4 h-4" /></Button>
+          </div>
           <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImportCases} />
           <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}><Upload className="w-4 h-4 mr-1" />Importar</Button>
           <Button variant="outline" size="sm" onClick={handleExportCases}><Download className="w-4 h-4 mr-1" />Exportar</Button>
@@ -347,7 +374,7 @@ export default function GEBackofficeTab() {
         <div className="flex flex-wrap items-center gap-3 p-4 border rounded-lg bg-card">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input placeholder="Buscar por cliente ou venda..." value={searchInput} onChange={e => setSearchInput(e.target.value)} className="pl-9" />
+            <Input placeholder="Buscar por cliente, venda, SKU, rastreio..." value={searchInput} onChange={e => setSearchInput(e.target.value)} className="pl-9" />
           </div>
           <Select value={filters.status || 'all'} onValueChange={v => setFilters(f => ({ ...f, status: v === 'all' ? undefined : v as CaseStatus }))}>
             <SelectTrigger className="w-[180px]"><SelectValue placeholder="Todos Status" /></SelectTrigger>
@@ -390,103 +417,163 @@ export default function GEBackofficeTab() {
         </div>
       </div>
 
-      {/* Tabs + Table */}
-      <Tabs value={activeTab} onValueChange={v => { setActiveTab(v); setSelectedIds(new Set()); }}>
-        <TabsList>
-          {BACKOFFICE_TABS.map(tab => (
-            <TabsTrigger key={tab.key} value={tab.key} className="text-xs">
-              {tab.label} ({tabCounts[tab.key] || 0})
-            </TabsTrigger>
-          ))}
-        </TabsList>
-
-        <TabsContent value={activeTab} className="mt-4">
-          {activeTab === 'fullfilment' && (
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-success/10 border border-success/30">
-                <div className="w-3 h-3 rounded-full bg-success animate-pulse" />
-                <span className="text-sm font-semibold text-success">{filteredCases.length} casos no Fullfilment</span>
-              </div>
-              <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
-                <Upload className="w-4 h-4 mr-1" />Importar Devoluções
-              </Button>
-              <p className="text-xs text-muted-foreground">Planilha Mercado Livre (cabeçalho linha 6)</p>
-            </div>
-          )}
-          <div className="card-base overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-10">
-                    <Checkbox checked={selectedIds.size === filteredCases.length && filteredCases.length > 0} onCheckedChange={toggleSelectAll} />
-                  </TableHead>
-                  <TableHead>#</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Venda</TableHead>
-                  {activeTab === 'fullfilment' && <TableHead>SKU</TableHead>}
-                  {activeTab === 'fullfilment' && <TableHead>Rastreio</TableHead>}
-                  <TableHead>Unidade</TableHead>
-                  <TableHead>Marketplace</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Entrada</TableHead>
-                  <TableHead>Criador</TableHead>
-                  <TableHead>Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredCases.length === 0 ? (
-                  <TableRow><TableCell colSpan={activeTab === 'fullfilment' ? 13 : 11} className="text-center py-12 text-muted-foreground">Nenhum caso encontrado</TableCell></TableRow>
-                ) : filteredCases.map(c => (
-                  <TableRow key={c.id} className={cn("hover:bg-table-hover cursor-pointer", selectedIds.has(c.id) && "bg-primary/5")}>
-                    <TableCell onClick={e => e.stopPropagation()}>
-                      <Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => toggleSelect(c.id)} />
-                    </TableCell>
-                    <TableCell className="font-mono-data font-medium" onClick={() => setViewingCase(c)}>{c.case_number}</TableCell>
-                    <TableCell onClick={() => setViewingCase(c)}>
-                      <div>
-                        <p className="font-medium text-sm">{c.client_name}</p>
-                        {c.client_document && <p className="text-xs text-muted-foreground font-mono-data">{c.client_document}</p>}
+      {/* Kanban View */}
+      {viewMode === 'kanban' && (
+        <DragDropContext onDragEnd={handleDragEnd}>
+          <div className="grid grid-cols-5 gap-4 min-h-[500px]">
+            {KANBAN_COLUMNS.map(col => {
+              const colCases = cases.filter(c => c.status === col.status);
+              return (
+                <Droppable droppableId={col.key} key={col.key}>
+                  {(provided, snapshot) => (
+                    <div
+                      ref={provided.innerRef}
+                      {...provided.droppableProps}
+                      className={cn(
+                        "rounded-lg border-t-4 border bg-card p-3 space-y-3 min-h-[400px] transition-colors",
+                        col.color,
+                        snapshot.isDraggingOver && "bg-primary/5"
+                      )}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-semibold text-sm">{col.label}</h3>
+                        <Badge variant="secondary" className="text-xs">{colCases.length}</Badge>
                       </div>
-                    </TableCell>
-                    <TableCell className="font-mono-data text-sm" onClick={() => setViewingCase(c)}>{c.sale_number || c.numero_pedido || '—'}</TableCell>
-                    {activeTab === 'fullfilment' && <TableCell className="font-mono-data text-xs" onClick={() => setViewingCase(c)}>{(c as any).product_sku || '—'}</TableCell>}
-                    {activeTab === 'fullfilment' && <TableCell className="font-mono-data text-xs" onClick={() => setViewingCase(c)}>{(c as any).fullfilment_tracking || '—'}</TableCell>}
-                    <TableCell onClick={() => setViewingCase(c)}><Badge variant="outline" className="text-[10px]">{BUSINESS_UNIT_DISPLAY_LABELS[c.business_unit_cnpj || c.business_unit] || c.business_unit}</Badge></TableCell>
-                    <TableCell className="text-sm" onClick={() => setViewingCase(c)}>{MARKETPLACE_ACCOUNT_LABELS[c.marketplace_account as MarketplaceAccount] || c.marketplace || '—'}</TableCell>
-                    <TableCell onClick={() => setViewingCase(c)}><Badge variant="secondary" className="text-[10px]">{CASE_TYPE_LABELS[c.case_type] || c.case_type}</Badge></TableCell>
-                    <TableCell onClick={() => setViewingCase(c)}><Badge className={cn('text-[10px]', STATUS_CLASSES[c.status])}>{STATUS_LABELS[c.status]}</Badge></TableCell>
-                    <TableCell className="font-mono-data text-sm" onClick={() => setViewingCase(c)}>{c.entry_date ? format(new Date(c.entry_date), 'dd/MM/yyyy') : '—'}</TableCell>
-                    <TableCell className="text-sm" onClick={() => setViewingCase(c)}>{c.creator_name || '—'}</TableCell>
-                    <TableCell onClick={e => e.stopPropagation()}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild><Button size="icon" variant="ghost"><MoreHorizontal className="w-4 h-4" /></Button></DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setViewingCase(c)}><Eye className="w-4 h-4 mr-2" />Ver detalhes</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleSendToPosVendas(c)}><ArrowRight className="w-4 h-4 mr-2" />Enviar p/ Pós Vendas</DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => { setReimbursementDialog(c); setReimbursementValue(c.reimbursement_value?.toString() || ''); }} className="text-warning">
-                            <DollarSign className="w-4 h-4 mr-2" />Informar reembolso
-                          </DropdownMenuItem>
-                          {c.status !== 'finalizado' && (
-                            <DropdownMenuItem onClick={() => updateCase.mutate({ id: c.id, status: 'finalizado' })} className="text-success">
-                              <CheckSquare className="w-4 h-4 mr-2" />Finalizar
-                            </DropdownMenuItem>
+                      {colCases.map((c, index) => (
+                        <Draggable key={c.id} draggableId={c.id} index={index}>
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              className={cn(
+                                "rounded-lg border bg-background p-3 space-y-2 cursor-pointer hover:shadow-md transition-shadow",
+                                snapshot.isDragging && "shadow-lg ring-2 ring-primary/30"
+                              )}
+                              onClick={() => handleRowClick(c)}
+                            >
+                              <div className="flex items-center gap-2">
+                                <div {...provided.dragHandleProps}><GripVertical className="w-4 h-4 text-muted-foreground" /></div>
+                                <span className="font-bold text-sm">#{c.case_number}</span>
+                                <Badge variant="secondary" className="text-[10px]">{CASE_TYPE_LABELS[c.case_type]}</Badge>
+                              </div>
+                              <p className="text-sm font-medium truncate">{c.client_name}</p>
+                              <p className="text-xs text-muted-foreground font-mono">{c.sale_number || '—'}</p>
+                              {c.entry_date && <p className="text-[10px] text-muted-foreground">{format(new Date(c.entry_date), 'dd/MM/yyyy')}</p>}
+                            </div>
                           )}
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => deleteCase.mutate(c.id)} className="text-destructive">
-                            <Trash2 className="w-4 h-4 mr-2" />Excluir
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              );
+            })}
           </div>
-        </TabsContent>
-      </Tabs>
+        </DragDropContext>
+      )}
+
+      {/* Table View */}
+      {viewMode === 'table' && (
+        <Tabs value={activeTab} onValueChange={v => { setActiveTab(v); setSelectedIds(new Set()); }}>
+          <TabsList>
+            {BACKOFFICE_TABS.map(tab => (
+              <TabsTrigger key={tab.key} value={tab.key} className="text-xs">
+                {tab.label} ({tabCounts[tab.key] || 0})
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          <TabsContent value={activeTab} className="mt-4">
+            {activeTab === 'fullfilment' && (
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-success/10 border border-success/30">
+                  <div className="w-3 h-3 rounded-full bg-success animate-pulse" />
+                  <span className="text-sm font-semibold text-success">{filteredCases.length} casos no Fullfilment</span>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                  <Upload className="w-4 h-4 mr-1" />Importar Devoluções
+                </Button>
+                <p className="text-xs text-muted-foreground">Planilha Mercado Livre (cabeçalho linha 6)</p>
+              </div>
+            )}
+            <div className="card-base overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10">
+                      <Checkbox checked={selectedIds.size === filteredCases.length && filteredCases.length > 0} onCheckedChange={toggleSelectAll} />
+                    </TableHead>
+                    <TableHead>#</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Venda</TableHead>
+                    {activeTab === 'fullfilment' && <TableHead>SKU</TableHead>}
+                    {activeTab === 'fullfilment' && <TableHead>Rastreio</TableHead>}
+                    <TableHead>Unidade</TableHead>
+                    <TableHead>Marketplace</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Entrada</TableHead>
+                    <TableHead>Criador</TableHead>
+                    <TableHead>Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredCases.length === 0 ? (
+                    <TableRow><TableCell colSpan={activeTab === 'fullfilment' ? 13 : 11} className="text-center py-12 text-muted-foreground">Nenhum caso encontrado</TableCell></TableRow>
+                  ) : filteredCases.map(c => (
+                    <TableRow key={c.id} className={cn("hover:bg-table-hover cursor-pointer", selectedIds.has(c.id) && "bg-primary/5")}
+                      onClick={() => handleRowClick(c)}>
+                      <TableCell onClick={e => e.stopPropagation()}>
+                        <Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => toggleSelect(c.id)} />
+                      </TableCell>
+                      <TableCell className="font-mono-data font-medium">{c.case_number}</TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium text-sm">{c.client_name}</p>
+                          {c.client_document && <p className="text-xs text-muted-foreground font-mono-data">{c.client_document}</p>}
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-mono-data text-sm">{c.sale_number || c.numero_pedido || '—'}</TableCell>
+                      {activeTab === 'fullfilment' && <TableCell className="font-mono-data text-xs">{(c as any).product_sku || '—'}</TableCell>}
+                      {activeTab === 'fullfilment' && <TableCell className="font-mono-data text-xs">{(c as any).fullfilment_tracking || '—'}</TableCell>}
+                      <TableCell><Badge variant="outline" className="text-[10px]">{BUSINESS_UNIT_DISPLAY_LABELS[c.business_unit_cnpj || c.business_unit] || c.business_unit}</Badge></TableCell>
+                      <TableCell className="text-sm">{MARKETPLACE_ACCOUNT_LABELS[c.marketplace_account as MarketplaceAccount] || c.marketplace || '—'}</TableCell>
+                      <TableCell><Badge variant="secondary" className="text-[10px]">{CASE_TYPE_LABELS[c.case_type] || c.case_type}</Badge></TableCell>
+                      <TableCell><Badge className={cn('text-[10px]', STATUS_CLASSES[c.status])}>{STATUS_LABELS[c.status]}</Badge></TableCell>
+                      <TableCell className="font-mono-data text-sm">{c.entry_date ? format(new Date(c.entry_date), 'dd/MM/yyyy') : '—'}</TableCell>
+                      <TableCell className="text-sm">{c.creator_name || '—'}</TableCell>
+                      <TableCell onClick={e => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild><Button size="icon" variant="ghost"><MoreHorizontal className="w-4 h-4" /></Button></DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openView(c)}><Eye className="w-4 h-4 mr-2" />Ver detalhes</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openEdit(c)}><Pencil className="w-4 h-4 mr-2" />Editar</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleSendToPosVendas(c)}><ArrowRight className="w-4 h-4 mr-2" />Enviar p/ Pós Vendas</DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => { setReimbursementDialog(c); setReimbursementValue(c.reimbursement_value?.toString() || ''); }} className="text-warning">
+                              <DollarSign className="w-4 h-4 mr-2" />Informar reembolso
+                            </DropdownMenuItem>
+                            {c.status !== 'finalizado' && (
+                              <DropdownMenuItem onClick={() => updateCase.mutate({ id: c.id, status: 'finalizado' })} className="text-success">
+                                <CheckSquare className="w-4 h-4 mr-2" />Finalizar
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => deleteCase.mutate(c.id)} className="text-destructive">
+                              <Trash2 className="w-4 h-4 mr-2" />Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
+        </Tabs>
+      )}
 
       {/* New Case Dialog */}
       <Dialog open={isNewCaseOpen} onOpenChange={setIsNewCaseOpen}>
@@ -533,7 +620,6 @@ export default function GEBackofficeTab() {
             </div>
             <div><Label>Quem Analisou</Label><Input value={formData.analyst_name} onChange={e => setFormData(f => ({ ...f, analyst_name: e.target.value }))} placeholder="Nome do analista" /></div>
             <div><Label>Observação</Label><Textarea value={formData.analysis_reason} onChange={e => setFormData(f => ({ ...f, analysis_reason: e.target.value }))} rows={3} /></div>
-            {/* Photos */}
             <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
               <Label className="text-base font-semibold">Fotos do Caso</Label>
               <input ref={photoInputRef} type="file" accept="image/*" multiple className="hidden" onChange={e => {
@@ -564,15 +650,16 @@ export default function GEBackofficeTab() {
         </DialogContent>
       </Dialog>
 
-      {/* Case Detail Dialog */}
-      <Dialog open={!!viewingCase} onOpenChange={() => setViewingCase(null)}>
+      {/* View/Edit Case Dialog */}
+      <Dialog open={!!viewingCase} onOpenChange={() => { setViewingCase(null); setEditingCase(null); }}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-          {viewingCase && (
+          {viewingCase && !editingCase && (
             <>
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-3 flex-wrap">
                   Caso #{viewingCase.case_number}
                   <Badge className={cn('text-xs', STATUS_CLASSES[viewingCase.status])}>{STATUS_LABELS[viewingCase.status]}</Badge>
+                  <Button variant="outline" size="sm" className="ml-auto" onClick={() => openEdit(viewingCase)}><Pencil className="w-4 h-4 mr-1" />Editar</Button>
                 </DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
@@ -596,6 +683,59 @@ export default function GEBackofficeTab() {
                   </div>
                 )}
               </div>
+            </>
+          )}
+          {viewingCase && editingCase && (
+            <>
+              <DialogHeader><DialogTitle>Editar Caso #{editingCase.case_number}</DialogTitle></DialogHeader>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Cliente</Label><Input value={editFormData.client_name} onChange={e => setEditFormData(f => ({ ...f, client_name: e.target.value }))} /></div>
+                  <div><Label>CPF/CNPJ</Label><Input value={editFormData.client_document} onChange={e => setEditFormData(f => ({ ...f, client_document: e.target.value }))} /></div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Nº Venda</Label><Input value={editFormData.sale_number} onChange={e => setEditFormData(f => ({ ...f, sale_number: e.target.value }))} /></div>
+                  <div><Label>Rastreio</Label><Input value={editFormData.fullfilment_tracking} onChange={e => setEditFormData(f => ({ ...f, fullfilment_tracking: e.target.value }))} /></div>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div><Label>Tipo</Label>
+                    <Select value={editFormData.case_type} onValueChange={v => setEditFormData(f => ({ ...f, case_type: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="GARANTIA">Garantia</SelectItem>
+                        <SelectItem value="DEVOLUCAO">Devolução</SelectItem>
+                        <SelectItem value="DESCARTE">Descarte</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div><Label>Status</Label>
+                    <Select value={editFormData.status} onValueChange={v => setEditFormData(f => ({ ...f, status: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{Object.entries(STATUS_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div><Label>Analista</Label><Input value={editFormData.analyst_name} onChange={e => setEditFormData(f => ({ ...f, analyst_name: e.target.value }))} /></div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Marketplace</Label>
+                    <Select value={editFormData.marketplace_account} onValueChange={v => setEditFormData(f => ({ ...f, marketplace_account: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{Object.entries(MARKETPLACE_ACCOUNT_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div><Label>Unidade (CNPJ)</Label>
+                    <Select value={editFormData.business_unit_cnpj} onValueChange={v => setEditFormData(f => ({ ...f, business_unit_cnpj: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>{Object.entries(BUSINESS_UNIT_CNPJ_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div><Label>Observações</Label><Textarea value={editFormData.analysis_reason} onChange={e => setEditFormData(f => ({ ...f, analysis_reason: e.target.value }))} rows={3} /></div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setEditingCase(null)}>Cancelar</Button>
+                <Button onClick={handleSaveEdit} disabled={updateCase.isPending}>Salvar</Button>
+              </DialogFooter>
             </>
           )}
         </DialogContent>
