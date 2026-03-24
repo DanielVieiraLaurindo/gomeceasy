@@ -72,12 +72,22 @@ export default function PedidosSitePage() {
 
   const fetchPedidos = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await (supabase as any)
-      .from('pedidos_site')
-      .select('*')
-      .order('criado_em', { ascending: false });
-    if (error) toast.error('Erro ao carregar pedidos');
-    setPedidos((data || []) as PedidoSite[]);
+    const allRows: PedidoSite[] = [];
+    const PAGE_SIZE = 1000;
+    let from = 0;
+    let hasMore = true;
+    while (hasMore) {
+      const { data, error } = await (supabase as any)
+        .from('pedidos_site')
+        .select('*')
+        .order('criado_em', { ascending: false })
+        .range(from, from + PAGE_SIZE - 1);
+      if (error) { toast.error('Erro ao carregar pedidos'); break; }
+      if (data) allRows.push(...(data as PedidoSite[]));
+      hasMore = (data?.length || 0) === PAGE_SIZE;
+      from += PAGE_SIZE;
+    }
+    setPedidos(allRows);
     setLoading(false);
   }, []);
 
@@ -466,7 +476,12 @@ export default function PedidosSitePage() {
                       <TableCell className={`text-xs ${atrasado ? 'text-destructive font-bold' : ''}`}>{p.data_prevista ? format(new Date(p.data_prevista), 'dd/MM/yyyy') : '-'}</TableCell>
                       <TableCell className="text-xs">{p.data_entrega ? format(new Date(p.data_entrega), 'dd/MM/yyyy') : '-'}</TableCell>
                       <TableCell className="text-sm">{(p.valor_frete || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TableCell>
-                      <TableCell><Button size="sm" variant="ghost" onClick={e => { e.stopPropagation(); openEdit(p); }}><Edit className="w-4 h-4" /></Button></TableCell>
+                      <TableCell onClick={e => e.stopPropagation()}>
+                        <div className="flex gap-1">
+                          <Button size="sm" variant="ghost" onClick={() => openEdit(p)}><Edit className="w-4 h-4" /></Button>
+                          <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDelete(p.id)}><Trash2 className="w-4 h-4" /></Button>
+                        </div>
+                      </TableCell>
                     </TableRow>
                   );
                 })}

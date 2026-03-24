@@ -38,6 +38,15 @@ export default function NovaRupturaPage() {
     if (!form.numero_pedido || !form.sku || !form.produto) {
       toast.error('Preencha Pedido, SKU e Produto'); return;
     }
+    // Check for duplicate
+    const { data: existing } = await supabase.from('rupturas')
+      .select('id, numero_pedido, sku')
+      .eq('numero_pedido', form.numero_pedido)
+      .eq('sku', form.sku);
+    if (existing && existing.length > 0) {
+      toast.error(`Pedido duplicado! Já existe ruptura para pedido ${form.numero_pedido} com SKU ${form.sku}`);
+      return;
+    }
     const { error } = await supabase.from('rupturas').insert({
       ...form,
       created_by: user?.id,
@@ -73,7 +82,8 @@ export default function NovaRupturaPage() {
           valor_total: Number(r['Produto - Total líquido (pedido)'] || r['Produto - Total bruto (pedido)'] || precoLiq * saldoAtender || 0),
           comprador: String(r['Parceiro - Razão Social'] || r['Comprador'] || r['comprador'] || ''),
           transportadora: String(r['Transportadora'] || r['transportadora'] || ''),
-          observacoes: String(r['Observações'] || r['observacoes'] || r['Status'] || ''),
+          observacoes: String(r['Observações'] || r['observacoes'] || ''),
+          status_original: String(r['Status'] || r['status'] || ''),
         };
       });
 
@@ -89,22 +99,51 @@ export default function NovaRupturaPage() {
     setImportedRows(prev => prev.filter(r => r._idx !== idx));
   };
 
+  const mapImportStatus = (rawStatus: string): string => {
+    const s = (rawStatus || '').toLowerCase().trim();
+    if (s.includes('revertid')) return 'revertida';
+    if (s.includes('cancelad')) return 'cancelada';
+    if (s.includes('aguardando compra') || s.includes('aguardando_compra')) return 'aguardando_compras';
+    if (s.includes('aguardando retorno') || s.includes('aguardando_retorno')) return 'aguardando_retorno_cliente';
+    if (s.includes('solicitado compra') || s.includes('solicitado_compra')) return 'solicitado_compra';
+    if (s.includes('solicitado transferencia') || s.includes('solicitado_transferencia') || s.includes('transferência')) return 'solicitado_transferencia';
+    return 'ruptura_identificada';
+  };
+
   const handleImportSave = async () => {
     if (!importedRows.length) { toast.error('Nenhuma linha para importar'); return; }
     const valid = importedRows.filter(r => r.numero_pedido && r.sku && r.produto);
     if (!valid.length) { toast.error('Nenhuma linha válida (pedido, SKU e produto obrigatórios)'); return; }
 
     setImporting(true);
-    const toInsert = valid.map(({ _idx, ...rest }) => ({
+
+    // Check for duplicates
+    const pedidoSkuPairs = valid.map(r => `${r.numero_pedido}|${r.sku}`);
+    const { data: existingRupturas } = await supabase.from('rupturas').select('numero_pedido, sku');
+    const existingSet = new Set((existingRupturas || []).map((r: any) => `${r.numero_pedido}|${r.sku}`));
+    const duplicates = valid.filter(r => existingSet.has(`${r.numero_pedido}|${r.sku}`));
+    const newItems = valid.filter(r => !existingSet.has(`${r.numero_pedido}|${r.sku}`));
+
+    if (duplicates.length > 0) {
+      toast.warning(`${duplicates.length} pedido(s) duplicado(s) ignorado(s)`);
+    }
+
+    if (newItems.length === 0) {
+      toast.error('Todos os pedidos já existem no sistema');
+      setImporting(false);
+      return;
+    }
+
+    const toInsert = newItems.map(({ _idx, status_original, ...rest }) => ({
       ...rest,
       created_by: user?.id,
-      status: 'ruptura_identificada',
+      status: mapImportStatus(status_original || rest.observacoes || ''),
     }));
 
     const { error } = await supabase.from('rupturas').insert(toInsert);
     setImporting(false);
     if (error) { toast.error('Erro ao importar: ' + error.message); return; }
-    toast.success(`${toInsert.length} rupturas importadas`);
+    toast.success(`${toInsert.length} rupturas importadas${duplicates.length > 0 ? ` (${duplicates.length} duplicadas ignoradas)` : ''}`);
     navigate('/backoffice/rupturas');
   };
 
@@ -212,6 +251,7 @@ export default function NovaRupturaPage() {
                           <TableHead>Canal</TableHead>
                           <TableHead>Qtd</TableHead>
                           <TableHead>Valor</TableHead>
+                          <TableHead>Status</TableHead>
                           <TableHead></TableHead>
                         </TableRow>
                       </TableHeader>
@@ -224,6 +264,7 @@ export default function NovaRupturaPage() {
                             <TableCell className="text-xs">{r.canal_venda}</TableCell>
                             <TableCell className="text-xs">{r.quantidade}</TableCell>
                             <TableCell className="text-xs">R$ {(r.valor_total || 0).toFixed(2)}</TableCell>
+                            <TableCell><Badge variant="outline" className="text-[10px]">{r.status_original || 'Nova'}</Badge></TableCell>
                             <TableCell><Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeImportRow(r._idx)}><Trash2 className="w-3.5 h-3.5" /></Button></TableCell>
                           </TableRow>
                         ))}

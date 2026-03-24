@@ -502,17 +502,14 @@ export default function RupturasPage() {
                           <span className="text-xs text-muted-foreground">{getStatusSla(r)}</span>
                         </td>
                         <td className="p-3">
-                          <div className="max-w-[200px]">
-                            {r.observacoes ? (
-                              <div className="text-xs bg-muted/60 rounded px-2 py-1 cursor-pointer hover:bg-muted" onClick={() => setObsDialog(r.observacoes)}>
+                          <div className="max-w-[200px] flex items-center gap-1">
+                            {r.observacoes && (
+                              <div className="text-xs bg-muted/60 rounded px-2 py-1 cursor-pointer hover:bg-muted flex-1" onClick={() => setObsDialog(r.observacoes)}>
                                 <p className="line-clamp-2">{r.observacoes}</p>
                               </div>
-                            ) : (
-                              <div className="flex items-center gap-1">
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(r)}><Edit className="w-3.5 h-3.5" /></Button>
-                                {canDelete(role) && <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteRuptura.mutate(r.id, { onSuccess: () => toast.success('Ruptura excluída') })}><Trash2 className="w-3.5 h-3.5" /></Button>}
-                              </div>
                             )}
+                            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => openEdit(r)}><Edit className="w-3.5 h-3.5" /></Button>
+                            {canDelete(role) && <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-destructive" onClick={() => deleteRuptura.mutate(r.id, { onSuccess: () => toast.success('Ruptura excluída') })}><Trash2 className="w-3.5 h-3.5" /></Button>}
                           </div>
                         </td>
                       </tr>

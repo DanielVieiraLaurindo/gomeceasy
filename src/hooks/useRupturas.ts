@@ -10,12 +10,23 @@ export function useRupturas() {
   const query = useQuery({
     queryKey: ['rupturas'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('rupturas')
-        .select(RUPTURAS_COLUMNS)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data;
+      // Fetch all rows using pagination to bypass the 1000-row default limit
+      const allRows: any[] = [];
+      const PAGE_SIZE = 1000;
+      let from = 0;
+      let hasMore = true;
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('rupturas')
+          .select(RUPTURAS_COLUMNS)
+          .order('created_at', { ascending: false })
+          .range(from, from + PAGE_SIZE - 1);
+        if (error) throw error;
+        if (data) allRows.push(...data);
+        hasMore = (data?.length || 0) === PAGE_SIZE;
+        from += PAGE_SIZE;
+      }
+      return allRows;
     },
     staleTime: 30_000,
   });

@@ -53,23 +53,20 @@ export function AppSidebar() {
     setOpenGroups(prev => prev.includes(key) ? prev.filter(g => g !== key) : [...prev, key]);
   };
 
-  // Get all items for search
+  // All users see all modules (SAP ERP-style — all modules available)
   const allItems = useMemo(() => {
     const items: SidebarItem[] = [];
     if (isMaster) {
       items.push({ path: '/master', label: 'Dashboard Master', icon: LayoutDashboard });
-      MASTER_SIDEBAR_GROUPS.forEach(g => {
-        if (g.setores) g.setores.forEach(s => items.push(...(SIDEBAR_ITEMS[s] || [])));
-        else if (g.setor) items.push(...(SIDEBAR_ITEMS[g.setor] || []));
-      });
-    } else {
-      const currentSetor: AppSetor = setor || 'backoffice';
-      items.push(...(SIDEBAR_ITEMS[currentSetor] || SIDEBAR_ITEMS.backoffice));
     }
+    MASTER_SIDEBAR_GROUPS.forEach(g => {
+      if (g.setores) g.setores.forEach(s => items.push(...(SIDEBAR_ITEMS[s] || [])));
+      else if (g.setor) items.push(...(SIDEBAR_ITEMS[g.setor] || []));
+    });
     // Deduplicate
     const seen = new Set<string>();
     return items.filter(i => { if (seen.has(i.path)) return false; seen.add(i.path); return true; });
-  }, [isMaster, setor]);
+  }, [isMaster]);
 
   const searchResults = useMemo(() => {
     if (!searchTerm) return [];
@@ -133,24 +130,26 @@ export function AppSidebar() {
 
   const renderMasterSidebar = () => (
     <div className="space-y-1">
-      <motion.button
-        onClick={() => navigate('/master')}
-        whileHover={{ x: 4 }}
-        onContextMenu={e => handleContextMenu(e, '/master')}
-        className={cn(
-          'relative flex items-center w-full gap-3 px-4 py-2.5 text-sm transition-colors',
-          'hover:bg-sidebar-accent/10',
-          isActive('/master')
-            ? 'text-primary bg-[hsl(25_95%_55%/0.15)]'
-            : 'text-sidebar-foreground'
-        )}
-      >
-        {isActive('/master') && (
-          <motion.div layoutId="activeIndicator" className="absolute left-0 top-0 bottom-0 w-[3px] bg-primary rounded-r" />
-        )}
-        <LayoutDashboard className="w-4 h-4 shrink-0" />
-        {!collapsed && <span className="font-medium text-[13px]">Dashboard Master</span>}
-      </motion.button>
+      {isMaster && (
+        <motion.button
+          onClick={() => navigate('/master')}
+          whileHover={{ x: 4 }}
+          onContextMenu={e => handleContextMenu(e, '/master')}
+          className={cn(
+            'relative flex items-center w-full gap-3 px-4 py-2.5 text-sm transition-colors',
+            'hover:bg-sidebar-accent/10',
+            isActive('/master')
+              ? 'text-primary bg-[hsl(25_95%_55%/0.15)]'
+              : 'text-sidebar-foreground'
+          )}
+        >
+          {isActive('/master') && (
+            <motion.div layoutId="activeIndicator" className="absolute left-0 top-0 bottom-0 w-[3px] bg-primary rounded-r" />
+          )}
+          <LayoutDashboard className="w-4 h-4 shrink-0" />
+          {!collapsed && <span className="font-medium text-[13px]">Dashboard Master</span>}
+        </motion.button>
+      )}
 
       {!collapsed && MASTER_SIDEBAR_GROUPS.map(group => {
         const groupKey = group.setor || group.label;
@@ -260,8 +259,8 @@ export function AppSidebar() {
     </div>
   );
 
+  // All users now see all modules
   const currentSetor: AppSetor = setor || 'backoffice';
-  const items = SIDEBAR_ITEMS[currentSetor] || SIDEBAR_ITEMS.backoffice;
 
   return (
     <motion.aside
@@ -308,7 +307,7 @@ export function AppSidebar() {
       )}
 
       <nav className="flex-1 py-3 overflow-y-auto scrollbar-thin">
-        {!searchTerm && (isMaster ? renderMasterSidebar() : items.map(renderItem))}
+        {!searchTerm && renderMasterSidebar()}
       </nav>
 
       <div className="border-t border-sidebar-border p-3">
