@@ -58,6 +58,8 @@ export default function GEBackofficeTab() {
     analysis_reason: '', entry_date: new Date().toISOString().split('T')[0],
     analyst_name: '', status: 'aguardando_analise' as string,
   });
+  const [casePhotos, setCasePhotos] = useState<File[]>([]);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
@@ -107,7 +109,7 @@ export default function GEBackofficeTab() {
     setBulkValue('');
   };
 
-  const handleCreateCase = () => {
+  const handleCreateCase = async () => {
     createCase.mutate({
       client_name: formData.client_name || '-',
       client_document: formData.client_document || '-',
@@ -127,8 +129,27 @@ export default function GEBackofficeTab() {
       sent_to_backoffice: true,
       not_found_erp: false,
     } as any, {
-      onSuccess: () => {
+      onSuccess: async (data: any) => {
+        // Upload photos if any
+        if (casePhotos.length > 0 && data?.id) {
+          for (const photo of casePhotos) {
+            const filePath = `${data.id}/${Date.now()}_${photo.name}`;
+            const { error: uploadError } = await supabase.storage.from('case-photos').upload(filePath, photo);
+            if (!uploadError) {
+              const { data: urlData } = supabase.storage.from('case-photos').getPublicUrl(filePath);
+              await supabase.from('case_photos').insert({
+                case_id: data.id,
+                photo_url: urlData.publicUrl,
+                photo_type: 'produto',
+                original_name: photo.name,
+                file_size: photo.size,
+                created_by: user?.id,
+              });
+            }
+          }
+        }
         setIsNewCaseOpen(false);
+        setCasePhotos([]);
         setFormData({ sale_number: '', marketplace_account: '', business_unit_cnpj: '', client_name: '', client_document: '', case_type: 'DEVOLUCAO', analysis_reason: '', entry_date: new Date().toISOString().split('T')[0], analyst_name: '', status: 'aguardando_analise' });
       }
     });
@@ -512,6 +533,29 @@ export default function GEBackofficeTab() {
             </div>
             <div><Label>Quem Analisou</Label><Input value={formData.analyst_name} onChange={e => setFormData(f => ({ ...f, analyst_name: e.target.value }))} placeholder="Nome do analista" /></div>
             <div><Label>Observação</Label><Textarea value={formData.analysis_reason} onChange={e => setFormData(f => ({ ...f, analysis_reason: e.target.value }))} rows={3} /></div>
+            {/* Photos */}
+            <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
+              <Label className="text-base font-semibold">Fotos do Caso</Label>
+              <input ref={photoInputRef} type="file" accept="image/*" multiple className="hidden" onChange={e => {
+                if (e.target.files) setCasePhotos(prev => [...prev, ...Array.from(e.target.files!)]);
+                if (photoInputRef.current) photoInputRef.current.value = '';
+              }} />
+              <Button type="button" variant="outline" size="sm" onClick={() => photoInputRef.current?.click()}>
+                <Upload className="w-4 h-4 mr-1" />Adicionar Fotos
+              </Button>
+              {casePhotos.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {casePhotos.map((f, i) => (
+                    <div key={i} className="relative group">
+                      <img src={URL.createObjectURL(f)} alt={f.name} className="w-20 h-20 object-cover rounded-lg border" />
+                      <button type="button" onClick={() => setCasePhotos(prev => prev.filter((_, idx) => idx !== i))}
+                        className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity">×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">{casePhotos.length} foto(s) selecionada(s)</p>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsNewCaseOpen(false)}>Cancelar</Button>

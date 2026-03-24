@@ -84,6 +84,8 @@ export default function GEPosVendasTab() {
   };
 
   const [formData, setFormData] = useState(defaultFormData);
+  const [casePhotos, setCasePhotos] = useState<File[]>([]);
+  const photoInputRef = React.useRef<HTMLInputElement>(null);
 
   // Auto-detect PIX key type
   useEffect(() => {
@@ -170,9 +172,28 @@ export default function GEPosVendasTab() {
       origem: 'pos_vendas',
       ...financialData,
     } as any, {
-      onSuccess: () => {
+      onSuccess: async (data: any) => {
+        // Upload photos
+        if (casePhotos.length > 0 && data?.id) {
+          for (const photo of casePhotos) {
+            const filePath = `${data.id}/${Date.now()}_${photo.name}`;
+            const { error: uploadError } = await supabase.storage.from('case-photos').upload(filePath, photo);
+            if (!uploadError) {
+              const { data: urlData } = supabase.storage.from('case-photos').getPublicUrl(filePath);
+              await supabase.from('case_photos').insert({
+                case_id: data.id,
+                photo_url: urlData.publicUrl,
+                photo_type: 'produto',
+                original_name: photo.name,
+                file_size: photo.size,
+                created_by: user?.id,
+              });
+            }
+          }
+        }
         setIsFormOpen(false);
         setFormData(defaultFormData);
+        setCasePhotos([]);
         if (formData.financial_type) {
           toast.success(`Caso criado e enviado para ${formData.financial_type === 'reembolso' ? 'Reembolso' : 'Ressarcimento M.O.'}`);
         }
@@ -453,6 +474,29 @@ export default function GEPosVendasTab() {
             </div>
 
             <div><Label>Observações</Label><Textarea value={formData.analysis_reason} onChange={e => setFormData(f => ({ ...f, analysis_reason: e.target.value }))} rows={3} placeholder="Observações adicionais..." /></div>
+            {/* Photos */}
+            <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
+              <Label className="text-base font-semibold">Fotos do Caso (Produto, Etiqueta, Embalagem)</Label>
+              <input ref={photoInputRef} type="file" accept="image/*" multiple className="hidden" onChange={e => {
+                if (e.target.files) setCasePhotos(prev => [...prev, ...Array.from(e.target.files!)]);
+                if (photoInputRef.current) photoInputRef.current.value = '';
+              }} />
+              <Button type="button" variant="outline" size="sm" onClick={() => photoInputRef.current?.click()}>
+                <Plus className="w-4 h-4 mr-1" />Adicionar Fotos
+              </Button>
+              {casePhotos.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {casePhotos.map((f, i) => (
+                    <div key={i} className="relative group">
+                      <img src={URL.createObjectURL(f)} alt={f.name} className="w-20 h-20 object-cover rounded-lg border" />
+                      <button type="button" onClick={() => setCasePhotos(prev => prev.filter((_, idx) => idx !== i))}
+                        className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity">×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">{casePhotos.length} foto(s) selecionada(s)</p>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsFormOpen(false)}>Cancelar</Button>

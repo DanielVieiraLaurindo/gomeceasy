@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_groups: {
+        Row: {
+          created_at: string
+          descricao: string | null
+          id: string
+          menus_permitidos: Json
+          nome: string
+        }
+        Insert: {
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          menus_permitidos?: Json
+          nome: string
+        }
+        Update: {
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          menus_permitidos?: Json
+          nome?: string
+        }
+        Relationships: []
+      }
       activity_log: {
         Row: {
           acao: string | null
@@ -2744,6 +2768,35 @@ export type Database = {
             columns: ["parceiro_id"]
             isOneToOne: false
             referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_access_groups: {
+        Row: {
+          created_at: string
+          group_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          group_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          group_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_access_groups_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "access_groups"
             referencedColumns: ["id"]
           },
         ]
