@@ -168,9 +168,9 @@ function NovaRequisicaoDialog({ open, onOpenChange, onCreate }: { open: boolean;
   );
 }
 
-function DetalheSheet({ item, open, onOpenChange, onAuthorize, canAuthorize, onUpdateLink, onAddPayment }: {
+function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, canAuthorize, onUpdateLink, onAddPayment }: {
   item: any; open: boolean; onOpenChange: (v: boolean) => void;
-  onAuthorize: (id: string) => void; canAuthorize: boolean;
+  onAuthorize: (id: string) => void; onDeny: (id: string) => void; canAuthorize: boolean;
   onUpdateLink: (id: string, link: string) => void;
   onAddPayment: (clientePrazoId: string, valor: number, obs: string) => void;
 }) {
