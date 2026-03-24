@@ -1,21 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, LogOut, LayoutDashboard, ChevronDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, LogOut, LayoutDashboard, ChevronDown, Search, Star } from 'lucide-react';
 import { GoPartsLogo } from './GoPartsLogo';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { SIDEBAR_ITEMS, MASTER_SIDEBAR_GROUPS, ECOMMERCE_SETOR_LABELS, type SidebarItem } from '@/config/sidebarConfig';
 import { SETOR_LABELS, type AppSetor } from '@/types';
+import { Input } from '@/components/ui/input';
+
+const FAVORITES_KEY = 'erp_sidebar_favorites';
+
+function loadFavorites(): string[] {
+  try { return JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]'); } catch { return []; }
+}
+function saveFavorites(favs: string[]) { localStorage.setItem(FAVORITES_KEY, JSON.stringify(favs)); }
 
 export function AppSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [openGroups, setOpenGroups] = useState<string[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [favorites, setFavorites] = useState<string[]>(loadFavorites);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; path: string } | null>(null);
   const { role, setor, signOut, profile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   const isMaster = role === 'master';
+
+  useEffect(() => {
+    const handler = () => setContextMenu(null);
+    window.addEventListener('click', handler);
+    return () => window.removeEventListener('click', handler);
+  }, []);
+
+  const toggleFavorite = useCallback((path: string) => {
+    setFavorites(prev => {
+      const next = prev.includes(path) ? prev.filter(f => f !== path) : [...prev, path];
+      saveFavorites(next);
+      return next;
+    });
+    setContextMenu(null);
+  }, []);
 
   const isActive = (path: string) => {
     if (path === location.pathname) return true;
@@ -27,12 +53,45 @@ export function AppSidebar() {
     setOpenGroups(prev => prev.includes(key) ? prev.filter(g => g !== key) : [...prev, key]);
   };
 
+  // Get all items for search
+  const allItems = useMemo(() => {
+    const items: SidebarItem[] = [];
+    if (isMaster) {
+      items.push({ path: '/master', label: 'Dashboard Master', icon: LayoutDashboard });
+      MASTER_SIDEBAR_GROUPS.forEach(g => {
+        if (g.setores) g.setores.forEach(s => items.push(...(SIDEBAR_ITEMS[s] || [])));
+        else if (g.setor) items.push(...(SIDEBAR_ITEMS[g.setor] || []));
+      });
+    } else {
+      const currentSetor: AppSetor = setor || 'backoffice';
+      items.push(...(SIDEBAR_ITEMS[currentSetor] || SIDEBAR_ITEMS.backoffice));
+    }
+    // Deduplicate
+    const seen = new Set<string>();
+    return items.filter(i => { if (seen.has(i.path)) return false; seen.add(i.path); return true; });
+  }, [isMaster, setor]);
+
+  const searchResults = useMemo(() => {
+    if (!searchTerm) return [];
+    const q = searchTerm.toLowerCase();
+    return allItems.filter(i => i.label.toLowerCase().includes(q));
+  }, [searchTerm, allItems]);
+
+  const favoriteItems = useMemo(() => allItems.filter(i => favorites.includes(i.path)), [allItems, favorites]);
+
+  const handleContextMenu = (e: React.MouseEvent, path: string) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, path });
+  };
+
   const renderItem = (item: SidebarItem) => {
     const active = isActive(item.path);
+    const isFav = favorites.includes(item.path);
     return (
       <motion.button
         key={item.path}
-        onClick={() => navigate(item.path)}
+        onClick={() => { navigate(item.path); setSearchTerm(''); }}
+        onContextMenu={e => handleContextMenu(e, item.path)}
         whileHover={{ x: 4 }}
         className={cn(
           'relative flex items-center w-full gap-3 px-4 py-2 text-sm transition-colors',
@@ -56,12 +115,13 @@ export function AppSidebar() {
               initial={{ opacity: 0, width: 0 }}
               animate={{ opacity: 1, width: 'auto' }}
               exit={{ opacity: 0, width: 0 }}
-              className="whitespace-nowrap overflow-hidden font-medium text-[13px]"
+              className="whitespace-nowrap overflow-hidden font-medium text-[13px] flex-1 text-left"
             >
               {item.label}
             </motion.span>
           )}
         </AnimatePresence>
+        {!collapsed && isFav && <Star className="w-3 h-3 text-warning fill-warning shrink-0" />}
         {!collapsed && item.badge && item.badge > 0 && (
           <span className="ml-auto text-xs font-semibold bg-primary text-primary-foreground rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
             {item.badge}
@@ -76,6 +136,7 @@ export function AppSidebar() {
       <motion.button
         onClick={() => navigate('/master')}
         whileHover={{ x: 4 }}
+        onContextMenu={e => handleContextMenu(e, '/master')}
         className={cn(
           'relative flex items-center w-full gap-3 px-4 py-2.5 text-sm transition-colors',
           'hover:bg-sidebar-accent/10',
@@ -95,10 +156,9 @@ export function AppSidebar() {
         const groupKey = group.setor || group.label;
         const isOpen = openGroups.includes(groupKey);
         
-        // Handle E-commerce module (multiple setores)
         if (group.isModule && group.setores) {
-          const allItems = group.setores.flatMap(s => SIDEBAR_ITEMS[s] || []);
-          const hasActiveChild = allItems.some(i => isActive(i.path));
+          const allGroupItems = group.setores.flatMap(s => SIDEBAR_ITEMS[s] || []);
+          const hasActiveChild = allGroupItems.some(i => isActive(i.path));
           
           return (
             <div key={groupKey}>
@@ -160,7 +220,6 @@ export function AppSidebar() {
           );
         }
         
-        // Normal single-setor group
         const items = group.setor ? SIDEBAR_ITEMS[group.setor] || [] : [];
         const hasActiveChild = items.some(i => isActive(i.path));
         return (
@@ -214,8 +273,42 @@ export function AppSidebar() {
         <GoPartsLogo collapsed={collapsed} />
       </div>
 
+      {/* Search bar */}
+      {!collapsed && (
+        <div className="px-3 pt-3 pb-1">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-sidebar-foreground/40" />
+            <Input
+              placeholder="Buscar módulo..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="h-8 pl-8 text-xs bg-sidebar-accent/10 border-sidebar-border text-sidebar-foreground placeholder:text-sidebar-foreground/40"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Search results */}
+      {!collapsed && searchTerm && (
+        <div className="px-1 py-1 border-b border-sidebar-border max-h-60 overflow-y-auto">
+          {searchResults.length === 0 ? (
+            <p className="text-xs text-sidebar-foreground/40 text-center py-3">Nenhum módulo encontrado</p>
+          ) : searchResults.map(renderItem)}
+        </div>
+      )}
+
+      {/* Favorites section */}
+      {!collapsed && !searchTerm && favoriteItems.length > 0 && (
+        <div className="px-1 py-1 border-b border-sidebar-border">
+          <p className="px-4 py-1 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40 flex items-center gap-1">
+            <Star className="w-3 h-3 fill-warning text-warning" /> Favoritos
+          </p>
+          {favoriteItems.map(renderItem)}
+        </div>
+      )}
+
       <nav className="flex-1 py-3 overflow-y-auto scrollbar-thin">
-        {isMaster ? renderMasterSidebar() : items.map(renderItem)}
+        {!searchTerm && (isMaster ? renderMasterSidebar() : items.map(renderItem))}
       </nav>
 
       <div className="border-t border-sidebar-border p-3">
@@ -240,6 +333,23 @@ export function AppSidebar() {
       >
         {collapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
       </button>
+
+      {/* Context menu for right-click favorites */}
+      {contextMenu && (
+        <div
+          className="fixed bg-popover border border-border rounded-lg shadow-lg py-1 z-50 min-w-[160px]"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onClick={e => e.stopPropagation()}
+        >
+          <button
+            onClick={() => toggleFavorite(contextMenu.path)}
+            className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent transition-colors"
+          >
+            <Star className={cn("w-4 h-4", favorites.includes(contextMenu.path) ? "fill-warning text-warning" : "text-muted-foreground")} />
+            {favorites.includes(contextMenu.path) ? 'Remover dos Favoritos' : 'Adicionar aos Favoritos'}
+          </button>
+        </div>
+      )}
     </motion.aside>
   );
 }

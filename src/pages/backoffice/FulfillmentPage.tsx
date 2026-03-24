@@ -57,33 +57,56 @@ export default function FulfillmentPage() {
       let imported = 0;
       const now = new Date().toISOString();
       for (const row of json) {
+        // Column A: N.º de venda
         const saleNumber = row['N.º de venda'] || row['Nº de venda'] || '';
         if (!saleNumber) continue;
+        // Column C: Estado - filter only devoluções
         const estado = row['Estado'] || '';
         if (!estado.toLowerCase().includes('devolução')) continue;
-        await supabase.from('return_cases').insert({
+
+        // Column T: SKU
+        const sku = row['SKU'] || '';
+        // Column X: Título do anúncio
+        const titulo = row['Título do anúncio'] || '';
+        // Column AH: Comprador
+        const comprador = row['Comprador'] || '';
+        // Column AJ: CPF
+        const cpf = row['CPF'] || '';
+        // Column BA: Número de rastreamento
+        const rastreio = row['Número de rastreamento'] || '';
+        // Column G: Unidades
+        const unidades = parseInt(row['Unidades']) || 1;
+        // Column Q: Total (BRL)
+        const totalStr = String(row['Total (BRL)'] || '0').replace(',', '.');
+        const total = parseFloat(totalStr) || 0;
+        // Column H: Receita por produtos (BRL)
+        const receitaStr = String(row['Receita por produtos (BRL)'] || '0').replace(',', '.');
+        const receita = parseFloat(receitaStr) || 0;
+
+        const { error } = await supabase.from('return_cases').insert({
           sale_number: String(saleNumber),
-          client_name: row['Comprador'] || '-',
-          client_document: row['CPF'] || '',
-          product_sku: row['SKU'] || '',
-          product_description: row['Título do anúncio'] || '',
+          client_name: comprador || '-',
+          client_document: String(cpf || ''),
+          product_sku: String(sku || ''),
+          product_description: String(titulo || ''),
           case_type: 'DEVOLUCAO',
           status: 'antecipado',
           entry_date: now.split('T')[0],
           created_at: now,
           marketplace_account: 'MELI_GOMEC',
           is_full: true,
-          fullfilment_tracking: row['Número de rastreamento'] || '',
-          quantity: parseInt(row['Unidades']) || 1,
-          total_value: parseFloat(String(row['Total (BRL)'] || '0').replace(',', '.')) || 0,
-          unit_value: parseFloat(String(row['Receita por produtos (BRL)'] || '0').replace(',', '.')) || 0,
+          fullfilment_tracking: String(rastreio || ''),
+          quantity: unidades,
+          total_value: total,
+          unit_value: receita,
           sent_to_backoffice: true,
         } as any);
-        imported++;
+        if (!error) imported++;
       }
-      toast.success(`${imported} devoluções importadas`);
+      toast.success(`${imported} devoluções importadas com sucesso`);
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (err) {
+      console.error('Import error:', err);
       toast.error('Erro ao importar planilha');
     }
   };

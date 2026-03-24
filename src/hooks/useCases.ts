@@ -16,8 +16,7 @@ export function useCases() {
       let q = supabase
         .from('return_cases')
         .select(CASES_COLUMNS)
-        .order('case_number', { ascending: false })
-        .limit(500);
+        .order('case_number', { ascending: false });
 
       if (role === 'usuario' && user?.id) {
         q = q.eq('created_by', user.id);
@@ -74,7 +73,7 @@ export function useReembolsos() {
   const query = useQuery({
     queryKey: ['reembolsos'],
     queryFn: async () => {
-      const { data, error } = await supabase.from('reembolsos').select('id,caso_id,valor,metodo,status,data_solicitacao,created_at,return_cases(case_number,client_name,numero_pedido)').order('created_at', { ascending: false }).limit(500);
+      const { data, error } = await supabase.from('reembolsos').select('id,caso_id,valor,metodo,status,data_solicitacao,created_at,return_cases(case_number,client_name,numero_pedido)').order('created_at', { ascending: false });
       if (error) throw error;
       return data;
     },
