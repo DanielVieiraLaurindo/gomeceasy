@@ -153,9 +153,14 @@ const App = () => (
                   <Route path="/financeiro/validacao-financeira" element={<PlaceholderPage title="Validação Financeira" description="Validação financeira de casos" />} />
                   <Route path="/financeiro/pagamentos" element={<PlaceholderPage title="Pagamentos" description="Fila de pagamentos" />} />
                   <Route path="/financeiro/ressarcimentos" element={<PlaceholderPage title="Ressarcimentos" description="Ressarcimentos de mão de obra" />} />
-                  <Route path="/financeiro/cnpjs" element={<PlaceholderPage title="Análise de CNPJs" description="Consulta e validação de CNPJs" />} />
-                  <Route path="/financeiro/notas-fiscais" element={<PlaceholderPage title="Notas Fiscais" description="Gestão de notas fiscais" />} />
                   <Route path="/financeiro/clientes-prazo" element={<ClientesPrazoPage />} />
+
+                  {/* Fiscal */}
+                  <Route path="/fiscal" element={<PlaceholderPage title="Dashboard Fiscal" description="Painel do setor fiscal" />} />
+                  <Route path="/fiscal/cnpjs" element={<AnaliseCnpjPage />} />
+                  <Route path="/fiscal/notas-fiscais" element={<PlaceholderPage title="Notas Fiscais" description="Gestão de notas fiscais" />} />
+                  <Route path="/fiscal/validacao-fiscal" element={<PlaceholderPage title="Validação Fiscal" description="Validação fiscal de casos" />} />
+                  <Route path="/fiscal/clientes-prazo" element={<ClientesPrazoPage />} />
 
                   {/* Compras */}
                   <Route path="/compras" element={<ComprasDashboard />} />
