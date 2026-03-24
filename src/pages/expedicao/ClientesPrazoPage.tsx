@@ -286,7 +286,7 @@ export default function ClientesPrazoPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Supervisor de vendas can authorize
-  const isSupervisor = profile?.role === 'master' || profile?.role === 'admin' || profile?.setor === 'supervisor_vendas';
+  const isSupervisor = profile?.role === 'master' || profile?.role === 'admin' || (profile?.nome?.toLowerCase().includes('supervisor'));
 
   const filtered = useMemo(() => {
     return requisicoes.filter((r: any) => {
