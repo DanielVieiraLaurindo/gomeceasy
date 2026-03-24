@@ -422,16 +422,18 @@ export default function PedidosSitePage() {
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={15} className="text-center py-8 text-muted-foreground">Carregando...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={16} className="text-center py-8 text-muted-foreground">Carregando...</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={15} className="text-center py-8 text-muted-foreground">Nenhum pedido encontrado</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={16} className="text-center py-8 text-muted-foreground">Nenhum pedido encontrado</TableCell></TableRow>
                 ) : filtered.map(p => {
                   const statusConf = STATUS_CONFIG[p.status as PedidoStatus] || STATUS_CONFIG.pendente;
                   const atrasado = isEntregaAtrasada(p);
                   const rastreioLink = getRastreioLink(p.codigo_rastreio);
                   return (
-                    <TableRow key={p.id} className={`cursor-pointer hover:bg-muted/50 ${atrasado ? 'bg-destructive/5' : ''}`} onClick={() => openEdit(p)}>
-                      <TableCell className="font-mono text-xs">{p.numero_pedido_site}</TableCell>
+                    <TableRow key={p.id} className={`cursor-pointer hover:bg-muted/50 ${atrasado ? 'bg-destructive/5' : ''} ${selectedIds.has(p.id) ? 'bg-primary/5' : ''}`} onClick={() => openEdit(p)}>
+                      <TableCell onClick={e => e.stopPropagation()}>
+                        <Checkbox checked={selectedIds.has(p.id)} onCheckedChange={() => toggleSelect(p.id)} />
+                      </TableCell>
                       <TableCell className="font-mono text-xs">{p.pedido_id_erp}</TableCell>
                       <TableCell>
                         <Badge variant={p.pode_faturar ? 'default' : 'secondary'} className="text-xs">
