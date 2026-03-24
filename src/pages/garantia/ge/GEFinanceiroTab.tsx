@@ -151,8 +151,8 @@ export default function GEFinanceiroTab() {
       const sectorMap: Record<string, string> = {
         conferencia_garantia: 'garantia',
         analise_lider: 'pos_vendas',
-        analise_fiscal: 'financeiro_fiscal',
-        financeiro_pagamento: 'financeiro_fiscal',
+        analise_fiscal: 'fiscal',
+        financeiro_pagamento: 'financeiro',
         pago: 'pos_vendas',
         correcao_solicitada: 'pos_vendas',
       };
