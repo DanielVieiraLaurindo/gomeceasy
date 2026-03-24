@@ -234,6 +234,7 @@ export default function UCQuotationManager({ request, items, onUpdate }: Props) 
 
   return (
     <>
+    <div className="space-y-4">
       {hasUnbatched && (
         <Card>
           <CardHeader className="pb-3"><CardTitle className="font-barlow text-base">Selecionar Itens para Cotação</CardTitle></CardHeader>
