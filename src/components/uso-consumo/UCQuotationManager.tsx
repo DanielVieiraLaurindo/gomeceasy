@@ -98,18 +98,7 @@ export default function UCQuotationManager({ request, items, onUpdate }: Props) 
     }
   };
 
-  const generateQuotationPDF = async () => {
-    const selectedItemsList = items.filter(i => selectedItems[i.id]);
-    if (selectedItemsList.length === 0) {
-      toast({ title: "Selecione ao menos um item", variant: "destructive" });
-      return;
-    }
-    setLoading(true);
-    const batchNum = currentBatch || 1;
-    for (const item of selectedItemsList) {
-      await supabase.from("purchase_request_items").update({ quotation_batch: batchNum }).eq("id", item.id);
-    }
-
+  const buildPdf = (selectedItemsList: PurchaseRequestItem[], batchNum: number) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     doc.setFontSize(18);
@@ -153,11 +142,38 @@ export default function UCQuotationManager({ request, items, onUpdate }: Props) 
     doc.text("Condições de pagamento: ___________________________________", 14, finalY);
     doc.text("Prazo de entrega: ___________________________________", 14, finalY + 8);
     doc.text("Validade da proposta: ___________________________________", 14, finalY + 16);
-    doc.save(`Cotacao_${request.req_number}_Lote${batchNum}.pdf`);
+    return doc;
+  };
 
-    toast({ title: "PDF gerado!", description: `Lote ${batchNum} com ${selectedItemsList.length} item(ns).` });
+  const generateQuotationPDF = async () => {
+    const selectedItemsList = items.filter(i => selectedItems[i.id]);
+    if (selectedItemsList.length === 0) {
+      toast({ title: "Selecione ao menos um item", variant: "destructive" });
+      return;
+    }
+    setLoading(true);
+    const batchNum = currentBatch || 1;
+    for (const item of selectedItemsList) {
+      await supabase.from("purchase_request_items").update({ quotation_batch: batchNum }).eq("id", item.id);
+    }
+
+    const doc = buildPdf(selectedItemsList, batchNum);
+    pdfDocRef.current = doc;
+    const blob = doc.output("blob");
+    if (pdfBlobUrl) URL.revokeObjectURL(pdfBlobUrl);
+    setPdfBlobUrl(URL.createObjectURL(blob));
+    setPdfPreviewOpen(true);
+
+    toast({ title: "Cotação gerada!", description: `Lote ${batchNum} com ${selectedItemsList.length} item(ns).` });
     setLoading(false);
     onUpdate();
+  };
+
+  const handleDownloadPdf = () => {
+    if (pdfDocRef.current) {
+      const batchNum = currentBatch || 1;
+      pdfDocRef.current.save(`Cotacao_${request.req_number}_Lote${batchNum}.pdf`);
+    }
   };
 
   const handleSupplierUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
