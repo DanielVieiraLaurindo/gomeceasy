@@ -402,6 +402,8 @@ export default function GEBackofficeTab() {
                   <TableHead>#</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Venda</TableHead>
+                  {activeTab === 'fullfilment' && <TableHead>SKU</TableHead>}
+                  {activeTab === 'fullfilment' && <TableHead>Rastreio</TableHead>}
                   <TableHead>Unidade</TableHead>
                   <TableHead>Marketplace</TableHead>
                   <TableHead>Tipo</TableHead>
