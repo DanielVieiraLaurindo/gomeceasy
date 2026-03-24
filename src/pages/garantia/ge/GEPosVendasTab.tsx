@@ -30,11 +30,27 @@ const CANAIS_VENDA = [
   { value: 'SITE', label: 'Site' },
 ];
 
+function detectPixKeyType(key: string): string {
+  if (!key) return '';
+  const cleaned = key.replace(/[\s\-\.\/]/g, '');
+  if (/^\d{11}$/.test(cleaned)) {
+    // Could be CPF or phone
+    if (/^[1-9]{2}9/.test(cleaned)) return 'Telefone';
+    return 'CPF';
+  }
+  if (/^\d{14}$/.test(cleaned)) return 'CNPJ';
+  if (/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(key.trim())) return 'E-mail';
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key.trim())) return 'Chave Aleatória';
+  if (cleaned.length >= 20) return 'Chave Aleatória';
+  return 'Outro';
+}
+
 export default function GEPosVendasTab() {
   const { user } = useAuth();
   const [filters, setFilters] = useState<GarantiaCaseFilters>({});
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [viewingCase, setViewingCase] = useState<ReturnCase | null>(null);
+  const [editingCase, setEditingCase] = useState<ReturnCase | null>(null);
   const [deletingCase, setDeletingCase] = useState<ReturnCase | null>(null);
   const [searchInput, setSearchInput] = useState('');
   const [unitTab, setUnitTab] = useState('SP');
@@ -47,17 +63,35 @@ export default function GEPosVendasTab() {
   const sendToBackoffice = useSendToBackoffice();
   const updateCase = useUpdateGarantiaCase();
 
-  const [formData, setFormData] = useState({
+  const defaultFormData = {
     client_name: '', client_document: '', sale_number: '',
     marketplace_account: '' as string, business_unit: 'GAP' as string,
     case_type: 'DEVOLUCAO' as string, analysis_reason: '',
     entry_date: new Date().toISOString().split('T')[0],
     analyst_name: '', quantity: '1', fullfilment_tracking: '',
     product_description: '', is_company: false,
-    numero_antecipacao: '',
-    numero_cadastro_jacsys: '',
+    numero_antecipacao: '', numero_cadastro_jacsys: '',
     reimbursement_value: '',
-  });
+    // Financial / reembolso fields
+    financial_type: '' as '' | 'reembolso' | 'ressarcimento_mo',
+    chave_pix: '', chave_pix_tipo: '',
+    titular_nome: '', instituicao: '',
+    valor_total: '', valor_com_descontos: '',
+    numero_pedido_fin: '', conta: '',
+    alegacao: '', motivo: '', sku_produto: '',
+    peca_retornou: 'nao' as string,
+    nf_garantia: '', data_solicitacao: new Date().toISOString().split('T')[0],
+  };
+
+  const [formData, setFormData] = useState(defaultFormData);
+
+  // Auto-detect PIX key type
+  useEffect(() => {
+    const tipo = detectPixKeyType(formData.chave_pix);
+    if (tipo !== formData.chave_pix_tipo) {
+      setFormData(f => ({ ...f, chave_pix_tipo: tipo }));
+    }
+  }, [formData.chave_pix]);
 
   const filteredByUnit = (cases || []).filter(c => {
     const unit = c.business_unit_cnpj || c.business_unit || '';
@@ -69,7 +103,7 @@ export default function GEPosVendasTab() {
   const searchFiltered = filteredByUnit.filter(c => {
     if (!searchInput) return true;
     const s = searchInput.toLowerCase();
-    return c.client_name?.toLowerCase().includes(s) || c.sale_number?.toLowerCase().includes(s) || c.client_document?.toLowerCase().includes(s);
+    return c.client_name?.toLowerCase().includes(s) || c.sale_number?.toLowerCase().includes(s) || c.client_document?.toLowerCase().includes(s) || String(c.case_number).includes(s) || c.product_sku?.toLowerCase().includes(s);
   });
 
   const atendenteFiltered = searchFiltered.filter(c => {
@@ -77,10 +111,37 @@ export default function GEPosVendasTab() {
     return c.analyst_name === atendenteFilter;
   });
 
-  const activeCases = atendenteFiltered.filter(c => !['finalizado', 'arquivado'].includes(c.status));
+  // Split into sub-tabs
+  const activeCases = atendenteFiltered.filter(c => !['finalizado', 'arquivado', 'aguardando_conferencia', 'conferencia_garantia', 'analise_lider', 'analise_fiscal', 'financeiro_pagamento', 'pago', 'correcao_solicitada', 'em_reembolso', 'ressarcimento_mo'].includes(c.status));
+  const emReembolsoCases = atendenteFiltered.filter(c => ['aguardando_conferencia', 'conferencia_garantia', 'analise_lider', 'analise_fiscal', 'financeiro_pagamento', 'pago', 'correcao_solicitada'].includes(c.status) && c.metodo_pagamento !== 'ressarcimento_mo');
+  const ressarcimentoMOCases = atendenteFiltered.filter(c => c.metodo_pagamento === 'ressarcimento_mo');
   const archivedCases = atendenteFiltered.filter(c => ['finalizado', 'arquivado'].includes(c.status));
 
   const handleCreate = () => {
+    const financialData: any = {};
+    if (formData.financial_type) {
+      financialData.chave_pix_valor = formData.chave_pix;
+      financialData.chave_pix_tipo = formData.chave_pix_tipo;
+      financialData.metodo_pagamento = formData.financial_type;
+      financialData.reimbursement_value = parseFloat(formData.valor_com_descontos || formData.valor_total) || 0;
+      financialData.data_solicitacao_reembolso = formData.data_solicitacao;
+      financialData.dados_bancarios_json = {
+        titular_nome: formData.titular_nome,
+        instituicao: formData.instituicao,
+        valor_total: formData.valor_total,
+        valor_com_descontos: formData.valor_com_descontos,
+        conta: formData.conta,
+        alegacao: formData.alegacao,
+        motivo: formData.motivo,
+        sku_produto: formData.sku_produto,
+        peca_retornou: formData.peca_retornou,
+        nf_garantia: formData.nf_garantia,
+        numero_pedido: formData.numero_pedido_fin,
+      };
+      // Set initial status based on type
+      financialData.status = 'aguardando_conferencia';
+    }
+
     createCase.mutate({
       client_name: formData.client_name || '-',
       client_document: formData.client_document || '-',
@@ -91,7 +152,7 @@ export default function GEPosVendasTab() {
       case_type: formData.case_type as any,
       analysis_reason: formData.analysis_reason,
       entry_date: formData.entry_date,
-      status: 'aguardando_analise' as any,
+      status: formData.financial_type ? 'aguardando_conferencia' : 'aguardando_analise' as any,
       analyst_name: formData.analyst_name || '-',
       item_condition: '-',
       product_codes: [],
@@ -104,12 +165,17 @@ export default function GEPosVendasTab() {
       product_description: formData.product_description,
       numero_antecipacao: formData.numero_antecipacao,
       numero_cadastro_jacsys: formData.numero_cadastro_jacsys,
-      reimbursement_value: parseFloat(formData.reimbursement_value) || 0,
+      numero_pedido: formData.numero_pedido_fin,
+      product_sku: formData.sku_produto,
       origem: 'pos_vendas',
+      ...financialData,
     } as any, {
       onSuccess: () => {
         setIsFormOpen(false);
-        setFormData({ client_name: '', client_document: '', sale_number: '', marketplace_account: '', business_unit: 'GAP', case_type: 'DEVOLUCAO', analysis_reason: '', entry_date: new Date().toISOString().split('T')[0], analyst_name: '', quantity: '1', fullfilment_tracking: '', product_description: '', is_company: false, numero_antecipacao: '', numero_cadastro_jacsys: '', reimbursement_value: '' });
+        setFormData(defaultFormData);
+        if (formData.financial_type) {
+          toast.success(`Caso criado e enviado para ${formData.financial_type === 'reembolso' ? 'Reembolso' : 'Ressarcimento M.O.'}`);
+        }
       }
     });
   };
@@ -123,6 +189,54 @@ export default function GEPosVendasTab() {
       onSuccess: () => toast.success(`Caso #${c.case_number} enviado para Backoffice`),
     });
   };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!window.confirm(`Excluir ${selectedIds.size} caso(s) selecionado(s)?`)) return;
+    for (const id of selectedIds) await deleteCase.mutateAsync(id);
+    setSelectedIds(new Set());
+  };
+
+  const renderCaseCard = (c: ReturnCase) => (
+    <Card key={c.id} className={cn("hover:shadow-md transition-shadow border-l-4 border-l-primary/30", selectedIds.has(c.id) && "ring-2 ring-primary/30")}>
+      <CardContent className="p-4">
+        <div className="flex items-start gap-3">
+          <Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => {
+            setSelectedIds(prev => { const n = new Set(prev); n.has(c.id) ? n.delete(c.id) : n.add(c.id); return n; });
+          }} className="mt-1" />
+          <div className="flex-1 space-y-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-bold text-lg">#{c.case_number}</span>
+              <Badge variant="outline" className="text-xs">{BUSINESS_UNIT_DISPLAY_LABELS[c.business_unit_cnpj || c.business_unit] || c.business_unit}</Badge>
+              <Badge className={cn('text-xs', STATUS_CLASSES[c.status] || 'bg-muted text-muted-foreground')}>{STATUS_LABELS[c.status] || c.status}</Badge>
+              <span className="text-xs text-muted-foreground">📅 {c.entry_date ? format(new Date(c.entry_date), 'dd/MM/yyyy') : ''}</span>
+              <Badge variant="secondary" className="text-xs">{CASE_TYPE_LABELS[c.case_type] || c.case_type}</Badge>
+              {c.reimbursement_value && c.reimbursement_value > 0 && (
+                <Badge variant="outline" className="text-xs text-success border-success/30">R$ {c.reimbursement_value.toFixed(2)}</Badge>
+              )}
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+              <div><p className="text-muted-foreground text-xs">Cliente</p><p className="font-medium">{c.client_name}</p></div>
+              <div><p className="text-muted-foreground text-xs">CPF</p><p className="font-mono text-sm">{c.client_document || '—'}</p></div>
+              <div><p className="text-muted-foreground text-xs">Rastreio</p><p className="font-mono text-sm">{c.fullfilment_tracking || '—'}</p></div>
+              <div><p className="text-muted-foreground text-xs">Atendente</p><p>{c.analyst_name || '—'}</p></div>
+              <div><p className="text-muted-foreground text-xs">Criador</p><p>{c.creator_name || '—'}</p></div>
+            </div>
+            {c.product_description && <p className="text-xs text-muted-foreground">Produto: {c.product_description}</p>}
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="w-4 h-4" /></Button></DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setViewingCase(c)}><Eye className="w-4 h-4 mr-2" />Visualizar</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { setEditingCase(c); setViewingCase(c); }}><Eye className="w-4 h-4 mr-2" />Editar</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleSendToBackoffice(c)}><ArrowRight className="w-4 h-4 mr-2" />Enviar p/ Backoffice</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setDeletingCase(c)} className="text-destructive"><Trash2 className="w-4 h-4 mr-2" />Excluir</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   if (isLoading) return <div className="space-y-4"><Skeleton className="h-8 w-48" /><Skeleton className="h-96" /></div>;
 
@@ -140,11 +254,9 @@ export default function GEPosVendasTab() {
         </div>
         <div className="flex items-center gap-2">
           {selectedIds.size > 0 && (
-            <Button variant="destructive" size="sm" onClick={async () => {
-              for (const id of selectedIds) await deleteCase.mutateAsync(id);
-              setSelectedIds(new Set());
-              toast.success(`${selectedIds.size} casos excluídos`);
-            }}><Trash2 className="w-4 h-4 mr-1" />Excluir {selectedIds.size}</Button>
+            <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
+              <Trash2 className="w-4 h-4 mr-1" />Excluir {selectedIds.size}
+            </Button>
           )}
           <Button onClick={() => setIsFormOpen(true)}><Plus className="w-4 h-4 mr-2" />Novo Caso</Button>
         </div>
@@ -158,7 +270,7 @@ export default function GEPosVendasTab() {
           </TabsList>
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input placeholder="Buscar cliente, CPF, rastreio..." className="pl-9" value={searchInput} onChange={e => setSearchInput(e.target.value)} />
+            <Input placeholder="Buscar cliente, CPF, nº caso, SKU..." className="pl-9" value={searchInput} onChange={e => setSearchInput(e.target.value)} />
           </div>
           <Select value={atendenteFilter} onValueChange={setAtendenteFilter}>
             <SelectTrigger className="w-[200px]"><SelectValue placeholder="Filtrar por atendente" /></SelectTrigger>
@@ -173,6 +285,8 @@ export default function GEPosVendasTab() {
       <Tabs defaultValue="ativos">
         <TabsList>
           <TabsTrigger value="ativos">Ativos ({activeCases.length})</TabsTrigger>
+          <TabsTrigger value="em_reembolso">Em Reembolso ({emReembolsoCases.length})</TabsTrigger>
+          <TabsTrigger value="ressarcimento_mo">Ressarcimento M.O. ({ressarcimentoMOCases.length})</TabsTrigger>
           <TabsTrigger value="arquivados">Arquivados ({archivedCases.length})</TabsTrigger>
         </TabsList>
 
@@ -180,52 +294,33 @@ export default function GEPosVendasTab() {
           {activeCases.length === 0 ? (
             <Card><CardContent className="py-12 text-center"><p className="text-muted-foreground">Nenhum caso ativo</p></CardContent></Card>
           ) : (
-            <div className="grid gap-4 mt-4">
-              {activeCases.map(c => (
-                <Card key={c.id} className={cn("hover:shadow-md transition-shadow border-l-4 border-l-primary/30", selectedIds.has(c.id) && "ring-2 ring-primary/30")}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-3">
-                      <Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => {
-                        setSelectedIds(prev => { const n = new Set(prev); n.has(c.id) ? n.delete(c.id) : n.add(c.id); return n; });
-                      }} className="mt-1" />
-                      <div className="flex-1 space-y-3">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-lg">#{c.case_number}</span>
-                          <Badge variant="outline" className="text-xs">{BUSINESS_UNIT_DISPLAY_LABELS[c.business_unit_cnpj || c.business_unit] || c.business_unit}</Badge>
-                          <Badge className={cn('text-xs', STATUS_CLASSES[c.status])}>{STATUS_LABELS[c.status]}</Badge>
-                          <span className="text-xs text-muted-foreground">📅 {c.entry_date ? format(new Date(c.entry_date), 'dd/MM/yyyy') : ''}</span>
-                          <Badge variant="secondary" className="text-xs">{CASE_TYPE_LABELS[c.case_type] || c.case_type}</Badge>
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
-                          <div><p className="text-muted-foreground text-xs">Cliente</p><p className="font-medium">{c.client_name}</p></div>
-                          <div><p className="text-muted-foreground text-xs">CPF</p><p className="font-mono-data text-sm">{c.client_document || '—'}</p></div>
-                          <div><p className="text-muted-foreground text-xs">Rastreio</p><p className="font-mono-data text-sm">{c.fullfilment_tracking || '—'}</p></div>
-                          <div><p className="text-muted-foreground text-xs">Atendente</p><p>{c.analyst_name || '—'}</p></div>
-                          <div><p className="text-muted-foreground text-xs">Criador</p><p>{c.creator_name || '—'}</p></div>
-                        </div>
-                        {c.product_description && <p className="text-xs text-muted-foreground">Produto: {c.product_description}</p>}
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="w-4 h-4" /></Button></DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setViewingCase(c)}><Eye className="w-4 h-4 mr-2" />Visualizar</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleSendToBackoffice(c)}><ArrowRight className="w-4 h-4 mr-2" />Enviar p/ Backoffice</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setDeletingCase(c)} className="text-destructive"><Trash2 className="w-4 h-4 mr-2" />Excluir</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            <div className="grid gap-4 mt-4">{activeCases.map(renderCaseCard)}</div>
           )}
         </TabsContent>
+
+        <TabsContent value="em_reembolso">
+          {emReembolsoCases.length === 0 ? (
+            <Card><CardContent className="py-12 text-center"><p className="text-muted-foreground">Nenhum caso em reembolso</p></CardContent></Card>
+          ) : (
+            <div className="grid gap-4 mt-4">{emReembolsoCases.map(renderCaseCard)}</div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="ressarcimento_mo">
+          {ressarcimentoMOCases.length === 0 ? (
+            <Card><CardContent className="py-12 text-center"><p className="text-muted-foreground">Nenhum caso de ressarcimento M.O.</p></CardContent></Card>
+          ) : (
+            <div className="grid gap-4 mt-4">{ressarcimentoMOCases.map(renderCaseCard)}</div>
+          )}
+        </TabsContent>
+
         <TabsContent value="arquivados">
           <div className="grid gap-4 mt-4">
             {archivedCases.map(c => (
               <Card key={c.id} className="opacity-70 hover:opacity-100 transition-opacity">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
+                    <Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => setSelectedIds(prev => { const n = new Set(prev); n.has(c.id) ? n.delete(c.id) : n.add(c.id); return n; })} />
                     <span className="font-bold">#{c.case_number}</span>
                     <Badge className={cn('text-xs', STATUS_CLASSES[c.status])}>{STATUS_LABELS[c.status]}</Badge>
                     <span className="text-sm">{c.client_name}</span>
@@ -239,14 +334,10 @@ export default function GEPosVendasTab() {
         </TabsContent>
       </Tabs>
 
-      {/* New Case Dialog - Pós Vendas */}
+      {/* New Case Dialog */}
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Novo Caso de Pós Vendas</DialogTitle></DialogHeader>
-          <div className="p-3 rounded-lg bg-warning/10 border border-warning/30 flex items-center gap-2 text-sm text-warning">
-            <AlertTriangle className="w-4 h-4 shrink-0" />
-            Requisição Separada - Vendas fora do prazo marketplace
-          </div>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Novo Caso de Garantia</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-3">
               <div><Label>Unidade *</Label>
@@ -284,9 +375,9 @@ export default function GEPosVendasTab() {
                 </Select>
               </div>
               <div><Label>Quantidade</Label><Input type="number" value={formData.quantity} onChange={e => setFormData(f => ({ ...f, quantity: e.target.value }))} /></div>
-              <div><Label>Código de Rastreio</Label><Input value={formData.fullfilment_tracking} onChange={e => setFormData(f => ({ ...f, fullfilment_tracking: e.target.value }))} placeholder="Código de rastreio" /></div>
+              <div><Label>Código de Rastreio</Label><Input value={formData.fullfilment_tracking} onChange={e => setFormData(f => ({ ...f, fullfilment_tracking: e.target.value }))} /></div>
             </div>
-            <div><Label>Descrição do Produto</Label><Input value={formData.product_description} onChange={e => setFormData(f => ({ ...f, product_description: e.target.value }))} placeholder="Descrição do produto que está retornando" /></div>
+            <div><Label>Descrição do Produto</Label><Input value={formData.product_description} onChange={e => setFormData(f => ({ ...f, product_description: e.target.value }))} placeholder="Descrição do produto" /></div>
 
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-2">
@@ -299,8 +390,66 @@ export default function GEPosVendasTab() {
               </div>
               <div className="flex items-center gap-2 px-3 py-1 rounded border border-success/40 bg-success/5">
                 <Checkbox id="jacsys" checked={!!formData.numero_cadastro_jacsys} onCheckedChange={v => setFormData(f => ({ ...f, numero_cadastro_jacsys: v ? ' ' : '' }))} />
-                <Label htmlFor="jacsys" className="text-success font-medium">Cliente cadastrado no Jacsys</Label>
+                <Label htmlFor="jacsys" className="text-success font-medium">Cadastro Jacsys</Label>
               </div>
+            </div>
+
+            {/* Financial Type Selection */}
+            <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
+              <Label className="text-base font-semibold">Dados Financeiros / Reembolso</Label>
+              <div className="flex gap-3">
+                <Button type="button" variant={formData.financial_type === 'reembolso' ? 'default' : 'outline'} size="sm" onClick={() => setFormData(f => ({ ...f, financial_type: f.financial_type === 'reembolso' ? '' : 'reembolso' }))}>
+                  💰 Reembolso
+                </Button>
+                <Button type="button" variant={formData.financial_type === 'ressarcimento_mo' ? 'default' : 'outline'} size="sm" onClick={() => setFormData(f => ({ ...f, financial_type: f.financial_type === 'ressarcimento_mo' ? '' : 'ressarcimento_mo' }))}>
+                  🔧 Ressarcimento M.O.
+                </Button>
+              </div>
+
+              {formData.financial_type && (
+                <div className="space-y-3 pt-2 border-t">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>Chave Pix *</Label>
+                      <Input value={formData.chave_pix} onChange={e => setFormData(f => ({ ...f, chave_pix: e.target.value }))} placeholder="CPF, e-mail, telefone ou chave aleatória" />
+                    </div>
+                    <div>
+                      <Label>Tipo da Chave</Label>
+                      <Input value={formData.chave_pix_tipo} readOnly className="bg-muted" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>Nome do Titular</Label><Input value={formData.titular_nome} onChange={e => setFormData(f => ({ ...f, titular_nome: e.target.value }))} /></div>
+                    <div><Label>Instituição</Label><Input value={formData.instituicao} onChange={e => setFormData(f => ({ ...f, instituicao: e.target.value }))} /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>Valor Total</Label><Input type="number" step="0.01" value={formData.valor_total} onChange={e => setFormData(f => ({ ...f, valor_total: e.target.value }))} /></div>
+                    <div><Label>Valor c/ Descontos</Label><Input type="number" step="0.01" value={formData.valor_com_descontos} onChange={e => setFormData(f => ({ ...f, valor_com_descontos: e.target.value }))} /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>Nº Pedido</Label><Input value={formData.numero_pedido_fin} onChange={e => setFormData(f => ({ ...f, numero_pedido_fin: e.target.value }))} /></div>
+                    <div><Label>Conta</Label><Input value={formData.conta} onChange={e => setFormData(f => ({ ...f, conta: e.target.value }))} /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>Alegação</Label><Input value={formData.alegacao} onChange={e => setFormData(f => ({ ...f, alegacao: e.target.value }))} /></div>
+                    <div><Label>Motivo</Label><Input value={formData.motivo} onChange={e => setFormData(f => ({ ...f, motivo: e.target.value }))} /></div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div><Label>SKU Produto</Label><Input value={formData.sku_produto} onChange={e => setFormData(f => ({ ...f, sku_produto: e.target.value }))} /></div>
+                    <div><Label>Peça Retornou?</Label>
+                      <Select value={formData.peca_retornou} onValueChange={v => setFormData(f => ({ ...f, peca_retornou: v }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="sim">Sim</SelectItem>
+                          <SelectItem value="nao">Não</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div><Label>NF Garantia</Label><Input value={formData.nf_garantia} onChange={e => setFormData(f => ({ ...f, nf_garantia: e.target.value }))} /></div>
+                  </div>
+                  <div><Label>Data Solicitação</Label><Input type="date" value={formData.data_solicitacao} onChange={e => setFormData(f => ({ ...f, data_solicitacao: e.target.value }))} /></div>
+                </div>
+              )}
             </div>
 
             <div><Label>Observações</Label><Textarea value={formData.analysis_reason} onChange={e => setFormData(f => ({ ...f, analysis_reason: e.target.value }))} rows={3} placeholder="Observações adicionais..." /></div>
@@ -326,22 +475,33 @@ export default function GEPosVendasTab() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* View Dialog */}
-      <Dialog open={!!viewingCase} onOpenChange={() => setViewingCase(null)}>
+      {/* View/Edit Dialog */}
+      <Dialog open={!!viewingCase} onOpenChange={() => { setViewingCase(null); setEditingCase(null); }}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           {viewingCase && (
             <>
-              <DialogHeader><DialogTitle>Caso #{viewingCase.case_number}</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{editingCase ? 'Editar' : 'Visualizar'} Caso #{viewingCase.case_number}</DialogTitle></DialogHeader>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div><p className="text-muted-foreground text-xs">Cliente</p><p className="font-medium">{viewingCase.client_name}</p></div>
                 <div><p className="text-muted-foreground text-xs">CPF/CNPJ</p><p>{viewingCase.client_document || '—'}</p></div>
                 <div><p className="text-muted-foreground text-xs">Venda</p><p className="font-mono">{viewingCase.sale_number || '—'}</p></div>
                 <div><p className="text-muted-foreground text-xs">Tipo</p><Badge variant="secondary">{CASE_TYPE_LABELS[viewingCase.case_type]}</Badge></div>
                 <div><p className="text-muted-foreground text-xs">Marketplace</p><p>{MARKETPLACE_ACCOUNT_LABELS[viewingCase.marketplace_account as any] || viewingCase.marketplace || '—'}</p></div>
-                <div><p className="text-muted-foreground text-xs">Status</p><Badge className={cn('text-xs', STATUS_CLASSES[viewingCase.status])}>{STATUS_LABELS[viewingCase.status]}</Badge></div>
+                <div><p className="text-muted-foreground text-xs">Status</p><Badge className={cn('text-xs', STATUS_CLASSES[viewingCase.status] || '')}>{STATUS_LABELS[viewingCase.status] || viewingCase.status}</Badge></div>
                 <div><p className="text-muted-foreground text-xs">Atendente</p><p>{viewingCase.analyst_name || '—'}</p></div>
                 <div><p className="text-muted-foreground text-xs">Rastreio</p><p className="font-mono">{viewingCase.fullfilment_tracking || '—'}</p></div>
               </div>
+              {viewingCase.chave_pix_valor && (
+                <div className="mt-4 p-3 rounded-lg bg-success/5 border border-success/20">
+                  <p className="text-xs font-semibold text-success mb-2">Dados Financeiros</p>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div><p className="text-xs text-muted-foreground">Chave PIX</p><p className="font-mono">{viewingCase.chave_pix_valor}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Tipo</p><p>{viewingCase.chave_pix_tipo || '—'}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Valor</p><p className="font-bold text-success">R$ {(viewingCase.reimbursement_value || 0).toFixed(2)}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Método</p><p>{viewingCase.metodo_pagamento === 'ressarcimento_mo' ? 'Ressarcimento M.O.' : 'Reembolso'}</p></div>
+                  </div>
+                </div>
+              )}
               {viewingCase.analysis_reason && <div className="mt-4"><p className="text-xs text-muted-foreground">Observações</p><p className="text-sm bg-muted/50 p-3 rounded-lg mt-1">{viewingCase.analysis_reason}</p></div>}
             </>
           )}
