@@ -434,6 +434,7 @@ export default function PedidosSitePage() {
                       <TableCell onClick={e => e.stopPropagation()}>
                         <Checkbox checked={selectedIds.has(p.id)} onCheckedChange={() => toggleSelect(p.id)} />
                       </TableCell>
+                      <TableCell className="font-mono text-xs">{p.numero_pedido_site}</TableCell>
                       <TableCell className="font-mono text-xs">{p.pedido_id_erp}</TableCell>
                       <TableCell>
                         <Badge variant={p.pode_faturar ? 'default' : 'secondary'} className="text-xs">
