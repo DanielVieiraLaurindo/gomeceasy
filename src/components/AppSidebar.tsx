@@ -53,23 +53,20 @@ export function AppSidebar() {
     setOpenGroups(prev => prev.includes(key) ? prev.filter(g => g !== key) : [...prev, key]);
   };
 
-  // Get all items for search
+  // All users see all modules (SAP ERP-style — all modules available)
   const allItems = useMemo(() => {
     const items: SidebarItem[] = [];
     if (isMaster) {
       items.push({ path: '/master', label: 'Dashboard Master', icon: LayoutDashboard });
-      MASTER_SIDEBAR_GROUPS.forEach(g => {
-        if (g.setores) g.setores.forEach(s => items.push(...(SIDEBAR_ITEMS[s] || [])));
-        else if (g.setor) items.push(...(SIDEBAR_ITEMS[g.setor] || []));
-      });
-    } else {
-      const currentSetor: AppSetor = setor || 'backoffice';
-      items.push(...(SIDEBAR_ITEMS[currentSetor] || SIDEBAR_ITEMS.backoffice));
     }
+    MASTER_SIDEBAR_GROUPS.forEach(g => {
+      if (g.setores) g.setores.forEach(s => items.push(...(SIDEBAR_ITEMS[s] || [])));
+      else if (g.setor) items.push(...(SIDEBAR_ITEMS[g.setor] || []));
+    });
     // Deduplicate
     const seen = new Set<string>();
     return items.filter(i => { if (seen.has(i.path)) return false; seen.add(i.path); return true; });
-  }, [isMaster, setor]);
+  }, [isMaster]);
 
   const searchResults = useMemo(() => {
     if (!searchTerm) return [];
