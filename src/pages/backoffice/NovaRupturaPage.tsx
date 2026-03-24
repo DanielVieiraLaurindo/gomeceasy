@@ -134,10 +134,10 @@ export default function NovaRupturaPage() {
       return;
     }
 
-    const toInsert = newItems.map(({ _idx, ...rest }) => ({
+    const toInsert = newItems.map(({ _idx, status_original, ...rest }) => ({
       ...rest,
       created_by: user?.id,
-      status: mapImportStatus(rest.observacoes || ''),
+      status: mapImportStatus(status_original || rest.observacoes || ''),
     }));
 
     const { error } = await supabase.from('rupturas').insert(toInsert);
