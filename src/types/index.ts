@@ -23,6 +23,8 @@ export const SETOR_LABELS: Record<AppSetor, string> = {
   garantia_loja: 'Garantia Loja',
   garantia_ecommerce: 'Garantia Ecommerce',
   financeiro_fiscal: 'Financeiro Fiscal',
+  financeiro: 'Financeiro',
+  fiscal: 'Fiscal',
   expedicao_loja: 'Expedição Loja',
   expedicao_ecommerce: 'Expedição Ecommerce',
 };
