@@ -80,10 +80,10 @@ export const SIDEBAR_ITEMS: Record<AppSetor, SidebarItem[]> = {
     { path: '/expedicao-ecommerce/despacho', label: 'Despacho', icon: Truck },
   ],
   compras: [
+    { path: '/compras', label: 'Dashboard de Compras', icon: LayoutDashboard },
     { path: '/compras/avaliacao-fornecedores', label: 'Avaliação de Fornecedores', icon: UserCheck },
     { path: '/compras/precificacao', label: 'Calculadora de Preços', icon: Calculator },
     { path: '/compras/contratos', label: 'Contratos', icon: FileText },
-    { path: '/compras', label: 'Dashboard de Compras', icon: LayoutDashboard },
     { path: '/compras/divergencias', label: 'Divergências', icon: AlertTriangle },
     { path: '/compras/follow-up', label: 'Follow - Up', icon: Clock },
     { path: '/compras/marcas', label: 'Marcas', icon: Building2 },
