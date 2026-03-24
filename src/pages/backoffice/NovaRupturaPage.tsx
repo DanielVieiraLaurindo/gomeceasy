@@ -264,6 +264,7 @@ export default function NovaRupturaPage() {
                             <TableCell className="text-xs">{r.canal_venda}</TableCell>
                             <TableCell className="text-xs">{r.quantidade}</TableCell>
                             <TableCell className="text-xs">R$ {(r.valor_total || 0).toFixed(2)}</TableCell>
+                            <TableCell><Badge variant="outline" className="text-[10px]">{r.status_original || 'Nova'}</Badge></TableCell>
                             <TableCell><Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeImportRow(r._idx)}><Trash2 className="w-3.5 h-3.5" /></Button></TableCell>
                           </TableRow>
                         ))}
