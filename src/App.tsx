@@ -55,6 +55,7 @@ const UsoConsumoDetalhePage = React.lazy(() => import("@/pages/compras/UsoConsum
 const PedidosSitePage = React.lazy(() => import("@/pages/backoffice/PedidosSitePage"));
 const AnaliseCnpjPage = React.lazy(() => import("@/pages/backoffice/AnaliseCnpjPage"));
 const NovaRupturaPage = React.lazy(() => import("@/pages/backoffice/NovaRupturaPage"));
+const ConferenciaPedidosFlexPage = React.lazy(() => import("@/pages/pos-vendas/ConferenciaPedidosFlexPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
