@@ -171,11 +171,15 @@ const App = () => (
                   <Route path="/compras/divergencias/dashboard" element={<DivergenciasDashboard />} />
                   <Route path="/compras/divergencias/historico" element={<HistoricoDivergenciasPage />} />
                   <Route path="/compras/divergencias/:id" element={<DetalheDivergenciaPage />} />
-                  <Route path="/compras/solicitacoes" element={<PlaceholderPage title="Solicitações de Reposição" description="Solicitações recebidas do BackOffice" />} />
-                  <Route path="/compras/pedidos" element={<PlaceholderPage title="Pedidos de Compra" description="Pedidos de compra" />} />
                   <Route path="/compras/precificacao" element={<PrecificacaoPage />} />
                   <Route path="/compras/marcas" element={<PlaceholderPage title="Marcas" description="Marcas e fornecedores" />} />
-                  <Route path="/compras/minhas-marcas" element={<PlaceholderPage title="Minhas Marcas" description="Marcas atribuídas a você" />} />
+                  <Route path="/compras/marcas-fornecedores" element={<PlaceholderPage title="Marcas e Fornecedores" description="Gestão de marcas e fornecedores" />} />
+                  <Route path="/compras/follow-up" element={<PlaceholderPage title="Follow - Up" description="Acompanhamento de pedidos e fornecedores" />} />
+                  <Route path="/compras/contratos" element={<PlaceholderPage title="Contratos" description="Gestão de contratos com fornecedores" />} />
+                  <Route path="/compras/avaliacao-fornecedores" element={<PlaceholderPage title="Avaliação de Fornecedores" description="Avaliação e classificação de fornecedores" />} />
+                  <Route path="/compras/rebate" element={<PlaceholderPage title="Rebate" description="Gestão de rebates com fornecedores" />} />
+                  <Route path="/compras/registro-ocorrencias" element={<PlaceholderPage title="Registro de Ocorrências (Amarração)" description="Registro de ocorrências e amarrações" />} />
+                  <Route path="/compras/transferencia-lojas" element={<PlaceholderPage title="Transferência entre Lojas" description="Transferências entre lojas" />} />
 
                   {/* Pré-Vendas */}
                   <Route path="/pre-vendas" element={<PreVendasDashboard />} />

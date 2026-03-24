@@ -1,17 +1,50 @@
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useDivergencia } from "@/hooks/useDivergencias";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 import { getOcorrenciaColor, getStatusColor, formatDateTime } from "@/lib/divergencia-utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Clock, CheckCircle2, Circle, Paperclip, FileText } from "lucide-react";
+import { ArrowLeft, Clock, CheckCircle2, Circle, Paperclip, FileText, Upload, Loader2 } from "lucide-react";
 import WorkflowActions from "@/components/divergencias/WorkflowActions";
+import { toast } from "sonner";
 import type { StatusDivergencia } from "@/types/divergencia";
 
 export default function DetalheDivergenciaPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { data, isLoading, error } = useDivergencia(id);
+  const { user, setor, role } = useAuth();
+  const queryClient = useQueryClient();
+  const [uploading, setUploading] = useState(false);
+
+  const canAttach = role === "master" || setor === "compras" || setor === "fiscal";
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !id || !user) return;
+    setUploading(true);
+    try {
+      const path = `${id}/anexo_${Date.now()}_${file.name}`;
+      const { error: upErr } = await supabase.storage.from("divergencias").upload(path, file);
+      if (upErr) throw upErr;
+      const { data: urlData } = supabase.storage.from("divergencias").getPublicUrl(path);
+      await supabase.from("divergencia_anexos").insert({
+        divergencia_id: id, nome_arquivo: file.name, url: urlData.publicUrl,
+        tipo: "anexo_fluxo", uploaded_by: user.id,
+      } as any);
+      toast.success("Arquivo anexado com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["divergencia", id] });
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao anexar arquivo.");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  };
 
   if (isLoading) return <div className="flex min-h-[50vh] items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>;
   if (error || !data) return <div className="flex flex-col items-center justify-center py-20"><p className="text-muted-foreground">Divergência não encontrada</p><Button variant="link" onClick={() => navigate("/compras/divergencias")}>Voltar</Button></div>;
@@ -58,16 +91,27 @@ export default function DetalheDivergenciaPage() {
             )}
           </CardContent></Card>
 
-          {anexos.length > 0 && (
-            <Card className="border-0 shadow-sm"><CardHeader className="pb-3"><CardTitle className="text-base flex items-center gap-2"><Paperclip className="h-4 w-4" /> Anexos ({anexos.length})</CardTitle></CardHeader><CardContent>
+          <Card className="border-0 shadow-sm"><CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2"><Paperclip className="h-4 w-4" /> Anexos ({anexos.length})</CardTitle>
+              {canAttach && (
+                <Button variant="outline" size="sm" className="gap-1 text-xs" disabled={uploading} onClick={() => document.getElementById("attach-file-input")?.click()}>
+                  {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                  Anexar Arquivo
+                </Button>
+              )}
+              <input id="attach-file-input" type="file" className="hidden" onChange={handleFileUpload} />
+            </div>
+          </CardHeader><CardContent>
+            {anexos.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum anexo.</p> : (
               <div className="space-y-2">{anexos.map((a: any) => (
                 <a key={a.id} href={a.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors text-sm">
                   <FileText className="h-4 w-4 text-primary shrink-0" /><span className="truncate">{a.nome_arquivo}</span>
                   {a.tipo && <Badge variant="outline" className="text-xs shrink-0">{a.tipo}</Badge>}
                 </a>
               ))}</div>
-            </CardContent></Card>
-          )}
+            )}
+          </CardContent></Card>
         </div>
 
         <div className="space-y-6">

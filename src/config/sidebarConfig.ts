@@ -4,7 +4,8 @@ import {
   Camera, RefreshCw, Briefcase, PenTool, Monitor, Settings, Megaphone,
   TrendingUp, FolderOpen, BookOpen, UserCheck, Columns3, Archive, Scale,
   Truck, MapPin, Bell, Eye, Boxes, CheckSquare, ClipboardList, Route,
-  Send, BarChart2, Globe, Clock, Clipboard, Calculator, Headphones, Headset
+  Send, BarChart2, Globe, Clock, Clipboard, Calculator, Headphones, Headset,
+  ArrowRightLeft
 } from 'lucide-react';
 import type { AppSetor } from '@/types';
 import type { LucideIcon } from 'lucide-react';
@@ -79,16 +80,18 @@ export const SIDEBAR_ITEMS: Record<AppSetor, SidebarItem[]> = {
     { path: '/expedicao-ecommerce/despacho', label: 'Despacho', icon: Truck },
   ],
   compras: [
-    { path: '/compras', label: 'Dashboard Compras', icon: LayoutDashboard },
-    { path: '/compras/uso-consumo', label: 'Uso e Consumo', icon: ClipboardList },
+    { path: '/compras/avaliacao-fornecedores', label: 'Avaliação de Fornecedores', icon: UserCheck },
+    { path: '/compras/precificacao', label: 'Calculadora de Preços', icon: Calculator },
+    { path: '/compras/contratos', label: 'Contratos', icon: FileText },
+    { path: '/compras', label: 'Dashboard de Compras', icon: LayoutDashboard },
     { path: '/compras/divergencias', label: 'Divergências', icon: AlertTriangle },
-    { path: '/compras/divergencias/dashboard', label: 'Dashboard Diverg.', icon: BarChart2 },
-    { path: '/compras/divergencias/historico', label: 'Histórico Diverg.', icon: Archive },
-    { path: '/compras/solicitacoes', label: 'Solicitações', icon: ShoppingCart },
-    { path: '/compras/pedidos', label: 'Pedidos de Compra', icon: FileText },
-    { path: '/compras/precificacao', label: 'Calculadora Preços', icon: Calculator },
+    { path: '/compras/follow-up', label: 'Follow - Up', icon: Clock },
     { path: '/compras/marcas', label: 'Marcas', icon: Building2 },
     { path: '/compras/marcas-fornecedores', label: 'Marcas e Fornecedores', icon: UserCheck },
+    { path: '/compras/rebate', label: 'Rebate', icon: DollarSign },
+    { path: '/compras/registro-ocorrencias', label: 'Registro de Ocorrências (Amarração)', icon: ClipboardList },
+    { path: '/compras/transferencia-lojas', label: 'Transferência entre Lojas', icon: ArrowRightLeft },
+    { path: '/compras/uso-consumo', label: 'Uso e Consumo', icon: ClipboardList },
   ],
   pre_vendas: [
     { path: '/pre-vendas', label: 'Dashboard Pré-Vendas', icon: LayoutDashboard },
