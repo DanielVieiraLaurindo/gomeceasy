@@ -333,5 +333,26 @@ export default function UCQuotationManager({ request, items, onUpdate }: Props) 
         </Card>
       )}
     </div>
+
+      {/* PDF Preview Dialog */}
+      <Dialog open={pdfPreviewOpen} onOpenChange={(open) => { if (!open) setPdfPreviewOpen(false); }}>
+        <DialogContent className="max-w-4xl h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="font-barlow">Pré-visualização da Cotação</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 min-h-0">
+            {pdfBlobUrl && (
+              <iframe src={pdfBlobUrl} className="w-full h-full rounded-md border" title="PDF Preview" />
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPdfPreviewOpen(false)}>Fechar</Button>
+            <Button onClick={handleDownloadPdf}>
+              <Download className="h-4 w-4 mr-2" /> Baixar PDF
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
