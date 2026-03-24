@@ -104,6 +104,7 @@ const App = () => (
                   {/* Expedição Loja */}
                   <Route path="/expedicao-loja" element={<ExpedicaoLojaDashboard />} />
                   <Route path="/expedicao-loja/clientes-prazo" element={<ClientesPrazoPage />} />
+                  <Route path="/expedicao-loja/creditos-clientes" element={<CreditosClientesPage />} />
                   <Route path="/expedicao-loja/rastreamento" element={<PlaceholderPage title="Rastreamento" description="Rastreamento de entregas da loja" />} />
                   <Route path="/expedicao-loja/transportadoras" element={<PlaceholderPage title="Transportadoras" description="Cadastro de transportadoras" />} />
 

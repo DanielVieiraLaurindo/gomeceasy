@@ -60,6 +60,7 @@ export const SIDEBAR_ITEMS: Record<AppSetor, SidebarItem[]> = {
   expedicao_loja: [
     { path: '/expedicao-loja', label: 'Dashboard Exped. Loja', icon: LayoutDashboard },
     { path: '/expedicao-loja/clientes-prazo', label: 'Clientes Prazo Loja', icon: Clock },
+    { path: '/expedicao-loja/creditos-clientes', label: 'Consulta Crédito', icon: CreditCard },
     { path: '/expedicao-loja/rastreamento', label: 'Rastreamento', icon: MapPin },
     { path: '/expedicao-loja/transportadoras', label: 'Transportadoras', icon: Truck },
   ],

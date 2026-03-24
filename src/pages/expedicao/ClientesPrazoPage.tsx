@@ -517,6 +517,18 @@ export default function ClientesPrazoPage() {
         onAuthorize={handleAuthorize}
         canAuthorize={isSupervisor}
         onUpdateLink={handleUpdateLink}
+        onBaixa={(id: string) => {
+          update.mutate({ id, status: 'liquidado' }, {
+            onSuccess: () => { toast.success('Requisição baixada com sucesso'); setSelectedItem(null); },
+          });
+        }}
+        onAddPayment={(clientePrazoId: string, valor: number, obs: string) => {
+          const currentPago = selectedItem?.valor_pago || 0;
+          const newPago = currentPago + valor;
+          update.mutate({ id: clientePrazoId, valor_pago: newPago, updated_at: new Date().toISOString() }, {
+            onSuccess: () => { toast.success(`Pagamento de R$ ${valor.toFixed(2)} registrado`); setSelectedItem(null); },
+          });
+        }}
       />
     </div>
   );
