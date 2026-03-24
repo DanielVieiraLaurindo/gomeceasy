@@ -4,6 +4,7 @@ export type UserRole = 'master' | 'admin' | 'usuario';
 export type AppSetor =
   | 'pos_vendas' | 'pre_vendas' | 'criacao' | 'backoffice'
   | 'compras' | 'ti' | 'garantia_loja' | 'garantia_ecommerce' | 'financeiro_fiscal'
+  | 'financeiro' | 'fiscal'
   | 'expedicao_loja' | 'expedicao_ecommerce';
 
 export const ROLE_LABELS: Record<UserRole, string> = {
@@ -22,6 +23,8 @@ export const SETOR_LABELS: Record<AppSetor, string> = {
   garantia_loja: 'Garantia Loja',
   garantia_ecommerce: 'Garantia Ecommerce',
   financeiro_fiscal: 'Financeiro Fiscal',
+  financeiro: 'Financeiro',
+  fiscal: 'Fiscal',
   expedicao_loja: 'Expedição Loja',
   expedicao_ecommerce: 'Expedição Ecommerce',
 };
@@ -36,6 +39,8 @@ export const SETOR_OPTIONS: { value: AppSetor; label: string }[] = [
   { value: 'garantia_loja', label: 'Garantia Loja' },
   { value: 'garantia_ecommerce', label: 'Garantia Ecommerce' },
   { value: 'financeiro_fiscal', label: 'Financeiro Fiscal' },
+  { value: 'financeiro', label: 'Financeiro' },
+  { value: 'fiscal', label: 'Fiscal' },
   { value: 'expedicao_loja', label: 'Expedição Loja' },
   { value: 'expedicao_ecommerce', label: 'Expedição Ecommerce' },
 ];
@@ -50,6 +55,8 @@ export const SETOR_HOME_ROUTES: Record<AppSetor, string> = {
   garantia_loja: '/garantia-loja',
   garantia_ecommerce: '/garantia-ecommerce',
   financeiro_fiscal: '/financeiro',
+  financeiro: '/financeiro',
+  fiscal: '/fiscal',
   expedicao_loja: '/expedicao-loja',
   expedicao_ecommerce: '/expedicao-ecommerce',
 };
