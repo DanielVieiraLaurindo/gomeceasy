@@ -27,7 +27,7 @@ const GEPosVendasTab = React.lazy(() => import("@/pages/garantia/ge/GEPosVendasT
 const GEFinanceiroTab = React.lazy(() => import("@/pages/garantia/ge/GEFinanceiroTab"));
 const GEGaleriaTab = React.lazy(() => import("@/pages/garantia/ge/GEGaleriaTab"));
 const GERelatoriosTab = React.lazy(() => import("@/pages/garantia/ge/GERelatoriosTab"));
-const GEConfiguracoesTab = React.lazy(() => import("@/pages/garantia/ge/GEConfiguracoesTab"));
+// GEConfiguracoesTab removed
 const FinanceiroDashboard = React.lazy(() => import("@/pages/financeiro/FinanceiroDashboard"));
 const ComprasDashboard = React.lazy(() => import("@/pages/compras/ComprasDashboard"));
 const DivergenciasDashboard = React.lazy(() => import("@/pages/compras/DivergenciasDashboard"));
