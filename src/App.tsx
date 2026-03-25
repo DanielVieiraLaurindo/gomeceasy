@@ -48,6 +48,7 @@ const PlaceholderPage = React.lazy(() => import("@/components/PlaceholderPage"))
 const PrecificacaoPage = React.lazy(() => import("@/pages/compras/PrecificacaoPage"));
 const UserManagementPage = React.lazy(() => import("@/pages/ti/UserManagementPage"));
 const ActivityLogPage = React.lazy(() => import("@/pages/ti/ActivityLogPage"));
+const ChamadosPage = React.lazy(() => import("@/pages/ti/ChamadosPage"));
 const ProfileSettingsPage = React.lazy(() => import("@/pages/ProfileSettingsPage"));
 const UsoConsumoDashboard = React.lazy(() => import("@/pages/compras/UsoConsumoDashboard"));
 const UsoConsumoNovaPage = React.lazy(() => import("@/pages/compras/UsoConsumoNovaPage"));
