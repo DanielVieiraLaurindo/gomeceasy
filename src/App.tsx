@@ -143,7 +143,7 @@ const App = () => (
                   <Route path="/garantia-ecommerce/financeiro" element={<GEFinanceiroTab />} />
                   <Route path="/garantia-ecommerce/galeria" element={<GEGaleriaTab />} />
                   <Route path="/garantia-ecommerce/relatorios" element={<GERelatoriosTab />} />
-                  <Route path="/garantia-ecommerce/configuracoes" element={<GEConfiguracoesTab />} />
+                  {/* configuracoes removed */}
 
                   {/* Legacy garantia redirects */}
                   <Route path="/garantia" element={<Navigate to="/garantia-ecommerce" replace />} />
