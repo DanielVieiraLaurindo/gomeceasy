@@ -140,7 +140,7 @@ const App = () => (
                   <Route path="/garantia-ecommerce" element={<GarantiaEcommerceDashboard />} />
                   <Route path="/garantia-ecommerce/backoffice" element={<GEBackofficeTab />} />
                   <Route path="/garantia-ecommerce/pos-vendas" element={<GEPosVendasTab />} />
-                  <Route path="/garantia-ecommerce/financeiro" element={<GEFinanceiroTab />} />
+                  <Route path="/garantia-ecommerce/ressarcimentos" element={<GEFinanceiroTab />} />
                   <Route path="/garantia-ecommerce/galeria" element={<GEGaleriaTab />} />
                   <Route path="/garantia-ecommerce/relatorios" element={<GERelatoriosTab />} />
                   {/* configuracoes removed */}
@@ -154,12 +154,12 @@ const App = () => (
                   <Route path="/financeiro/reembolsos" element={<PlaceholderPage title="Validação de Reembolsos" description="Fila de reembolsos para validação" />} />
                   <Route path="/financeiro/validacao-financeira" element={<PlaceholderPage title="Validação Financeira" description="Validação financeira de casos" />} />
                   <Route path="/financeiro/pagamentos" element={<PlaceholderPage title="Pagamentos" description="Fila de pagamentos" />} />
-                  <Route path="/financeiro/ressarcimentos" element={<PlaceholderPage title="Ressarcimentos" description="Ressarcimentos de mão de obra" />} />
+                  <Route path="/financeiro/ressarcimentos-garantia" element={<GEFinanceiroTab />} />
                   <Route path="/financeiro/clientes-prazo" element={<ClientesPrazoPage />} />
 
                   {/* Fiscal */}
                   <Route path="/fiscal" element={<PlaceholderPage title="Dashboard Fiscal" description="Painel do setor fiscal" />} />
-                  <Route path="/fiscal/cnpjs" element={<AnaliseCnpjPage />} />
+                  {/* cnpjs removed from fiscal - access via backoffice */}
                   <Route path="/fiscal/notas-fiscais" element={<PlaceholderPage title="Notas Fiscais" description="Gestão de notas fiscais" />} />
                   <Route path="/fiscal/validacao-fiscal" element={<PlaceholderPage title="Validação Fiscal" description="Validação fiscal de casos" />} />
                   <Route path="/fiscal/clientes-prazo" element={<ClientesPrazoPage />} />
@@ -174,7 +174,7 @@ const App = () => (
                   <Route path="/compras/divergencias/historico" element={<HistoricoDivergenciasPage />} />
                   <Route path="/compras/divergencias/:id" element={<DetalheDivergenciaPage />} />
                   <Route path="/compras/precificacao" element={<PrecificacaoPage />} />
-                  <Route path="/compras/marcas" element={<PlaceholderPage title="Marcas" description="Marcas e fornecedores" />} />
+                  {/* marcas removed - use marcas-fornecedores */}
                   <Route path="/compras/marcas-fornecedores" element={<PlaceholderPage title="Marcas e Fornecedores" description="Gestão de marcas e fornecedores" />} />
                   <Route path="/compras/follow-up" element={<PlaceholderPage title="Follow - Up" description="Acompanhamento de pedidos e fornecedores" />} />
                   <Route path="/compras/contratos" element={<PlaceholderPage title="Contratos" description="Gestão de contratos com fornecedores" />} />
