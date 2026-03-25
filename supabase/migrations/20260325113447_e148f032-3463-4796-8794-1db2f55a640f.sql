@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS rupturas_numero_pedido_sku_unique ON rupturas (numero_pedido, sku);
