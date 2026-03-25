@@ -44,22 +44,20 @@ export const SIDEBAR_ITEMS: Record<AppSetor, SidebarItem[]> = {
     { path: '/garantia-ecommerce', label: 'Dashboard Garantia Ecom.', icon: LayoutDashboard },
     { path: '/garantia-ecommerce/backoffice', label: 'Recursos', icon: Headphones },
     { path: '/garantia-ecommerce/pos-vendas', label: 'Garantias', icon: Headset },
-    { path: '/garantia-ecommerce/financeiro', label: 'Ressarcimentos', icon: DollarSign },
+    { path: '/garantia-ecommerce/ressarcimentos', label: 'Ressarcimentos', icon: DollarSign },
     { path: '/garantia-ecommerce/galeria', label: 'Galeria Garantia', icon: Camera },
     { path: '/garantia-ecommerce/relatorios', label: 'Relatórios Garantia', icon: BarChart2 },
-    { path: '/garantia-ecommerce/configuracoes', label: 'Config. Garantia', icon: Settings },
   ],
   financeiro: [
     { path: '/financeiro', label: 'Dashboard Financeiro', icon: LayoutDashboard },
     { path: '/financeiro/reembolsos', label: 'Validação Reembolsos', icon: Receipt },
     { path: '/financeiro/validacao-financeira', label: 'Validação Financeira', icon: CheckSquare },
     { path: '/financeiro/pagamentos', label: 'Pagamentos', icon: CreditCard },
-    { path: '/financeiro/ressarcimentos', label: 'Ressarcimentos', icon: Scale },
+    { path: '/financeiro/ressarcimentos-garantia', label: 'Ressarcimentos Garantia', icon: Scale },
     { path: '/financeiro/clientes-prazo', label: 'Clientes Prazo', icon: Clock },
   ],
   fiscal: [
     { path: '/fiscal', label: 'Dashboard Fiscal', icon: LayoutDashboard },
-    { path: '/fiscal/cnpjs', label: 'Análise CNPJs', icon: SearchIcon },
     { path: '/fiscal/notas-fiscais', label: 'Notas Fiscais', icon: FileText },
     { path: '/fiscal/validacao-fiscal', label: 'Validação Fiscal', icon: CheckSquare },
     { path: '/fiscal/clientes-prazo', label: 'Clientes Prazo Fiscal', icon: Clock },
@@ -87,7 +85,6 @@ export const SIDEBAR_ITEMS: Record<AppSetor, SidebarItem[]> = {
     { path: '/compras/contratos', label: 'Contratos', icon: FileText },
     { path: '/compras/divergencias', label: 'Divergências', icon: AlertTriangle },
     { path: '/compras/follow-up', label: 'Follow - Up', icon: Clock },
-    { path: '/compras/marcas', label: 'Marcas', icon: Building2 },
     { path: '/compras/marcas-fornecedores', label: 'Marcas e Fornecedores', icon: UserCheck },
     { path: '/compras/rebate', label: 'Rebate', icon: DollarSign },
     { path: '/compras/registro-ocorrencias', label: 'Registro de Ocorrências (Amarração)', icon: ClipboardList },
@@ -123,11 +120,9 @@ export interface MasterSidebarGroup {
 }
 
 export const MASTER_SIDEBAR_GROUPS: MasterSidebarGroup[] = [
-  { label: 'E-commerce', setores: ['backoffice', 'pos_vendas', 'pre_vendas', 'criacao'], isModule: true },
+  { label: 'E-commerce', setores: ['backoffice', 'pos_vendas', 'pre_vendas', 'criacao', 'expedicao_ecommerce', 'garantia_ecommerce'], isModule: true },
   { label: 'Expedição Loja', setor: 'expedicao_loja' },
-  { label: 'Expedição Ecommerce', setor: 'expedicao_ecommerce' },
   { label: 'Garantia Loja', setor: 'garantia_loja' },
-  { label: 'Garantia Ecommerce', setor: 'garantia_ecommerce' },
   { label: 'Financeiro', setor: 'financeiro' },
   { label: 'Fiscal', setor: 'fiscal' },
   { label: 'Compras', setor: 'compras' },
@@ -140,4 +135,6 @@ export const ECOMMERCE_SETOR_LABELS: Record<string, string> = {
   pos_vendas: 'Pós-Vendas',
   pre_vendas: 'Pré-Vendas',
   criacao: 'Criação',
+  expedicao_ecommerce: 'Expedição Ecommerce',
+  garantia_ecommerce: 'Garantia Ecommerce',
 };
