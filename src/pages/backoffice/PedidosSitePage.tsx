@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import { exportToExcel } from '@/lib/export-utils';
 import {
   Plus, Search, Package, Clock, Truck, CheckCircle2, XCircle,
-  AlertTriangle, RotateCcw, Edit, Download, Upload, FileUp, Trash2,
+  AlertTriangle, RotateCcw, Edit, Download, Upload, FileUp, Trash2, FileDown,
 } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
 import * as XLSX from 'xlsx';
@@ -343,6 +343,14 @@ export default function PedidosSitePage() {
         </div>
         <div className="flex gap-2">
           <input ref={importRef} type="file" accept=".xls,.xlsx,.csv" className="hidden" onChange={handleImport} />
+          <Button variant="ghost" size="sm" onClick={() => {
+            const headers = ['n° pedido site', 'Nome', 'status', 'rastreio', 'transportadora', 'cpf', 'ID', 'data', 'Cidade', 'UF', 'frete site', 'frete cobrado', 'medidas'];
+            const ws = XLSX.utils.aoa_to_sheet([headers]);
+            ws['!cols'] = headers.map(() => ({ wch: 18 }));
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Modelo');
+            XLSX.writeFile(wb, 'modelo_pedidos_site.xlsx');
+          }}><FileDown className="w-4 h-4 mr-2" />Template</Button>
           <Button variant="outline" size="sm" onClick={() => importRef.current?.click()}><Upload className="w-4 h-4 mr-2" />Importar</Button>
           <Button variant="outline" size="sm" onClick={handleExport}><Download className="w-4 h-4 mr-2" />Exportar</Button>
           <Button onClick={openNew} className="gap-2"><Plus className="w-4 h-4" />Novo Pedido</Button>
