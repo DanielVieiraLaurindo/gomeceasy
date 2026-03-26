@@ -1,7 +1,7 @@
 export type BusinessUnit = 'GAP' | 'GAP_VIRTUAL' | 'GAP_ES' | 'GOMEC' | 'SP' | 'ES';
 export type MarketplaceAccount = 'MELI_GAP' | 'MELI_GOMEC' | 'MELI_ES' | 'SHOPEE_SP' | 'SHOPEE_ES' | 'MAGALU_SP' | 'MAGALU_ES' | 'SITE';
 export type CaseType = 'GARANTIA' | 'DEVOLUCAO' | 'DESCARTE';
-export type CaseStatus = 'aguardando_analise' | 'em_analise' | 'antecipado' | 'aguardando_backoffice' | 'finalizado' | 'arquivado' | 'em_mediacao';
+export type CaseStatus = 'aguardando_analise' | 'em_analise' | 'antecipado' | 'aguardando_backoffice' | 'finalizado' | 'arquivado' | 'em_mediacao' | 'aguardando_conferencia' | 'conferencia_garantia' | 'analise_lider' | 'analise_fiscal' | 'financeiro_pagamento' | 'pago' | 'correcao_solicitada' | 'reprovado_gestor' | 'reprovado_fiscal';
 export type BackofficeActionType = 'mediacao' | 'recurso_apelacao' | 'contestacao' | 'aguardando_plataforma' | 'aguardando_cliente' | 'finalizado';
 export type BackofficeResult = 'reembolso_cliente' | 'reembolso_empresa' | 'pendente';
 export type BusinessUnitCNPJ = 'GAP' | 'GAP_VIRTUAL' | 'GAP_ES';
@@ -103,6 +103,15 @@ export const STATUS_LABELS: Record<CaseStatus, string> = {
   em_mediacao: 'Em Mediação',
   finalizado: 'Finalizado',
   arquivado: 'Arquivado',
+  aguardando_conferencia: 'Em Transporte',
+  conferencia_garantia: 'Em Conferência',
+  analise_lider: 'Validação Gestor',
+  analise_fiscal: 'Análise Fiscal',
+  financeiro_pagamento: 'Financeiro - Pagamento',
+  pago: 'Pago',
+  correcao_solicitada: 'Correção Solicitada',
+  reprovado_gestor: 'Reprovado Gestor',
+  reprovado_fiscal: 'Reprovado Fiscal',
 };
 
 export const STATUS_CLASSES: Record<CaseStatus, string> = {
@@ -113,6 +122,15 @@ export const STATUS_CLASSES: Record<CaseStatus, string> = {
   em_mediacao: 'bg-pink-500/15 text-pink-600 border-pink-500/30',
   finalizado: 'bg-success/15 text-success border-success/30',
   arquivado: 'bg-muted text-muted-foreground border-border',
+  aguardando_conferencia: 'bg-warning/15 text-warning border-warning/30',
+  conferencia_garantia: 'bg-info/15 text-info border-info/30',
+  analise_lider: 'bg-purple-500/15 text-purple-600 border-purple-500/30',
+  analise_fiscal: 'bg-orange-500/15 text-orange-600 border-orange-500/30',
+  financeiro_pagamento: 'bg-primary/15 text-primary border-primary/30',
+  pago: 'bg-success/15 text-success border-success/30',
+  correcao_solicitada: 'bg-destructive/15 text-destructive border-destructive/30',
+  reprovado_gestor: 'bg-destructive/15 text-destructive border-destructive/30',
+  reprovado_fiscal: 'bg-destructive/15 text-destructive border-destructive/30',
 };
 
 export const CASE_TYPE_LABELS: Record<CaseType, string> = {
