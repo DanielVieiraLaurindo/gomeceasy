@@ -96,6 +96,14 @@ export type CaseStatus =
   | 'aguardando_validacao_fiscal'
   | 'aguardando_validacao_financeira'
   | 'aguardando_pagamento'
+  | 'aguardando_conferencia'
+  | 'conferencia_garantia'
+  | 'analise_lider'
+  | 'analise_fiscal'
+  | 'financeiro_pagamento'
+  | 'reprovado_gestor'
+  | 'reprovado_fiscal'
+  | 'correcao_solicitada'
   | 'pago'
   | 'finalizado'
   | 'reembolsado'
@@ -137,6 +145,14 @@ export const STATUS_COLORS: Record<string, string> = {
   finalizado: 'bg-success text-success-foreground',
   reembolsado: 'bg-success text-success-foreground',
   arquivado: 'bg-muted text-muted-foreground',
+  aguardando_conferencia: 'bg-warning text-warning-foreground',
+  conferencia_garantia: 'bg-info text-info-foreground',
+  analise_lider: 'bg-purple text-purple-foreground',
+  analise_fiscal: 'bg-warning text-warning-foreground',
+  financeiro_pagamento: 'bg-primary text-primary-foreground',
+  reprovado_gestor: 'bg-destructive text-destructive-foreground',
+  reprovado_fiscal: 'bg-destructive text-destructive-foreground',
+  correcao_solicitada: 'bg-destructive text-destructive-foreground',
   // Devolução
   aberto: 'bg-warning text-warning-foreground',
   aprovado: 'bg-success text-success-foreground',
@@ -197,6 +213,14 @@ export const STATUS_LABELS: Record<string, string> = {
   finalizado: 'Finalizado',
   reembolsado: 'Reembolsado',
   arquivado: 'Arquivado',
+  aguardando_conferencia: 'Em Transporte',
+  conferencia_garantia: 'Em Conferência',
+  analise_lider: 'Validação Gestor',
+  analise_fiscal: 'Análise Fiscal',
+  financeiro_pagamento: 'Financeiro - Pagamento',
+  reprovado_gestor: 'Reprovado Gestor',
+  reprovado_fiscal: 'Reprovado Fiscal',
+  correcao_solicitada: 'Correção Solicitada',
   aberto: 'Aberto',
   aprovado: 'Aprovado',
   recusado: 'Recusado',
