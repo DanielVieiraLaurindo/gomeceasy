@@ -113,9 +113,7 @@ export default function GEPosVendasTab() {
     return c.analyst_name === atendenteFilter;
   });
 
-  const activeCases = atendenteFiltered.filter(c => !['finalizado', 'arquivado', 'aguardando_conferencia', 'conferencia_garantia', 'analise_lider', 'analise_fiscal', 'financeiro_pagamento', 'pago', 'correcao_solicitada', 'em_reembolso', 'ressarcimento_mo'].includes(c.status));
-  const emReembolsoCases = atendenteFiltered.filter(c => ['aguardando_conferencia', 'conferencia_garantia', 'analise_lider', 'analise_fiscal', 'financeiro_pagamento', 'pago', 'correcao_solicitada'].includes(c.status) && c.metodo_pagamento !== 'ressarcimento_mo');
-  const ressarcimentoMOCases = atendenteFiltered.filter(c => c.metodo_pagamento === 'ressarcimento_mo');
+  const activeCases = atendenteFiltered.filter(c => !['finalizado', 'arquivado', 'aguardando_conferencia', 'conferencia_garantia', 'analise_lider', 'analise_fiscal', 'financeiro_pagamento', 'pago', 'correcao_solicitada', 'reprovado_gestor', 'reprovado_fiscal', 'em_reembolso', 'ressarcimento_mo'].includes(c.status));
   const archivedCases = atendenteFiltered.filter(c => ['finalizado', 'arquivado'].includes(c.status));
 
   const handleCreate = () => {
@@ -378,8 +376,6 @@ export default function GEPosVendasTab() {
       <Tabs defaultValue="ativos">
         <TabsList>
           <TabsTrigger value="ativos">Ativos ({activeCases.length})</TabsTrigger>
-          <TabsTrigger value="em_reembolso">Em Reembolso ({emReembolsoCases.length})</TabsTrigger>
-          <TabsTrigger value="ressarcimento_mo">Ressarcimento M.O. ({ressarcimentoMOCases.length})</TabsTrigger>
           <TabsTrigger value="arquivados">Arquivados ({archivedCases.length})</TabsTrigger>
         </TabsList>
 
@@ -388,22 +384,6 @@ export default function GEPosVendasTab() {
             <Card><CardContent className="py-12 text-center"><p className="text-muted-foreground">Nenhum caso ativo</p></CardContent></Card>
           ) : (
             <div className="grid gap-4 mt-4">{activeCases.map(renderCaseCard)}</div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="em_reembolso">
-          {emReembolsoCases.length === 0 ? (
-            <Card><CardContent className="py-12 text-center"><p className="text-muted-foreground">Nenhum caso em reembolso</p></CardContent></Card>
-          ) : (
-            <div className="grid gap-4 mt-4">{emReembolsoCases.map(renderCaseCard)}</div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="ressarcimento_mo">
-          {ressarcimentoMOCases.length === 0 ? (
-            <Card><CardContent className="py-12 text-center"><p className="text-muted-foreground">Nenhum caso de ressarcimento M.O.</p></CardContent></Card>
-          ) : (
-            <div className="grid gap-4 mt-4">{ressarcimentoMOCases.map(renderCaseCard)}</div>
           )}
         </TabsContent>
 
