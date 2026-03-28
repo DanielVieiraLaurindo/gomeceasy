@@ -118,7 +118,7 @@ export default function GEFinanceiroTab() {
   // Sector-based permissions
   const isFiscal = profile?.setor === 'fiscal'; // NO master override
   const isFinanceiro = profile?.setor === 'financeiro'; // NO master override
-  const isPosVendasOrGarantia = profile?.setor === 'pos_vendas' || profile?.setor === 'garantia' || profile?.setor === 'garantia_ecommerce' || profile?.role === 'master';
+  const isPosVendasOrGarantia = profile?.setor === 'pos_vendas' || profile?.setor === 'garantia_ecommerce' || profile?.setor === 'garantia_loja' || profile?.role === 'master';
 
   const { data: reembolsoCases, isLoading } = useQuery({
     queryKey: ['garantia-financeiro-cases'],

@@ -62,7 +62,7 @@ export default function GEPosVendasTab() {
   const [editNfGarantiaFile, setEditNfGarantiaFile] = useState<File | null>(null);
   const editNfGarantiaRef = useRef<HTMLInputElement>(null);
 
-  const isPosVendasOrGarantia = profile?.setor === 'pos_vendas' || profile?.setor === 'garantia' || profile?.setor === 'garantia_ecommerce' || profile?.role === 'master';
+  const isPosVendasOrGarantia = profile?.setor === 'pos_vendas' || profile?.setor === 'garantia_ecommerce' || profile?.setor === 'garantia_loja' || profile?.role === 'master';
 
   const { data: cases, isLoading } = useGarantiaCases(filters);
   const createCase = useCreateGarantiaCase();
