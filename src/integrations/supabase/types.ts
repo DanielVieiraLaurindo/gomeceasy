@@ -491,36 +491,127 @@ export type Database = {
           },
         ]
       }
-      chamados_ti: {
+      chamado_anexos: {
         Row: {
+          chamado_id: string
           created_at: string | null
-          descricao: string | null
+          file_name: string
+          file_size: number | null
+          file_url: string
           id: string
-          prioridade: string | null
-          setor_solicitante: string | null
-          solicitante_id: string | null
-          status: string | null
-          titulo: string
+          uploaded_by: string | null
         }
         Insert: {
+          chamado_id: string
           created_at?: string | null
-          descricao?: string | null
+          file_name: string
+          file_size?: number | null
+          file_url: string
           id?: string
-          prioridade?: string | null
-          setor_solicitante?: string | null
-          solicitante_id?: string | null
-          status?: string | null
-          titulo: string
+          uploaded_by?: string | null
         }
         Update: {
+          chamado_id?: string
+          created_at?: string | null
+          file_name?: string
+          file_size?: number | null
+          file_url?: string
+          id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chamado_anexos_chamado_id_fkey"
+            columns: ["chamado_id"]
+            isOneToOne: false
+            referencedRelation: "chamados_ti"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chamado_comentarios: {
+        Row: {
+          chamado_id: string
+          created_at: string | null
+          id: string
+          mensagem: string
+          usuario_id: string | null
+        }
+        Insert: {
+          chamado_id: string
+          created_at?: string | null
+          id?: string
+          mensagem: string
+          usuario_id?: string | null
+        }
+        Update: {
+          chamado_id?: string
+          created_at?: string | null
+          id?: string
+          mensagem?: string
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chamado_comentarios_chamado_id_fkey"
+            columns: ["chamado_id"]
+            isOneToOne: false
+            referencedRelation: "chamados_ti"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chamados_ti: {
+        Row: {
+          atribuido_a: string | null
+          categoria: string | null
+          created_at: string | null
+          descricao: string | null
+          equipamento: string | null
+          id: string
+          prioridade: string | null
+          resolved_at: string | null
+          setor_solicitante: string | null
+          sla_horas: number | null
+          solicitante_id: string | null
+          status: string | null
+          subcategoria: string | null
+          titulo: string
+          updated_at: string | null
+        }
+        Insert: {
+          atribuido_a?: string | null
+          categoria?: string | null
           created_at?: string | null
           descricao?: string | null
+          equipamento?: string | null
           id?: string
           prioridade?: string | null
+          resolved_at?: string | null
           setor_solicitante?: string | null
+          sla_horas?: number | null
           solicitante_id?: string | null
           status?: string | null
+          subcategoria?: string | null
+          titulo: string
+          updated_at?: string | null
+        }
+        Update: {
+          atribuido_a?: string | null
+          categoria?: string | null
+          created_at?: string | null
+          descricao?: string | null
+          equipamento?: string | null
+          id?: string
+          prioridade?: string | null
+          resolved_at?: string | null
+          setor_solicitante?: string | null
+          sla_horas?: number | null
+          solicitante_id?: string | null
+          status?: string | null
+          subcategoria?: string | null
           titulo?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
