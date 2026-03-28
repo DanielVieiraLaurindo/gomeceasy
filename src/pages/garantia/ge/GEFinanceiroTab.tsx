@@ -11,7 +11,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, differenceInBusinessDays } from 'date-fns';
 import { DollarSign, CheckCircle, XCircle, Clock, FileText, Eye, Trash2, AlertTriangle, Upload, ShieldAlert, Search, Pencil, Paperclip } from 'lucide-react';
@@ -26,7 +25,7 @@ const STATUS_LABELS: Record<ReembolsoStatus, string> = {
   analise_lider: 'Validação Gestor (Vinicius Santos)',
   analise_fiscal: 'Análise Fiscal',
   financeiro_pagamento: 'Financeiro - Pagamento',
-  pago: 'Pago ✅',
+  pago: 'Pago',
   correcao_solicitada: 'Correção Solicitada',
   reprovado_gestor: 'Reprovado pelo Gestor',
   reprovado_fiscal: 'Reprovado pelo Fiscal',
@@ -50,15 +49,15 @@ const FLOW_ORDER: ReembolsoStatus[] = [
 ];
 
 const FLOW_DESCRIPTION: Record<ReembolsoStatus, string> = {
-  aguardando_conferencia: '📦 Peça em transporte. Aguardando chegada para conferência.',
-  conferencia_garantia: '🔍 Peça chegou. Conferir produto, validar direito e política.',
-  analise_lider: '👨‍💼 OBRIGATÓRIO: Apenas Vinicius Santos pode validar.',
-  analise_fiscal: '🧾 Fiscal valida nota, impostos e regras fiscais.',
-  financeiro_pagamento: '💰 Realizar pagamento. Comprovante OBRIGATÓRIO.',
-  pago: '✅ Pagamento realizado e comprovante anexado.',
-  correcao_solicitada: '⚠️ Caso devolvido ao pós-vendas para correção.',
-  reprovado_gestor: '❌ Reprovado pelo gestor. Retornar ao pós-vendas.',
-  reprovado_fiscal: '❌ Reprovado pelo fiscal. Retornar ao pós-vendas.',
+  aguardando_conferencia: 'Peça em transporte. Aguardando chegada para conferência.',
+  conferencia_garantia: 'Peça chegou. Conferir produto, validar direito e política.',
+  analise_lider: 'OBRIGATÓRIO: Apenas Vinicius Santos pode validar.',
+  analise_fiscal: 'Fiscal valida nota, impostos e regras fiscais.',
+  financeiro_pagamento: 'Realizar pagamento. Comprovante OBRIGATÓRIO.',
+  pago: 'Pagamento realizado e comprovante anexado.',
+  correcao_solicitada: 'Caso devolvido ao pós-vendas para correção.',
+  reprovado_gestor: 'Reprovado pelo gestor. Retornar ao pós-vendas.',
+  reprovado_fiscal: 'Reprovado pelo fiscal. Retornar ao pós-vendas.',
 };
 
 const GESTOR_NAME = 'Vinicius Santos';
@@ -96,7 +95,6 @@ interface ReembolsoCase {
 export default function GEFinanceiroTab() {
   const { user, profile } = useAuth();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState('reembolsos');
   const [viewingCase, setViewingCase] = useState<ReembolsoCase | null>(null);
   const [editingCase, setEditingCase] = useState<ReembolsoCase | null>(null);
   const [editFormData, setEditFormData] = useState<Record<string, any>>({});
@@ -113,11 +111,14 @@ export default function GEFinanceiroTab() {
   const nfDevRef = useRef<HTMLInputElement>(null);
   const [uploadingComprovante, setUploadingComprovante] = useState(false);
 
+  // STRICT: Only Vinicius Santos can validate gestor, NOT other masters
   const isGestor = profile?.nome?.trim() === GESTOR_NAME;
-  const isMaster = profile?.role === 'master';
-  const canValidateGestor = isGestor || isMaster;
-  const isFiscal = profile?.setor === 'fiscal' || isMaster;
-  const isFinanceiro = profile?.setor === 'financeiro' || isMaster;
+  const canValidateGestor = isGestor; // NO master override
+
+  // Sector-based permissions
+  const isFiscal = profile?.setor === 'fiscal'; // NO master override
+  const isFinanceiro = profile?.setor === 'financeiro'; // NO master override
+  const isPosVendasOrGarantia = profile?.setor === 'pos_vendas' || profile?.setor === 'garantia' || profile?.setor === 'garantia_ecommerce' || profile?.role === 'master';
 
   const { data: reembolsoCases, isLoading } = useQuery({
     queryKey: ['garantia-financeiro-cases'],
@@ -145,15 +146,6 @@ export default function GEFinanceiroTab() {
     },
   });
 
-  const { data: ressarcimentos } = useQuery({
-    queryKey: ['ressarcimentos-mo'],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('ressarcimentos_mo').select('*').order('created_at', { ascending: false });
-      if (error) throw error;
-      return data || [];
-    },
-  });
-
   const updateCaseStatus = useMutation({
     mutationFn: async ({ id, status, comment, extra }: { id: string; status: string; comment?: string; extra?: Record<string, any> }) => {
       const updates: any = { status, updated_at: new Date().toISOString(), ...extra };
@@ -162,7 +154,7 @@ export default function GEFinanceiroTab() {
       if (comment) {
         await supabase.from('case_history').insert({
           case_id: id,
-          action: `Status → ${STATUS_LABELS[status as ReembolsoStatus] || status}`,
+          action: `Status -> ${STATUS_LABELS[status as ReembolsoStatus] || status}`,
           comment: `${comment} | Por: ${profile?.nome || 'Sistema'}`,
           created_by: user?.id,
         });
@@ -269,14 +261,23 @@ export default function GEFinanceiroTab() {
       };
       nextStatus = flow[currentStatus] || 'pago';
 
+      // Chegou: only pos_vendas or garantia can mark
+      if (currentStatus === 'aguardando_conferencia' && !isPosVendasOrGarantia) {
+        toast.error('Apenas o setor de Pós-Vendas ou Garantia pode marcar que a peça chegou.');
+        return;
+      }
+
+      // Gestor: ONLY Vinicius Santos, no master override
       if (currentStatus === 'analise_lider' && !canValidateGestor) {
         toast.error(`Apenas ${GESTOR_NAME} pode validar esta etapa.`);
         return;
       }
+      // Fiscal: ONLY fiscal sector
       if (currentStatus === 'analise_fiscal' && !isFiscal) {
         toast.error('Apenas o setor Fiscal pode validar esta etapa.');
         return;
       }
+      // Financeiro: ONLY financeiro sector
       if (currentStatus === 'financeiro_pagamento' && !isFinanceiro) {
         toast.error('Apenas o setor Financeiro pode realizar pagamentos.');
         return;
@@ -286,7 +287,12 @@ export default function GEFinanceiroTab() {
         return;
       }
 
+      // Requisição: only pos_vendas or garantia can set
       if (currentStatus === 'conferencia_garantia' && requisicaoGarantia) {
+        if (!isPosVendasOrGarantia) {
+          toast.error('Apenas o setor de Pós-Vendas ou Garantia pode informar o número de requisição.');
+          return;
+        }
         extra.numero_requisicao = requisicaoGarantia;
       }
 
@@ -296,7 +302,6 @@ export default function GEFinanceiroTab() {
           const url = await uploadComprovante(caso.id, comprovanteFile);
           extra.data_solicitacao_reembolso = new Date().toISOString().split('T')[0];
           extra.reimbursed = true;
-          // Store comprovante URL in dados_bancarios_json
           const existingData = caso.dados_bancarios_json || {};
           extra.dados_bancarios_json = { ...existingData, comprovante_url: url, comprovante_nome: comprovanteFile.name };
         } catch (err: any) {
@@ -358,7 +363,6 @@ export default function GEFinanceiroTab() {
     return groups;
   }, [reembolsoCases]);
 
-  // Search filter
   const filteredCases = useMemo(() => {
     let items = reembolsoCases || [];
     if (searchQuery) {
@@ -397,14 +401,14 @@ export default function GEFinanceiroTab() {
 
   const getApprovalLabel = (status: string): { approve: string; reject: string } => {
     switch (status) {
-      case 'aguardando_conferencia': return { approve: 'Peça Chegou', reject: '' };
-      case 'conferencia_garantia': return { approve: 'Aprovar (Procedente)', reject: 'Improcedente' };
+      case 'aguardando_conferencia': return { approve: isPosVendasOrGarantia ? 'Peça Chegou' : '', reject: '' };
+      case 'conferencia_garantia': return { approve: isPosVendasOrGarantia ? 'Aprovar (Procedente)' : '', reject: isPosVendasOrGarantia ? 'Improcedente' : '' };
       case 'analise_lider': return { approve: canValidateGestor ? 'Validar (Gestor)' : '', reject: canValidateGestor ? 'Reprovar' : '' };
       case 'analise_fiscal': return { approve: isFiscal ? 'Aprovar Fiscal' : '', reject: isFiscal ? 'Reprovar Fiscal' : '' };
       case 'financeiro_pagamento': return { approve: isFinanceiro ? 'Pagamento Realizado' : '', reject: '' };
-      case 'correcao_solicitada': return { approve: 'Reenviar para Conferência', reject: '' };
-      case 'reprovado_gestor': return { approve: 'Reenviar para Conferência', reject: '' };
-      case 'reprovado_fiscal': return { approve: 'Reenviar para Conferência', reject: '' };
+      case 'correcao_solicitada': return { approve: isPosVendasOrGarantia ? 'Reenviar para Conferência' : '', reject: '' };
+      case 'reprovado_gestor': return { approve: isPosVendasOrGarantia ? 'Reenviar para Conferência' : '', reject: '' };
+      case 'reprovado_fiscal': return { approve: isPosVendasOrGarantia ? 'Reenviar para Conferência' : '', reject: '' };
       default: return { approve: '', reject: '' };
     }
   };
@@ -420,7 +424,7 @@ export default function GEFinanceiroTab() {
           </div>
           <div>
             <h1 className="text-2xl font-barlow font-bold">Ressarcimentos</h1>
-            <p className="text-sm text-muted-foreground">Fluxo: Transporte → Conferência → Gestor → Fiscal → Financeiro → Pago</p>
+            <p className="text-sm text-muted-foreground">Fluxo: Transporte - Conferência - Gestor - Fiscal - Financeiro - Pago</p>
           </div>
         </div>
         {selectedIds.size > 0 && (
@@ -444,9 +448,10 @@ export default function GEFinanceiroTab() {
       {/* FLOW RULES BANNER */}
       <div className="p-3 rounded-lg border border-info/30 bg-info/5 text-sm space-y-1">
         <div className="flex items-center gap-2 font-semibold text-info"><ShieldAlert className="w-4 h-4" />Regras do Fluxo</div>
-        <p className="text-muted-foreground">❌ Nenhuma etapa pode ser pulada · ❌ Sem aprovação do gestor → não avança · ❌ Sem comprovante → não finaliza · ✅ Cada etapa tem responsável definido</p>
-        {!isFiscal && <p className="text-xs text-muted-foreground">⚠️ Você não é do setor Fiscal — não pode validar a etapa fiscal.</p>}
-        {!isFinanceiro && <p className="text-xs text-muted-foreground">⚠️ Você não é do setor Financeiro — não pode realizar pagamentos.</p>}
+        <p className="text-muted-foreground">Nenhuma etapa pode ser pulada | Sem aprovação do gestor não avança | Sem comprovante não finaliza | Cada etapa tem responsável definido</p>
+        {!isPosVendasOrGarantia && <p className="text-xs text-muted-foreground">Você não é do setor Pós-Vendas/Garantia — não pode marcar chegada ou informar requisição.</p>}
+        {!isFiscal && <p className="text-xs text-muted-foreground">Você não é do setor Fiscal — não pode validar a etapa fiscal.</p>}
+        {!isFinanceiro && <p className="text-xs text-muted-foreground">Você não é do setor Financeiro — não pode realizar pagamentos.</p>}
       </div>
 
       {paymentAlerts.length > 0 && (
@@ -480,123 +485,87 @@ export default function GEFinanceiroTab() {
               )}
             >
               <p className="text-lg font-bold">{count}</p>
-              <p className="truncate">{STATUS_LABELS[s as ReembolsoStatus]?.replace(' ✅', '')}</p>
+              <p className="truncate">{STATUS_LABELS[s as ReembolsoStatus]}</p>
             </button>
           );
         })}
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="reembolsos">Reembolsos ({filteredCases.filter(c => c.metodo_pagamento !== 'ressarcimento_mo').length})</TabsTrigger>
-          <TabsTrigger value="ressarcimentos">Ressarcimento MO ({ressarcimentos?.length || 0})</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="reembolsos" className="space-y-4">
-          {(statusFilter ? [statusFilter] : [...FLOW_ORDER, 'correcao_solicitada', 'reprovado_gestor', 'reprovado_fiscal']).map((statusKey) => {
-            const items = filteredByStatus[statusKey] || [];
-            if (items.length === 0) return null;
-            const labels = getApprovalLabel(statusKey);
-            const isRejected = ['correcao_solicitada', 'reprovado_gestor', 'reprovado_fiscal'].includes(statusKey);
-            return (
-              <Card key={statusKey} className={cn(isRejected && "border-destructive/30")}>
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Badge className={cn('text-xs', STATUS_CLASSES[statusKey as ReembolsoStatus])}>{STATUS_LABELS[statusKey as ReembolsoStatus]}</Badge>
-                      <span className="text-sm text-muted-foreground">({items.length})</span>
-                    </CardTitle>
-                    <p className="text-xs text-muted-foreground max-w-md">{FLOW_DESCRIPTION[statusKey as ReembolsoStatus]}</p>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-10"><Checkbox checked={items.every(c => selectedIds.has(c.id))} onCheckedChange={checked => { const ids = items.map(c => c.id); setSelectedIds(prev => { const n = new Set(prev); ids.forEach(id => checked ? n.add(id) : n.delete(id)); return n; }); }} /></TableHead>
-                        <TableHead>#</TableHead>
-                        <TableHead>Cliente</TableHead>
-                        <TableHead>Venda</TableHead>
-                        <TableHead>Valor</TableHead>
-                        <TableHead>PIX</TableHead>
-                        <TableHead>Ações</TableHead>
+      {/* Cases by status */}
+      {(statusFilter ? [statusFilter] : [...FLOW_ORDER, 'correcao_solicitada', 'reprovado_gestor', 'reprovado_fiscal']).map((statusKey) => {
+        const items = filteredByStatus[statusKey] || [];
+        if (items.length === 0) return null;
+        const labels = getApprovalLabel(statusKey);
+        const isRejected = ['correcao_solicitada', 'reprovado_gestor', 'reprovado_fiscal'].includes(statusKey);
+        return (
+          <Card key={statusKey} className={cn(isRejected && "border-destructive/30")}>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Badge className={cn('text-xs', STATUS_CLASSES[statusKey as ReembolsoStatus])}>{STATUS_LABELS[statusKey as ReembolsoStatus]}</Badge>
+                  <span className="text-sm text-muted-foreground">({items.length})</span>
+                </CardTitle>
+                <p className="text-xs text-muted-foreground max-w-md">{FLOW_DESCRIPTION[statusKey as ReembolsoStatus]}</p>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10"><Checkbox checked={items.every(c => selectedIds.has(c.id))} onCheckedChange={checked => { const ids = items.map(c => c.id); setSelectedIds(prev => { const n = new Set(prev); ids.forEach(id => checked ? n.add(id) : n.delete(id)); return n; }); }} /></TableHead>
+                    <TableHead>#</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Venda</TableHead>
+                    <TableHead>Requisição</TableHead>
+                    <TableHead>Valor</TableHead>
+                    <TableHead>PIX</TableHead>
+                    <TableHead>Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {items.map(c => {
+                    const daysInStatus = c.updated_at ? differenceInBusinessDays(new Date(), new Date(c.updated_at)) : 0;
+                    const isUrgent = statusKey === 'financeiro_pagamento' && daysInStatus >= 4;
+                    return (
+                      <TableRow key={c.id} className={cn(isUrgent && "bg-destructive/5")}>
+                        <TableCell><Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => toggleSelect(c.id)} /></TableCell>
+                        <TableCell className="font-mono">{c.case_number}</TableCell>
+                        <TableCell className="font-medium">{c.client_name || '—'}</TableCell>
+                        <TableCell className="font-mono text-sm">{c.sale_number || '—'}</TableCell>
+                        <TableCell className="font-mono text-sm font-bold">{c.numero_requisicao || '—'}</TableCell>
+                        <TableCell className="font-semibold text-success">R$ {(c.reimbursement_value || 0).toFixed(2)}</TableCell>
+                        <TableCell className="text-sm">{c.chave_pix_valor || '—'}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Button size="sm" variant="ghost" onClick={() => setViewingCase(c)} title="Visualizar"><Eye className="w-4 h-4" /></Button>
+                            <Button size="sm" variant="ghost" onClick={() => openEdit(c)} title="Editar"><Pencil className="w-4 h-4" /></Button>
+                            {statusKey !== 'pago' && labels.approve && (
+                              <Button size="sm" variant="outline" className="text-success" onClick={() => setApprovalDialog({ caso: c, action: 'approve' })}>
+                                <CheckCircle className="w-4 h-4 mr-1" />{labels.approve}
+                              </Button>
+                            )}
+                            {statusKey !== 'pago' && labels.reject && (
+                              <Button size="sm" variant="outline" className="text-destructive" onClick={() => setApprovalDialog({ caso: c, action: 'reject' })}>
+                                <XCircle className="w-4 h-4 mr-1" />{labels.reject}
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {items.map(c => {
-                        const daysInStatus = c.updated_at ? differenceInBusinessDays(new Date(), new Date(c.updated_at)) : 0;
-                        const isUrgent = statusKey === 'financeiro_pagamento' && daysInStatus >= 4;
-                        return (
-                          <TableRow key={c.id} className={cn(isUrgent && "bg-destructive/5")}>
-                            <TableCell><Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => toggleSelect(c.id)} /></TableCell>
-                            <TableCell className="font-mono">{c.case_number}</TableCell>
-                            <TableCell className="font-medium">{c.client_name || '—'}</TableCell>
-                            <TableCell className="font-mono text-sm">{c.sale_number || '—'}</TableCell>
-                            <TableCell className="font-semibold text-success">R$ {(c.reimbursement_value || 0).toFixed(2)}</TableCell>
-                            <TableCell className="text-sm">{c.chave_pix_valor || '—'}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-1">
-                                <Button size="sm" variant="ghost" onClick={() => setViewingCase(c)} title="Visualizar"><Eye className="w-4 h-4" /></Button>
-                                <Button size="sm" variant="ghost" onClick={() => openEdit(c)} title="Editar"><Pencil className="w-4 h-4" /></Button>
-                                {statusKey !== 'pago' && labels.approve && (
-                                  <Button size="sm" variant="outline" className="text-success" onClick={() => setApprovalDialog({ caso: c, action: 'approve' })}>
-                                    <CheckCircle className="w-4 h-4 mr-1" />{labels.approve}
-                                  </Button>
-                                )}
-                                {statusKey !== 'pago' && labels.reject && (
-                                  <Button size="sm" variant="outline" className="text-destructive" onClick={() => setApprovalDialog({ caso: c, action: 'reject' })}>
-                                    <XCircle className="w-4 h-4 mr-1" />{labels.reject}
-                                  </Button>
-                                )}
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            );
-          })}
-
-          {filteredCases.length === 0 && (
-            <Card><CardContent className="py-12 text-center text-muted-foreground">
-              {searchQuery || statusFilter ? 'Nenhum caso encontrado com os filtros aplicados.' : 'Nenhum caso de reembolso. Os casos são criados na aba Garantias ao selecionar Reembolso ou Ressarcimento M.O.'}
-            </CardContent></Card>
-          )}
-        </TabsContent>
-
-        <TabsContent value="ressarcimentos">
-          <Card>
-            <CardContent className="p-4">
-              {ressarcimentos?.length === 0 ? (
-                <p className="text-center py-8 text-muted-foreground">Nenhum ressarcimento de mão de obra</p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Serviço</TableHead><TableHead>Valor</TableHead><TableHead>NF</TableHead><TableHead>Status</TableHead><TableHead>Data</TableHead><TableHead>Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {ressarcimentos?.map((r: any) => (
-                      <TableRow key={r.id}>
-                        <TableCell>{r.servico || '—'}</TableCell>
-                        <TableCell className="font-semibold">R$ {(r.valor || 0).toFixed(2)}</TableCell>
-                        <TableCell className="font-mono">{r.numero_nf || '—'}</TableCell>
-                        <TableCell><Badge variant="outline">{r.status}</Badge></TableCell>
-                        <TableCell>{r.data ? format(new Date(r.data), 'dd/MM/yyyy') : '—'}</TableCell>
-                        <TableCell><Button variant="ghost" size="sm" className="text-destructive" onClick={async () => { await supabase.from('ressarcimentos_mo').delete().eq('id', r.id); queryClient.invalidateQueries({ queryKey: ['ressarcimentos-mo'] }); toast.success('Excluído'); }}><Trash2 className="w-4 h-4" /></Button></TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+        );
+      })}
+
+      {filteredCases.length === 0 && (
+        <Card><CardContent className="py-12 text-center text-muted-foreground">
+          {searchQuery || statusFilter ? 'Nenhum caso encontrado com os filtros aplicados.' : 'Nenhum caso de reembolso. Os casos são criados na aba Garantias ao selecionar Reembolso ou Ressarcimento M.O.'}
+        </CardContent></Card>
+      )}
 
       {/* Approval Dialog */}
       <Dialog open={!!approvalDialog} onOpenChange={() => { setApprovalDialog(null); setApprovalComment(''); setRequisicaoGarantia(''); setImprocedenteFotos(''); setComprovanteFile(null); }}>
@@ -612,10 +581,11 @@ export default function GEFinanceiroTab() {
               </div>
             )}
 
-            {approvalDialog?.caso.status === 'conferencia_garantia' && approvalDialog.action === 'approve' && (
+            {/* Conferência: requisição field - only pos_vendas/garantia */}
+            {approvalDialog?.caso.status === 'conferencia_garantia' && approvalDialog.action === 'approve' && isPosVendasOrGarantia && (
               <div>
-                <Label>Nº Requisição de Garantia *</Label>
-                <Input value={requisicaoGarantia} onChange={e => setRequisicaoGarantia(e.target.value)} placeholder="Número da requisição" />
+                <Label>Nº Requisição de Garantia</Label>
+                <Input value={requisicaoGarantia} onChange={e => setRequisicaoGarantia(e.target.value)} placeholder="Número da requisição (opcional nesta etapa)" />
               </div>
             )}
 
@@ -635,7 +605,7 @@ export default function GEFinanceiroTab() {
 
             {approvalDialog?.caso.status === 'analise_lider' && canValidateGestor && approvalDialog.action === 'approve' && (
               <div className="p-3 rounded-lg bg-success/10 border border-success/30">
-                <p className="text-sm text-success font-medium">✅ Você está autorizado a validar como gestor ({profile?.nome}).</p>
+                <p className="text-sm text-success font-medium">Você está autorizado a validar como gestor ({profile?.nome}).</p>
               </div>
             )}
 
@@ -656,7 +626,7 @@ export default function GEFinanceiroTab() {
             {approvalDialog?.action === 'approve' && approvalDialog.caso.status === 'financeiro_pagamento' && isFinanceiro && (
               <div className="space-y-3">
                 <div className="p-3 rounded-lg bg-warning/10 border border-warning/30">
-                  <p className="text-sm font-medium text-warning">⚠️ Comprovante OBRIGATÓRIO para finalizar.</p>
+                  <p className="text-sm font-medium text-warning">Comprovante OBRIGATÓRIO para finalizar.</p>
                 </div>
                 <div>
                   <Label>Comprovante de Pagamento (arquivo) *</Label>
@@ -670,11 +640,14 @@ export default function GEFinanceiroTab() {
               </div>
             )}
 
-            <div>
-              <Label>Observação</Label>
-              <Textarea value={approvalComment} onChange={e => setApprovalComment(e.target.value)} rows={3}
-                placeholder={approvalDialog?.action === 'approve' ? 'Comentário de aprovação...' : 'Descreva o motivo da reprovação...'} />
-            </div>
+            {/* Observation - NOT required for "Peça Chegou" */}
+            {approvalDialog?.caso.status !== 'aguardando_conferencia' && (
+              <div>
+                <Label>Observação</Label>
+                <Textarea value={approvalComment} onChange={e => setApprovalComment(e.target.value)} rows={3}
+                  placeholder={approvalDialog?.action === 'approve' ? 'Comentário de aprovação...' : 'Descreva o motivo da reprovação...'} />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setApprovalDialog(null); setApprovalComment(''); setComprovanteFile(null); }}>Cancelar</Button>
@@ -683,7 +656,7 @@ export default function GEFinanceiroTab() {
               className={approvalDialog?.action === 'approve' ? 'bg-success hover:bg-success/90' : 'bg-destructive hover:bg-destructive/90'}
               disabled={
                 updateCaseStatus.isPending || uploadingComprovante ||
-                (approvalDialog?.caso.status === 'conferencia_garantia' && approvalDialog?.action === 'approve' && !requisicaoGarantia) ||
+                (approvalDialog?.caso.status === 'aguardando_conferencia' && !isPosVendasOrGarantia) ||
                 (approvalDialog?.caso.status === 'conferencia_garantia' && approvalDialog?.action === 'reject' && !improcedenteFotos && !approvalComment) ||
                 (approvalDialog?.caso.status === 'analise_lider' && !canValidateGestor) ||
                 (approvalDialog?.caso.status === 'analise_fiscal' && !isFiscal) ||
@@ -711,9 +684,9 @@ export default function GEFinanceiroTab() {
                   <div><p className="text-xs text-muted-foreground">Status</p><Badge className={cn('text-xs', STATUS_CLASSES[viewingCase.status as ReembolsoStatus] || '')}>{STATUS_LABELS[viewingCase.status as ReembolsoStatus] || viewingCase.status}</Badge></div>
                   <div><p className="text-xs text-muted-foreground">Produto</p><p>{viewingCase.product_description || viewingCase.product_sku || '—'}</p></div>
                   <div><p className="text-xs text-muted-foreground">Método</p><p>{viewingCase.metodo_pagamento === 'ressarcimento_mo' ? 'Ressarcimento M.O.' : 'Reembolso'}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Nota Fiscal Entrada</p><p className="font-mono">{viewingCase.nf_entrada ? <a href={viewingCase.nf_entrada} target="_blank" rel="noreferrer" className="text-primary underline">Ver NF</a> : '—'}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Nota Fiscal Saída</p><p className="font-mono">{viewingCase.nf_saida || '—'}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Nº Requisição</p><p className="font-mono font-bold">{viewingCase.numero_requisicao || '—'}</p></div>
+                  <div><p className="text-xs text-muted-foreground">NF Garantia</p><p className="font-mono">{viewingCase.nf_saida ? <a href={viewingCase.nf_saida} target="_blank" rel="noreferrer" className="text-primary underline">Ver NF</a> : '—'}</p></div>
+                  <div><p className="text-xs text-muted-foreground">NF Devolução</p><p className="font-mono">{viewingCase.nf_entrada ? <a href={viewingCase.nf_entrada} target="_blank" rel="noreferrer" className="text-primary underline">Ver NF</a> : '—'}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Nº Requisição</p><p className="font-mono font-bold text-primary">{viewingCase.numero_requisicao || '—'}</p></div>
                   <div><p className="text-xs text-muted-foreground">Nº Pedido</p><p className="font-mono">{viewingCase.numero_pedido || '—'}</p></div>
                 </div>
                 {viewingCase.chave_pix_valor && (
@@ -756,7 +729,7 @@ export default function GEFinanceiroTab() {
                   <div><Label>Cliente</Label><Input value={editFormData.client_name} onChange={e => setEditFormData(p => ({ ...p, client_name: e.target.value }))} /></div>
                   <div><Label>Venda</Label><Input value={editFormData.sale_number} onChange={e => setEditFormData(p => ({ ...p, sale_number: e.target.value }))} /></div>
                   <div><Label>Valor Reembolso</Label><Input type="number" value={editFormData.reimbursement_value} onChange={e => setEditFormData(p => ({ ...p, reimbursement_value: parseFloat(e.target.value) || 0 }))} /></div>
-                  <div><Label>Nº Requisição</Label><Input value={editFormData.numero_requisicao} onChange={e => setEditFormData(p => ({ ...p, numero_requisicao: e.target.value }))} /></div>
+                  <div><Label>Nº Requisição</Label><Input value={editFormData.numero_requisicao} onChange={e => setEditFormData(p => ({ ...p, numero_requisicao: e.target.value }))} disabled={!isPosVendasOrGarantia} /></div>
                   <div><Label>Nº Pedido</Label><Input value={editFormData.numero_pedido} onChange={e => setEditFormData(p => ({ ...p, numero_pedido: e.target.value }))} /></div>
                   <div><Label>SKU</Label><Input value={editFormData.product_sku} onChange={e => setEditFormData(p => ({ ...p, product_sku: e.target.value }))} /></div>
                   <div><Label>Chave PIX</Label><Input value={editFormData.chave_pix_valor} onChange={e => setEditFormData(p => ({ ...p, chave_pix_valor: e.target.value }))} /></div>

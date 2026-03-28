@@ -17,7 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
-import { Plus, Headset, MoreHorizontal, Eye, Trash2, Send, Search, ArrowRight, AlertTriangle, Pencil } from 'lucide-react';
+import { Plus, Headset, MoreHorizontal, Eye, Trash2, Send, Search, ArrowRight, AlertTriangle, Pencil, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -45,7 +45,7 @@ function detectPixKeyType(key: string): string {
 }
 
 export default function GEPosVendasTab() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [filters, setFilters] = useState<GarantiaCaseFilters>({ origemFilter: 'pos_vendas' });
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [viewingCase, setViewingCase] = useState<ReturnCase | null>(null);
@@ -57,6 +57,12 @@ export default function GEPosVendasTab() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [editFormData, setEditFormData] = useState<Record<string, any>>({});
+  const [nfGarantiaFile, setNfGarantiaFile] = useState<File | null>(null);
+  const nfGarantiaRef = useRef<HTMLInputElement>(null);
+  const [editNfGarantiaFile, setEditNfGarantiaFile] = useState<File | null>(null);
+  const editNfGarantiaRef = useRef<HTMLInputElement>(null);
+
+  const isPosVendasOrGarantia = profile?.setor === 'pos_vendas' || profile?.setor === 'garantia' || profile?.setor === 'garantia_ecommerce' || profile?.role === 'master';
 
   const { data: cases, isLoading } = useGarantiaCases(filters);
   const createCase = useCreateGarantiaCase();
@@ -81,7 +87,7 @@ export default function GEPosVendasTab() {
     numero_pedido_fin: '', conta: '',
     alegacao: '', motivo: '', sku_produto: '',
     peca_retornou: 'nao' as string,
-    nf_garantia: '', data_solicitacao: new Date().toISOString().split('T')[0],
+    data_solicitacao: new Date().toISOString().split('T')[0],
   };
 
   const [formData, setFormData] = useState(defaultFormData);
@@ -116,15 +122,41 @@ export default function GEPosVendasTab() {
   const activeCases = atendenteFiltered.filter(c => !['finalizado', 'arquivado', 'aguardando_conferencia', 'conferencia_garantia', 'analise_lider', 'analise_fiscal', 'financeiro_pagamento', 'pago', 'correcao_solicitada', 'reprovado_gestor', 'reprovado_fiscal', 'em_reembolso', 'ressarcimento_mo'].includes(c.status));
   const archivedCases = atendenteFiltered.filter(c => ['finalizado', 'arquivado'].includes(c.status));
 
-  const handleCreate = () => {
-    // Validate required fields
-    if (formData.is_antecipado && !formData.numero_antecipacao.trim()) {
-      toast.error('ID da Antecipação é obrigatório quando marcado como Antecipado');
+  const uploadNfGarantia = async (caseId: string, file: File): Promise<string> => {
+    const filePath = `nf-garantia/${caseId}/${Date.now()}_${file.name}`;
+    const { error } = await supabase.storage.from('case-photos').upload(filePath, file);
+    if (error) throw error;
+    const { data } = supabase.storage.from('case-photos').getPublicUrl(filePath);
+    return data.publicUrl;
+  };
+
+  const handleCreate = async () => {
+    // REQUIRED: antecipado AND jacsys must be checked
+    if (!formData.is_antecipado) {
+      toast.error('É obrigatório marcar como Antecipado antes de criar o caso');
       return;
     }
-    if (formData.is_jacsys && !formData.numero_cadastro_jacsys.trim()) {
-      toast.error('ID do Cadastro Jacsys é obrigatório quando marcado como Cadastrado no Jacsys');
+    if (!formData.numero_antecipacao.trim()) {
+      toast.error('ID da Antecipação é obrigatório');
       return;
+    }
+    if (!formData.is_jacsys) {
+      toast.error('É obrigatório marcar como Cadastrado no Jacsys antes de criar o caso');
+      return;
+    }
+    if (!formData.numero_cadastro_jacsys.trim()) {
+      toast.error('ID do Cadastro Jacsys é obrigatório');
+      return;
+    }
+
+    let nfGarantiaUrl = '';
+    if (nfGarantiaFile) {
+      try {
+        nfGarantiaUrl = await uploadNfGarantia('temp-' + Date.now(), nfGarantiaFile);
+      } catch (err: any) {
+        toast.error('Erro ao enviar NF Garantia: ' + err.message);
+        return;
+      }
     }
 
     const financialData: any = {};
@@ -144,7 +176,7 @@ export default function GEPosVendasTab() {
         motivo: formData.motivo,
         sku_produto: formData.sku_produto,
         peca_retornou: formData.peca_retornou,
-        nf_garantia: formData.nf_garantia,
+        nf_garantia_url: nfGarantiaUrl || undefined,
         numero_pedido: formData.numero_pedido_fin,
       };
       financialData.status = 'aguardando_conferencia';
@@ -170,10 +202,11 @@ export default function GEPosVendasTab() {
       not_found_erp: false,
       fullfilment_tracking: formData.fullfilment_tracking,
       product_description: formData.product_description,
-      numero_antecipacao: formData.is_antecipado ? formData.numero_antecipacao : '',
-      numero_cadastro_jacsys: formData.is_jacsys ? formData.numero_cadastro_jacsys : '',
+      numero_antecipacao: formData.numero_antecipacao,
+      numero_cadastro_jacsys: formData.numero_cadastro_jacsys,
       numero_pedido: formData.numero_pedido_fin,
       product_sku: formData.sku_produto,
+      nf_saida: nfGarantiaUrl || undefined,
       origem: 'pos_vendas',
       ...financialData,
     } as any, {
@@ -198,6 +231,7 @@ export default function GEPosVendasTab() {
         setIsFormOpen(false);
         setFormData(defaultFormData);
         setCasePhotos([]);
+        setNfGarantiaFile(null);
         if (formData.financial_type) {
           toast.success(`Caso criado e enviado para ${formData.financial_type === 'reembolso' ? 'Reembolso' : 'Ressarcimento M.O.'}`);
         }
@@ -243,6 +277,7 @@ export default function GEPosVendasTab() {
       numero_antecipacao: (c as any).numero_antecipacao || '',
       numero_cadastro_jacsys: (c as any).numero_cadastro_jacsys || '',
     });
+    setEditNfGarantiaFile(null);
     setEditingCase(c);
     setViewingCase(c);
   }, []);
@@ -260,8 +295,18 @@ export default function GEPosVendasTab() {
     }
   }, [openView, openEdit]);
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editingCase) return;
+    const extra: Record<string, any> = {};
+    if (editNfGarantiaFile) {
+      try {
+        const url = await uploadNfGarantia(editingCase.id, editNfGarantiaFile);
+        extra.nf_saida = url;
+      } catch (err: any) {
+        toast.error('Erro ao enviar NF: ' + err.message);
+        return;
+      }
+    }
     updateCase.mutate({
       id: editingCase.id,
       client_name: editFormData.client_name,
@@ -277,8 +322,9 @@ export default function GEPosVendasTab() {
       product_description: editFormData.product_description,
       numero_antecipacao: editFormData.numero_antecipacao,
       numero_cadastro_jacsys: editFormData.numero_cadastro_jacsys,
+      ...extra,
     }, {
-      onSuccess: () => { setViewingCase(null); setEditingCase(null); toast.success('Caso atualizado'); },
+      onSuccess: () => { setViewingCase(null); setEditingCase(null); setEditNfGarantiaFile(null); toast.success('Caso atualizado'); },
     });
   };
 
@@ -454,34 +500,45 @@ export default function GEPosVendasTab() {
             </div>
             <div><Label>Descrição do Produto</Label><Input value={formData.product_description} onChange={e => setFormData(f => ({ ...f, product_description: e.target.value }))} placeholder="Descrição do produto" /></div>
 
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <Checkbox id="is_company" checked={formData.is_company} onCheckedChange={v => setFormData(f => ({ ...f, is_company: !!v }))} />
-                <Label htmlFor="is_company">Pessoa Jurídica</Label>
+            {/* REQUIRED: Antecipado + Jacsys */}
+            <div className="p-4 rounded-lg border-2 border-warning/50 bg-warning/5 space-y-3">
+              <p className="text-sm font-semibold text-warning">Campos obrigatórios para criar o caso</p>
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <Checkbox id="is_company" checked={formData.is_company} onCheckedChange={v => setFormData(f => ({ ...f, is_company: !!v }))} />
+                  <Label htmlFor="is_company">Pessoa Jurídica</Label>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-1 rounded border border-warning/40 bg-warning/10">
+                  <Checkbox id="antecipado" checked={formData.is_antecipado} onCheckedChange={v => setFormData(f => ({ ...f, is_antecipado: !!v, numero_antecipacao: !!v ? f.numero_antecipacao : '' }))} />
+                  <Label htmlFor="antecipado" className="text-warning font-medium">Antecipado *</Label>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-1 rounded border border-success/40 bg-success/10">
+                  <Checkbox id="jacsys" checked={formData.is_jacsys} onCheckedChange={v => setFormData(f => ({ ...f, is_jacsys: !!v, numero_cadastro_jacsys: !!v ? f.numero_cadastro_jacsys : '' }))} />
+                  <Label htmlFor="jacsys" className="text-success font-medium">Cadastrado no Jacsys *</Label>
+                </div>
               </div>
-              <div className="flex items-center gap-2 px-3 py-1 rounded border border-warning/40 bg-warning/5">
-                <Checkbox id="antecipado" checked={formData.is_antecipado} onCheckedChange={v => setFormData(f => ({ ...f, is_antecipado: !!v, numero_antecipacao: !!v ? f.numero_antecipacao : '' }))} />
-                <Label htmlFor="antecipado" className="text-warning font-medium">Antecipado</Label>
-              </div>
-              <div className="flex items-center gap-2 px-3 py-1 rounded border border-success/40 bg-success/5">
-                <Checkbox id="jacsys" checked={formData.is_jacsys} onCheckedChange={v => setFormData(f => ({ ...f, is_jacsys: !!v, numero_cadastro_jacsys: !!v ? f.numero_cadastro_jacsys : '' }))} />
-                <Label htmlFor="jacsys" className="text-success font-medium">Cadastrado no Jacsys</Label>
-              </div>
-            </div>
 
-            {formData.is_antecipado && (
               <div className="border border-warning/30 rounded-lg p-3 bg-warning/5">
                 <Label className="text-warning font-medium">ID da Antecipação *</Label>
                 <Input value={formData.numero_antecipacao} onChange={e => setFormData(f => ({ ...f, numero_antecipacao: e.target.value }))} placeholder="Informe o ID da antecipação (obrigatório)" className="mt-1" />
               </div>
-            )}
 
-            {formData.is_jacsys && (
               <div className="border border-success/30 rounded-lg p-3 bg-success/5">
                 <Label className="text-success font-medium">ID do Cadastro Jacsys *</Label>
                 <Input value={formData.numero_cadastro_jacsys} onChange={e => setFormData(f => ({ ...f, numero_cadastro_jacsys: e.target.value }))} placeholder="Informe o ID do cadastro (obrigatório)" className="mt-1" />
               </div>
-            )}
+            </div>
+
+            {/* NF Garantia - PDF Upload */}
+            <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
+              <Label className="text-base font-semibold">Nota Fiscal de Garantia (PDF)</Label>
+              <input ref={nfGarantiaRef} type="file" accept=".pdf" className="hidden"
+                onChange={e => setNfGarantiaFile(e.target.files?.[0] || null)} />
+              <Button type="button" variant="outline" className="w-full" onClick={() => nfGarantiaRef.current?.click()}>
+                <Upload className="w-4 h-4 mr-2" />
+                {nfGarantiaFile ? nfGarantiaFile.name : 'Anexar NF Garantia (PDF)'}
+              </Button>
+            </div>
 
             {/* Financial Type Selection */}
             <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
@@ -523,7 +580,7 @@ export default function GEPosVendasTab() {
                     <div><Label>Alegação</Label><Input value={formData.alegacao} onChange={e => setFormData(f => ({ ...f, alegacao: e.target.value }))} /></div>
                     <div><Label>Motivo</Label><Input value={formData.motivo} onChange={e => setFormData(f => ({ ...f, motivo: e.target.value }))} /></div>
                   </div>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 gap-3">
                     <div><Label>SKU Produto</Label><Input value={formData.sku_produto} onChange={e => setFormData(f => ({ ...f, sku_produto: e.target.value }))} /></div>
                     <div><Label>Peça Retornou?</Label>
                       <Select value={formData.peca_retornou} onValueChange={v => setFormData(f => ({ ...f, peca_retornou: v }))}>
@@ -534,7 +591,6 @@ export default function GEPosVendasTab() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div><Label>NF Garantia</Label><Input value={formData.nf_garantia} onChange={e => setFormData(f => ({ ...f, nf_garantia: e.target.value }))} /></div>
                   </div>
                   <div><Label>Data Solicitação</Label><Input type="date" value={formData.data_solicitacao} onChange={e => setFormData(f => ({ ...f, data_solicitacao: e.target.value }))} /></div>
                 </div>
@@ -608,6 +664,12 @@ export default function GEPosVendasTab() {
                 <div><p className="text-muted-foreground text-xs">Atendente</p><p>{viewingCase.analyst_name || '—'}</p></div>
                 <div><p className="text-muted-foreground text-xs">Rastreio</p><p className="font-mono">{viewingCase.fullfilment_tracking || '—'}</p></div>
                 <div><p className="text-muted-foreground text-xs">Produto</p><p>{viewingCase.product_description || '—'}</p></div>
+                <div><p className="text-muted-foreground text-xs">NF Garantia</p>
+                  {(viewingCase as any).nf_saida ? (
+                    <a href={(viewingCase as any).nf_saida} target="_blank" rel="noreferrer" className="text-primary underline text-sm">Ver NF Garantia (PDF)</a>
+                  ) : '—'}
+                </div>
+                <div><p className="text-muted-foreground text-xs">Nº Requisição</p><p className="font-mono font-bold">{(viewingCase as any).numero_requisicao || '—'}</p></div>
               </div>
               {viewingCase.chave_pix_valor && (
                 <div className="mt-4 p-3 rounded-lg bg-success/5 border border-success/20">
@@ -677,6 +739,19 @@ export default function GEPosVendasTab() {
                 <div className="grid grid-cols-2 gap-3">
                   <div><Label>ID Antecipação</Label><Input value={editFormData.numero_antecipacao} onChange={e => setEditFormData(f => ({ ...f, numero_antecipacao: e.target.value }))} /></div>
                   <div><Label>ID Cadastro Jacsys</Label><Input value={editFormData.numero_cadastro_jacsys} onChange={e => setEditFormData(f => ({ ...f, numero_cadastro_jacsys: e.target.value }))} /></div>
+                </div>
+                {/* NF Garantia Upload in Edit */}
+                <div>
+                  <Label>NF Garantia (PDF)</Label>
+                  <input ref={editNfGarantiaRef} type="file" accept=".pdf" className="hidden"
+                    onChange={e => setEditNfGarantiaFile(e.target.files?.[0] || null)} />
+                  <Button type="button" variant="outline" className="w-full mt-1" onClick={() => editNfGarantiaRef.current?.click()}>
+                    <Upload className="w-4 h-4 mr-2" />
+                    {editNfGarantiaFile ? editNfGarantiaFile.name : ((editingCase as any)?.nf_saida ? 'Substituir NF existente' : 'Anexar NF Garantia')}
+                  </Button>
+                  {(editingCase as any)?.nf_saida && !editNfGarantiaFile && (
+                    <a href={(editingCase as any).nf_saida} target="_blank" rel="noreferrer" className="text-xs text-primary underline mt-1 block">Ver NF atual</a>
+                  )}
                 </div>
                 <div><Label>Observações</Label><Textarea value={editFormData.analysis_reason} onChange={e => setEditFormData(f => ({ ...f, analysis_reason: e.target.value }))} rows={3} /></div>
               </div>
