@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -146,6 +146,21 @@ export default function GEFinanceiroTab() {
     },
   });
 
+  // Realtime subscription for status changes
+  useEffect(() => {
+    const channel = supabase
+      .channel('ressarcimentos-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'return_cases',
+      }, () => {
+        queryClient.invalidateQueries({ queryKey: ['garantia-financeiro-cases'] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
+
   const updateCaseStatus = useMutation({
     mutationFn: async ({ id, status, comment, extra }: { id: string; status: string; comment?: string; extra?: Record<string, any> }) => {
       const updates: any = { status, updated_at: new Date().toISOString(), ...extra };
@@ -257,7 +272,7 @@ export default function GEFinanceiroTab() {
         financeiro_pagamento: 'pago',
         correcao_solicitada: 'conferencia_garantia',
         reprovado_gestor: 'aguardando_conferencia',
-        reprovado_fiscal: 'aguardando_conferencia',
+        reprovado_fiscal: 'conferencia_garantia',
       };
       nextStatus = flow[currentStatus] || 'pago';
 

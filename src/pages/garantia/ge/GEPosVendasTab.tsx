@@ -529,14 +529,14 @@ export default function GEPosVendasTab() {
               </div>
             </div>
 
-            {/* NF Garantia - PDF Upload */}
+             {/* NF - PDF Upload */}
             <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
-              <Label className="text-base font-semibold">Nota Fiscal de Garantia (PDF)</Label>
+              <Label className="text-base font-semibold">Nota Fiscal (PDF)</Label>
               <input ref={nfGarantiaRef} type="file" accept=".pdf" className="hidden"
                 onChange={e => setNfGarantiaFile(e.target.files?.[0] || null)} />
               <Button type="button" variant="outline" className="w-full" onClick={() => nfGarantiaRef.current?.click()}>
                 <Upload className="w-4 h-4 mr-2" />
-                {nfGarantiaFile ? nfGarantiaFile.name : 'Anexar NF Garantia (PDF)'}
+                {nfGarantiaFile ? nfGarantiaFile.name : 'Anexar Nota Fiscal (PDF)'}
               </Button>
             </div>
 
@@ -558,6 +558,9 @@ export default function GEPosVendasTab() {
                     <div>
                       <Label>Chave Pix *</Label>
                       <Input value={formData.chave_pix} onChange={e => setFormData(f => ({ ...f, chave_pix: e.target.value }))} placeholder="CPF, e-mail, telefone ou chave aleatória" />
+                      {formData.chave_pix && formData.chave_pix_tipo === 'CPF' && !/^\d{11}$/.test(formData.chave_pix.replace(/[\s\-\.]/g, '')) && (
+                        <p className="text-xs text-destructive mt-1">CPF invalido - deve conter 11 digitos</p>
+                      )}
                     </div>
                     <div>
                       <Label>Tipo da Chave</Label>
@@ -566,19 +569,46 @@ export default function GEPosVendasTab() {
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div><Label>Nome do Titular</Label><Input value={formData.titular_nome} onChange={e => setFormData(f => ({ ...f, titular_nome: e.target.value }))} /></div>
-                    <div><Label>Instituição</Label><Input value={formData.instituicao} onChange={e => setFormData(f => ({ ...f, instituicao: e.target.value }))} /></div>
+                    <div><Label>Instituicao</Label>
+                      <Select value={formData.instituicao} onValueChange={v => setFormData(f => ({ ...f, instituicao: v }))}>
+                        <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                        <SelectContent>
+                          {['Banco do Brasil', 'Bradesco', 'Itau', 'Santander', 'Caixa Economica', 'Nubank', 'Inter', 'C6 Bank', 'PagBank', 'Mercado Pago', 'Sicoob', 'Sicredi', 'Banrisul', 'Original', 'BTG Pactual', 'Safra', 'Neon', 'PicPay', 'Ame Digital', 'Outro'].map(b => (
+                            <SelectItem key={b} value={b}>{b}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div><Label>Valor Total</Label><Input type="number" step="0.01" value={formData.valor_total} onChange={e => setFormData(f => ({ ...f, valor_total: e.target.value }))} /></div>
                     <div><Label>Valor c/ Descontos</Label><Input type="number" step="0.01" value={formData.valor_com_descontos} onChange={e => setFormData(f => ({ ...f, valor_com_descontos: e.target.value }))} /></div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <div><Label>Nº Pedido</Label><Input value={formData.numero_pedido_fin} onChange={e => setFormData(f => ({ ...f, numero_pedido_fin: e.target.value }))} /></div>
-                    <div><Label>Conta</Label><Input value={formData.conta} onChange={e => setFormData(f => ({ ...f, conta: e.target.value }))} /></div>
+                    <div><Label>N. Venda</Label><Input value={formData.numero_pedido_fin} onChange={e => setFormData(f => ({ ...f, numero_pedido_fin: e.target.value }))} placeholder="Numero da venda" /></div>
+                    <div><Label>Conta</Label>
+                      <Select value={formData.conta} onValueChange={v => setFormData(f => ({ ...f, conta: v }))}>
+                        <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                        <SelectContent>
+                          {['Mercado Livre ES', 'Mercado Livre GAP', 'Mercado Livre Go!Mec', 'Shopee ES', 'Shopee SP', 'Magalu ES', 'Magalu SP', 'Site'].map(c => (
+                            <SelectItem key={c} value={c}>{c}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <div><Label>Alegação</Label><Input value={formData.alegacao} onChange={e => setFormData(f => ({ ...f, alegacao: e.target.value }))} /></div>
-                    <div><Label>Motivo</Label><Input value={formData.motivo} onChange={e => setFormData(f => ({ ...f, motivo: e.target.value }))} /></div>
+                    <div><Label>Alegacao</Label><Input value={formData.alegacao} onChange={e => setFormData(f => ({ ...f, alegacao: e.target.value }))} /></div>
+                    <div><Label>Motivo</Label>
+                      <Select value={formData.motivo} onValueChange={v => setFormData(f => ({ ...f, motivo: v }))}>
+                        <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                        <SelectContent>
+                          {['Defeito de fabrica', 'Produto diferente do anuncio', 'Produto danificado no transporte', 'Produto incompleto', 'Arrependimento', 'Nao funciona', 'Peca errada', 'Garantia expirada', 'Problema na instalacao', 'Outro'].map(m => (
+                            <SelectItem key={m} value={m}>{m}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div><Label>SKU Produto</Label><Input value={formData.sku_produto} onChange={e => setFormData(f => ({ ...f, sku_produto: e.target.value }))} /></div>
@@ -664,9 +694,9 @@ export default function GEPosVendasTab() {
                 <div><p className="text-muted-foreground text-xs">Atendente</p><p>{viewingCase.analyst_name || '—'}</p></div>
                 <div><p className="text-muted-foreground text-xs">Rastreio</p><p className="font-mono">{viewingCase.fullfilment_tracking || '—'}</p></div>
                 <div><p className="text-muted-foreground text-xs">Produto</p><p>{viewingCase.product_description || '—'}</p></div>
-                <div><p className="text-muted-foreground text-xs">NF Garantia</p>
+                <div><p className="text-muted-foreground text-xs">Nota Fiscal</p>
                   {(viewingCase as any).nf_saida ? (
-                    <a href={(viewingCase as any).nf_saida} target="_blank" rel="noreferrer" className="text-primary underline text-sm">Ver NF Garantia (PDF)</a>
+                    <a href={(viewingCase as any).nf_saida} target="_blank" rel="noreferrer" className="text-primary underline text-sm">Ver Nota Fiscal (PDF)</a>
                   ) : '—'}
                 </div>
                 <div><p className="text-muted-foreground text-xs">Nº Requisição</p><p className="font-mono font-bold">{(viewingCase as any).numero_requisicao || '—'}</p></div>
@@ -742,12 +772,12 @@ export default function GEPosVendasTab() {
                 </div>
                 {/* NF Garantia Upload in Edit */}
                 <div>
-                  <Label>NF Garantia (PDF)</Label>
+                  <Label>Nota Fiscal (PDF)</Label>
                   <input ref={editNfGarantiaRef} type="file" accept=".pdf" className="hidden"
                     onChange={e => setEditNfGarantiaFile(e.target.files?.[0] || null)} />
                   <Button type="button" variant="outline" className="w-full mt-1" onClick={() => editNfGarantiaRef.current?.click()}>
                     <Upload className="w-4 h-4 mr-2" />
-                    {editNfGarantiaFile ? editNfGarantiaFile.name : ((editingCase as any)?.nf_saida ? 'Substituir NF existente' : 'Anexar NF Garantia')}
+                    {editNfGarantiaFile ? editNfGarantiaFile.name : ((editingCase as any)?.nf_saida ? 'Substituir NF existente' : 'Anexar Nota Fiscal')}
                   </Button>
                   {(editingCase as any)?.nf_saida && !editNfGarantiaFile && (
                     <a href={(editingCase as any).nf_saida} target="_blank" rel="noreferrer" className="text-xs text-primary underline mt-1 block">Ver NF atual</a>
