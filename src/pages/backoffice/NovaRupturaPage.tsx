@@ -68,22 +68,26 @@ export default function NovaRupturaPage() {
       if (!rows.length) { toast.error('Arquivo vazio'); return; }
 
       const mapped = rows.map((r, i) => {
-        const saldoAtender = Number(r['Saldo a atender'] || r['Quantidade'] || r['quantidade'] || r['Qtd Pedida'] || 1);
-        const precoLiq = Number(r['Preço Líquido'] || r['Valor'] || r['valor_total'] || 0);
+        // Support both ERP format and simplified format (Pedido, SKU, Produto, Qtd, Valor Unit., Valor Total, Canal, Status, etc.)
+        const saldoAtender = Number(r['Saldo a atender'] || r['Qtd'] || r['Quantidade'] || r['quantidade'] || r['Qtd Pedida'] || 1);
+        const precoLiq = Number(r['Preço Líquido'] || r['Valor Unit.'] || r['Valor'] || r['valor_total'] || 0);
+        const valorTotal = Number(r['Produto - Total líquido (pedido)'] || r['Produto - Total bruto (pedido)'] || r['Valor Total'] || precoLiq * saldoAtender || 0);
         return {
           _idx: i,
           numero_pedido: String(r['Nro do Pedido'] || r['Pedido - ID'] || r['Pedido'] || r['numero_pedido'] || r['Número Pedido'] || ''),
           canal_venda: String(r['Canal de venda'] || r['Canal'] || r['canal_venda'] || ''),
-          marketplace: String(r['Canal de venda'] || r['Marketplace'] || r['marketplace'] || ''),
+          marketplace: String(r['Canal de venda'] || r['Canal'] || r['Marketplace'] || r['marketplace'] || ''),
           unidade_negocio: String(r['Unidade de negócio'] || r['Unidade'] || r['unidade_negocio'] || 'GAP-Virtual'),
           sku: String(r['Produto - Código'] || r['SKU'] || r['sku'] || ''),
           produto: String(r['Produto - Nome'] || r['Produto'] || r['produto'] || ''),
           quantidade: saldoAtender,
-          valor_total: Number(r['Produto - Total líquido (pedido)'] || r['Produto - Total bruto (pedido)'] || precoLiq * saldoAtender || 0),
-          comprador: String(r['Parceiro - Razão Social'] || r['Comprador'] || r['comprador'] || ''),
+          valor_total: valorTotal,
+          comprador: String(r['Parceiro - Razão Social'] || r['Comprador'] || r['Responsável'] || r['comprador'] || ''),
           transportadora: String(r['Transportadora'] || r['transportadora'] || ''),
           observacoes: String(r['Observações'] || r['observacoes'] || ''),
           status_original: String(r['Status'] || r['status'] || ''),
+          motivo_cancelamento: String(r['Motivo'] || r['motivo_cancelamento'] || ''),
+          fornecedor: String(r['Fornecedor'] || ''),
         };
       });
 
@@ -106,7 +110,8 @@ export default function NovaRupturaPage() {
     if (s.includes('aguardando compra') || s.includes('aguardando_compra')) return 'aguardando_compras';
     if (s.includes('aguardando retorno') || s.includes('aguardando_retorno')) return 'aguardando_retorno_cliente';
     if (s.includes('solicitado compra') || s.includes('solicitado_compra')) return 'solicitado_compra';
-    if (s.includes('solicitado transferencia') || s.includes('solicitado_transferencia') || s.includes('transferência')) return 'solicitado_transferencia';
+    if (s.includes('solicitado transferencia') || s.includes('solicitado_transferencia') || s.includes('transferência') || s.includes('transferencia')) return 'solicitado_transferencia';
+    if (s.includes('ruptura') || s.includes('identificada')) return 'ruptura_identificada';
     return 'ruptura_identificada';
   };
 
@@ -134,10 +139,11 @@ export default function NovaRupturaPage() {
       return;
     }
 
-    const toInsert = newItems.map(({ _idx, status_original, ...rest }) => ({
+    const toInsert = newItems.map(({ _idx, status_original, fornecedor, motivo_cancelamento, ...rest }) => ({
       ...rest,
       created_by: user?.id,
-      status: mapImportStatus(status_original || rest.observacoes || ''),
+      status: mapImportStatus(status_original),
+      motivo_cancelamento: motivo_cancelamento || undefined,
     }));
 
     const { error } = await supabase.from('rupturas').insert(toInsert);
