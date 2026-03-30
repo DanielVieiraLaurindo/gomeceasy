@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,22 +11,50 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { Plus, Search, Ticket, Clock, CheckCircle2, AlertCircle, Loader2, ExternalLink } from 'lucide-react';
+import { Plus, Search, Ticket, Clock, CheckCircle2, AlertCircle, Loader2, ExternalLink, Upload, Paperclip } from 'lucide-react';
 import { format } from 'date-fns';
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
-  aberto: { label: 'Aberto', color: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20' },
-  em_andamento: { label: 'Em Andamento', color: 'bg-blue-500/10 text-blue-600 border-blue-500/20' },
-  resolvido: { label: 'Resolvido', color: 'bg-green-500/10 text-green-600 border-green-500/20' },
+  aberto: { label: 'Aberto', color: 'bg-warning/10 text-warning border-warning/20' },
+  em_andamento: { label: 'Em Andamento', color: 'bg-info/10 text-info border-info/20' },
+  resolvido: { label: 'Resolvido', color: 'bg-success/10 text-success border-success/20' },
   fechado: { label: 'Fechado', color: 'bg-muted text-muted-foreground border-border' },
 };
 
 const PRIORIDADE_MAP: Record<string, { label: string; color: string }> = {
   baixo: { label: 'Baixa', color: 'bg-muted text-muted-foreground' },
-  medio: { label: 'Média', color: 'bg-yellow-500/10 text-yellow-600' },
+  medio: { label: 'Media', color: 'bg-warning/10 text-warning' },
   alto: { label: 'Alta', color: 'bg-orange-500/10 text-orange-600' },
-  critico: { label: 'Crítica', color: 'bg-red-500/10 text-red-600' },
+  critico: { label: 'Critica', color: 'bg-destructive/10 text-destructive' },
 };
+
+const CATEGORIAS = [
+  { value: 'hardware', label: 'Hardware' },
+  { value: 'software', label: 'Software' },
+  { value: 'acesso', label: 'Acesso / Permissões' },
+  { value: 'rede', label: 'Rede / Internet' },
+  { value: 'impressora', label: 'Impressora / Scanner' },
+  { value: 'email', label: 'E-mail / Comunicação' },
+  { value: 'erp', label: 'ERP / Sistema Interno' },
+  { value: 'outros', label: 'Outros' },
+];
+
+const SUBCATEGORIAS: Record<string, string[]> = {
+  hardware: ['Computador não liga', 'Tela com defeito', 'Teclado/Mouse', 'Memória/Lentidão', 'HD/SSD', 'Fonte', 'Outro'],
+  software: ['Instalação', 'Atualização', 'Erro de sistema', 'Licença expirada', 'Outro'],
+  acesso: ['Senha esquecida', 'Novo acesso', 'Remoção de acesso', 'Permissões', 'Outro'],
+  rede: ['Sem internet', 'Wi-Fi instável', 'VPN', 'Firewall', 'Outro'],
+  impressora: ['Não imprime', 'Papel atolado', 'Configuração', 'Outro'],
+  email: ['Não recebe e-mails', 'Não envia', 'Configuração', 'Outro'],
+  erp: ['Erro no sistema', 'Lentidão', 'Funcionalidade', 'Relatório', 'Outro'],
+  outros: ['Outro'],
+};
+
+const SETORES = [
+  'Backoffice', 'Compras', 'Expedição', 'Financeiro', 'Fiscal',
+  'Garantia', 'Logística', 'Pós-Vendas', 'Pré-Vendas', 'T.I.',
+  'Criação', 'Diretoria',
+];
 
 export default function ChamadosPage() {
   const { user, profile } = useAuth();
@@ -35,7 +63,17 @@ export default function ChamadosPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('todos');
   const [newDialog, setNewDialog] = useState(false);
-  const [form, setForm] = useState({ titulo: '', descricao: '', prioridade: 'medio', setor_solicitante: '' });
+  const [anexos, setAnexos] = useState<File[]>([]);
+  const anexoRef = useRef<HTMLInputElement>(null);
+  const [form, setForm] = useState({
+    titulo: '',
+    descricao: '',
+    prioridade: 'medio',
+    setor_solicitante: '',
+    categoria: 'outros',
+    subcategoria: '',
+    equipamento: '',
+  });
 
   const fetchChamados = async () => {
     setLoading(true);
@@ -59,24 +97,65 @@ export default function ChamadosPage() {
   }, [chamados]);
 
   const handleCreate = async () => {
-    if (!form.titulo.trim()) { toast.error('Informe o título do chamado'); return; }
-    const { error } = await supabase.from('chamados_ti').insert({
+    if (!form.titulo.trim()) { toast.error('Informe o titulo do chamado'); return; }
+    if (!form.categoria) { toast.error('Selecione uma categoria'); return; }
+    if (!form.descricao.trim()) { toast.error('Descreva o problema'); return; }
+
+    const slaMap: Record<string, number> = { baixo: 48, medio: 24, alto: 8, critico: 4 };
+
+    const { data: chamado, error } = await supabase.from('chamados_ti').insert({
       titulo: form.titulo,
       descricao: form.descricao,
       prioridade: form.prioridade,
       setor_solicitante: form.setor_solicitante || profile?.setor || 'backoffice',
       solicitante_id: user?.id,
       status: 'aberto',
-    });
+      categoria: form.categoria,
+      subcategoria: form.subcategoria,
+      equipamento: form.equipamento,
+      sla_horas: slaMap[form.prioridade] || 24,
+    }).select().single();
+
     if (error) { toast.error('Erro ao criar chamado'); return; }
+
+    // Upload attachments
+    if (chamado && anexos.length > 0) {
+      for (const file of anexos) {
+        const filePath = `chamados/${chamado.id}/${Date.now()}_${file.name}`;
+        const { error: uploadErr } = await supabase.storage.from('case-photos').upload(filePath, file);
+        if (!uploadErr) {
+          const { data: urlData } = supabase.storage.from('case-photos').getPublicUrl(filePath);
+          await supabase.from('chamado_anexos').insert({
+            chamado_id: chamado.id,
+            file_name: file.name,
+            file_url: urlData.publicUrl,
+            file_size: file.size,
+            uploaded_by: user?.id,
+          });
+        }
+      }
+    }
+
+    // Notify TI sector
+    await supabase.from('notificacoes').insert({
+      mensagem: `Novo chamado de T.I.: ${form.titulo} (${CATEGORIAS.find(c => c.value === form.categoria)?.label || form.categoria})`,
+      tipo: 'chamado_ti',
+      referencia_id: chamado?.id,
+      referencia_tabela: 'chamados_ti',
+      setor_destino: 'ti',
+    } as any);
+
     toast.success('Chamado criado com sucesso');
     setNewDialog(false);
-    setForm({ titulo: '', descricao: '', prioridade: 'medio', setor_solicitante: '' });
+    setForm({ titulo: '', descricao: '', prioridade: 'medio', setor_solicitante: '', categoria: 'outros', subcategoria: '', equipamento: '' });
+    setAnexos([]);
     fetchChamados();
   };
 
   const handleStatusChange = async (id: string, newStatus: string) => {
-    const { error } = await supabase.from('chamados_ti').update({ status: newStatus }).eq('id', id);
+    const updates: any = { status: newStatus };
+    if (newStatus === 'resolvido') updates.resolved_at = new Date().toISOString();
+    const { error } = await supabase.from('chamados_ti').update(updates).eq('id', id);
     if (error) { toast.error('Erro ao atualizar status'); return; }
     toast.success('Status atualizado');
     fetchChamados();
@@ -88,32 +167,13 @@ export default function ChamadosPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-barlow font-bold">Chamados de TI</h1>
-          <p className="text-muted-foreground text-sm">Gerencie chamados internos de suporte técnico</p>
+          <h1 className="text-2xl font-barlow font-bold">Chamados de T.I.</h1>
+          <p className="text-muted-foreground text-sm">Gerencie chamados internos de suporte tecnico</p>
         </div>
         <Button onClick={() => setNewDialog(true)} className="gap-2">
           <Plus className="w-4 h-4" /> Abrir Chamado
         </Button>
       </div>
-
-      {/* Link público para abrir chamado */}
-      <Card className="border-primary/20 bg-primary/5">
-        <CardContent className="p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <ExternalLink className="w-5 h-5 text-primary" />
-            <div>
-              <p className="text-sm font-medium">Link para abrir chamado</p>
-              <p className="text-xs text-muted-foreground">Compartilhe este link com os colaboradores para que abram chamados diretamente</p>
-            </div>
-          </div>
-          <Button variant="outline" size="sm" onClick={() => {
-            setNewDialog(true);
-            toast.info('Use o botão "Abrir Chamado" para registrar seu pedido');
-          }}>
-            <Ticket className="w-4 h-4 mr-2" /> Abrir Chamado
-          </Button>
-        </CardContent>
-      </Card>
 
       {/* Status cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -146,31 +206,37 @@ export default function ChamadosPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Título</TableHead>
+                <TableHead>Titulo</TableHead>
                 <TableHead>Setor</TableHead>
+                <TableHead>Categoria</TableHead>
                 <TableHead>Prioridade</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>SLA</TableHead>
                 <TableHead>Data</TableHead>
-                <TableHead>Ações</TableHead>
+                <TableHead>Acoes</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Nenhum chamado encontrado</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Nenhum chamado encontrado</TableCell></TableRow>
               ) : filtered.map(c => {
                 const prio = PRIORIDADE_MAP[c.prioridade] || PRIORIDADE_MAP.medio;
                 const st = STATUS_MAP[c.status] || STATUS_MAP.aberto;
+                const cat = CATEGORIAS.find(cat => cat.value === c.categoria);
                 return (
                   <TableRow key={c.id}>
                     <TableCell>
                       <div>
                         <p className="font-medium text-sm">{c.titulo}</p>
                         {c.descricao && <p className="text-xs text-muted-foreground line-clamp-1">{c.descricao}</p>}
+                        {c.equipamento && <p className="text-[10px] text-muted-foreground">Equip: {c.equipamento}</p>}
                       </div>
                     </TableCell>
                     <TableCell className="text-sm">{c.setor_solicitante || '—'}</TableCell>
+                    <TableCell className="text-sm">{cat?.label || c.categoria || '—'}</TableCell>
                     <TableCell><Badge variant="outline" className={prio.color}>{prio.label}</Badge></TableCell>
                     <TableCell><Badge variant="outline" className={st.color}>{st.label}</Badge></TableCell>
+                    <TableCell className="text-xs font-mono">{c.sla_horas || 24}h</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{c.created_at ? format(new Date(c.created_at), 'dd/MM/yyyy HH:mm') : '—'}</TableCell>
                     <TableCell>
                       <Select value={c.status} onValueChange={v => handleStatusChange(c.id, v)}>
@@ -188,27 +254,83 @@ export default function ChamadosPage() {
         </CardContent>
       </Card>
 
-      {/* New chamado dialog */}
+      {/* New chamado dialog - IMPROVED */}
       <Dialog open={newDialog} onOpenChange={setNewDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Abrir Chamado</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Abrir Chamado de T.I.</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div><Label>Título *</Label><Input placeholder="Descreva o problema brevemente" value={form.titulo} onChange={e => setForm(f => ({ ...f, titulo: e.target.value }))} /></div>
-            <div><Label>Descrição</Label><Textarea placeholder="Detalhes do problema..." value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} /></div>
-            <div><Label>Setor Solicitante</Label><Input placeholder="Ex: Backoffice, Compras..." value={form.setor_solicitante} onChange={e => setForm(f => ({ ...f, setor_solicitante: e.target.value }))} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Categoria *</Label>
+                <Select value={form.categoria} onValueChange={v => setForm(f => ({ ...f, categoria: v, subcategoria: '' }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{CATEGORIAS.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Subcategoria</Label>
+                <Select value={form.subcategoria} onValueChange={v => setForm(f => ({ ...f, subcategoria: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                  <SelectContent>
+                    {(SUBCATEGORIAS[form.categoria] || []).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <div>
-              <Label>Prioridade</Label>
-              <Select value={form.prioridade} onValueChange={v => setForm(f => ({ ...f, prioridade: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(PRIORIDADE_MAP).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Label>Titulo *</Label>
+              <Input placeholder="Descreva o problema brevemente" value={form.titulo} onChange={e => setForm(f => ({ ...f, titulo: e.target.value }))} />
+            </div>
+            <div>
+              <Label>Descricao detalhada *</Label>
+              <Textarea placeholder="Descreva o problema com o maximo de detalhes possivel: o que aconteceu, quando comecou, mensagens de erro..." rows={4} value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Setor Solicitante</Label>
+                <Select value={form.setor_solicitante || profile?.setor || ''} onValueChange={v => setForm(f => ({ ...f, setor_solicitante: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                  <SelectContent>{SETORES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Prioridade</Label>
+                <Select value={form.prioridade} onValueChange={v => setForm(f => ({ ...f, prioridade: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(PRIORIDADE_MAP).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <Label>Equipamento relacionado</Label>
+              <Input placeholder="Ex: Notebook Dell #15, PC Recepção, Impressora HP..." value={form.equipamento} onChange={e => setForm(f => ({ ...f, equipamento: e.target.value }))} />
+            </div>
+            <div className="border rounded-lg p-3 space-y-2 bg-muted/30">
+              <Label>Anexos (prints, fotos do erro)</Label>
+              <input ref={anexoRef} type="file" multiple className="hidden" onChange={e => {
+                if (e.target.files) setAnexos(prev => [...prev, ...Array.from(e.target.files!)]);
+                if (anexoRef.current) anexoRef.current.value = '';
+              }} />
+              <Button type="button" variant="outline" size="sm" onClick={() => anexoRef.current?.click()}>
+                <Paperclip className="w-4 h-4 mr-1" />Adicionar anexo
+              </Button>
+              {anexos.length > 0 && (
+                <div className="space-y-1">
+                  {anexos.map((f, i) => (
+                    <div key={i} className="flex items-center justify-between text-xs bg-background p-2 rounded">
+                      <span className="truncate">{f.name}</span>
+                      <button onClick={() => setAnexos(prev => prev.filter((_, idx) => idx !== i))} className="text-destructive ml-2">x</button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setNewDialog(false)}>Cancelar</Button>
-            <Button onClick={handleCreate}>Criar Chamado</Button>
+            <Button onClick={handleCreate}>Abrir Chamado</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

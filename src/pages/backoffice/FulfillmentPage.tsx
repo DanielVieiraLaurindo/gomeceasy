@@ -1,12 +1,15 @@
 import React, { useState, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, Warehouse, ShoppingCart, Truck, FileText, MapPin, Package, Upload } from 'lucide-react';
+import { LayoutDashboard, Warehouse, ShoppingCart, Truck, FileText, MapPin, Package, Plus, Trash2 } from 'lucide-react';
 import { FulfillmentDashboard, CentralEstoquePage, PedidosComprasPage, DadosFiscaisPage, CadastroProdutosPage } from './FulfillmentSubPages';
 import EnviosFullPage from './EnviosFullPage';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import * as XLSX from 'xlsx';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const MENU_ITEMS = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -19,97 +22,93 @@ const MENU_ITEMS = [
 ];
 
 function CentrosDistribuicaoPage() {
-  const [cds, setCds] = React.useState<any[]>([]);
-  React.useEffect(() => {
-    supabase.from('distribution_centers').select('*').order('codigo').then(({ data }) => setCds(data || []));
-  }, []);
+  const queryClient = useQueryClient();
+  const [newDialog, setNewDialog] = useState(false);
+  const [form, setForm] = useState({ codigo: '', nome: '' });
+
+  const { data: cds = [] } = useQuery({
+    queryKey: ['distribution-centers'],
+    queryFn: async () => {
+      const { data } = await supabase.from('distribution_centers').select('*').order('codigo');
+      return data || [];
+    },
+  });
+
+  const createCD = useMutation({
+    mutationFn: async (data: { codigo: string; nome: string }) => {
+      const { error } = await supabase.from('distribution_centers').insert(data);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['distribution-centers'] });
+      toast.success('Centro de Distribuição cadastrado');
+      setNewDialog(false);
+      setForm({ codigo: '', nome: '' });
+    },
+    onError: () => toast.error('Erro ao cadastrar CD'),
+  });
+
+  const deleteCD = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('distribution_centers').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['distribution-centers'] });
+      toast.success('CD removido');
+    },
+  });
+
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-bold">Centros de Distribuição</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold">Centros de Distribuição</h2>
+        <Button onClick={() => setNewDialog(true)} className="gap-2">
+          <Plus className="w-4 h-4" />Cadastrar CD
+        </Button>
+      </div>
       <div className="card-base overflow-hidden">
         <table className="w-full text-sm">
-          <thead><tr className="bg-muted/50 border-b"><th className="text-left p-3">Código</th><th className="text-left p-3">Nome</th></tr></thead>
+          <thead><tr className="bg-muted/50 border-b"><th className="text-left p-3">Código</th><th className="text-left p-3">Nome</th><th className="text-right p-3">Ações</th></tr></thead>
           <tbody>
             {cds.map((cd: any) => (
-              <tr key={cd.id} className="border-b hover:bg-muted/30"><td className="p-3 font-mono font-medium">{cd.codigo}</td><td className="p-3">{cd.nome}</td></tr>
+              <tr key={cd.id} className="border-b hover:bg-muted/30">
+                <td className="p-3 font-mono font-medium">{cd.codigo}</td>
+                <td className="p-3">{cd.nome}</td>
+                <td className="p-3 text-right">
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => {
+                    if (window.confirm('Remover este CD?')) deleteCD.mutate(cd.id);
+                  }}><Trash2 className="w-3.5 h-3.5" /></Button>
+                </td>
+              </tr>
             ))}
-            {cds.length === 0 && <tr><td colSpan={2} className="p-8 text-center text-muted-foreground">Nenhum CD cadastrado</td></tr>}
+            {cds.length === 0 && <tr><td colSpan={3} className="p-8 text-center text-muted-foreground">Nenhum CD cadastrado</td></tr>}
           </tbody>
         </table>
       </div>
+
+      <Dialog open={newDialog} onOpenChange={setNewDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Cadastrar Centro de Distribuição</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div><Label>Código *</Label><Input value={form.codigo} onChange={e => setForm(f => ({ ...f, codigo: e.target.value }))} placeholder="Ex: CD-SP-01" /></div>
+            <div><Label>Nome *</Label><Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} placeholder="Ex: Centro SP Principal" /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNewDialog(false)}>Cancelar</Button>
+            <Button onClick={() => {
+              if (!form.codigo.trim() || !form.nome.trim()) { toast.error('Preencha código e nome'); return; }
+              createCD.mutate(form);
+            }}>Cadastrar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
 export default function FulfillmentPage() {
   const [activeSection, setActiveSection] = useState('dashboard');
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleImportDevolutions = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const ab = await file.arrayBuffer();
-      const wb = XLSX.read(ab);
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      // Header is on row 6 (0-indexed: 5)
-      const json = XLSX.utils.sheet_to_json<any>(ws, { range: 5 });
-      let imported = 0;
-      const now = new Date().toISOString();
-      for (const row of json) {
-        // Column A: N.º de venda
-        const saleNumber = row['N.º de venda'] || row['Nº de venda'] || '';
-        if (!saleNumber) continue;
-        // Column C: Estado - filter only devoluções
-        const estado = row['Estado'] || '';
-        if (!estado.toLowerCase().includes('devolução')) continue;
-
-        // Column T: SKU
-        const sku = row['SKU'] || '';
-        // Column X: Título do anúncio
-        const titulo = row['Título do anúncio'] || '';
-        // Column AH: Comprador
-        const comprador = row['Comprador'] || '';
-        // Column AJ: CPF
-        const cpf = row['CPF'] || '';
-        // Column BA: Número de rastreamento
-        const rastreio = row['Número de rastreamento'] || '';
-        // Column G: Unidades
-        const unidades = parseInt(row['Unidades']) || 1;
-        // Column Q: Total (BRL)
-        const totalStr = String(row['Total (BRL)'] || '0').replace(',', '.');
-        const total = parseFloat(totalStr) || 0;
-        // Column H: Receita por produtos (BRL)
-        const receitaStr = String(row['Receita por produtos (BRL)'] || '0').replace(',', '.');
-        const receita = parseFloat(receitaStr) || 0;
-
-        const { error } = await supabase.from('return_cases').insert({
-          sale_number: String(saleNumber),
-          client_name: comprador || '-',
-          client_document: String(cpf || ''),
-          product_sku: String(sku || ''),
-          product_description: String(titulo || ''),
-          case_type: 'DEVOLUCAO',
-          status: 'antecipado',
-          entry_date: now.split('T')[0],
-          created_at: now,
-          marketplace_account: 'MELI_GOMEC',
-          is_full: true,
-          fullfilment_tracking: String(rastreio || ''),
-          quantity: unidades,
-          total_value: total,
-          unit_value: receita,
-          sent_to_backoffice: true,
-        } as any);
-        if (!error) imported++;
-      }
-      toast.success(`${imported} devoluções importadas com sucesso`);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    } catch (err) {
-      console.error('Import error:', err);
-      toast.error('Erro ao importar planilha');
-    }
-  };
 
   const renderContent = () => {
     switch (activeSection) {
@@ -126,13 +125,9 @@ export default function FulfillmentPage() {
 
   return (
     <div className="flex h-full -m-6">
-      <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImportDevolutions} />
       <aside className="w-56 border-r bg-card flex flex-col shrink-0">
         <div className="p-4 border-b">
           <h2 className="font-barlow font-bold text-sm text-foreground">Fulfillment</h2>
-          <Button variant="outline" size="sm" className="mt-2 w-full gap-1 text-xs" onClick={() => fileInputRef.current?.click()}>
-            <Upload className="w-3 h-3" />Importar Devoluções
-          </Button>
         </div>
         <nav className="flex-1 p-2 space-y-1">
           {MENU_ITEMS.map(item => (
