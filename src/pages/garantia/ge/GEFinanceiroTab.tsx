@@ -146,6 +146,21 @@ export default function GEFinanceiroTab() {
     },
   });
 
+  // Realtime subscription for status changes
+  useEffect(() => {
+    const channel = supabase
+      .channel('ressarcimentos-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'return_cases',
+      }, () => {
+        queryClient.invalidateQueries({ queryKey: ['garantia-financeiro-cases'] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
+
   const updateCaseStatus = useMutation({
     mutationFn: async ({ id, status, comment, extra }: { id: string; status: string; comment?: string; extra?: Record<string, any> }) => {
       const updates: any = { status, updated_at: new Date().toISOString(), ...extra };
@@ -257,7 +272,7 @@ export default function GEFinanceiroTab() {
         financeiro_pagamento: 'pago',
         correcao_solicitada: 'conferencia_garantia',
         reprovado_gestor: 'aguardando_conferencia',
-        reprovado_fiscal: 'aguardando_conferencia',
+        reprovado_fiscal: 'conferencia_garantia',
       };
       nextStatus = flow[currentStatus] || 'pago';
 
