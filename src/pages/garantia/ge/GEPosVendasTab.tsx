@@ -694,9 +694,9 @@ export default function GEPosVendasTab() {
                 <div><p className="text-muted-foreground text-xs">Atendente</p><p>{viewingCase.analyst_name || '—'}</p></div>
                 <div><p className="text-muted-foreground text-xs">Rastreio</p><p className="font-mono">{viewingCase.fullfilment_tracking || '—'}</p></div>
                 <div><p className="text-muted-foreground text-xs">Produto</p><p>{viewingCase.product_description || '—'}</p></div>
-                <div><p className="text-muted-foreground text-xs">NF Garantia</p>
+                <div><p className="text-muted-foreground text-xs">Nota Fiscal</p>
                   {(viewingCase as any).nf_saida ? (
-                    <a href={(viewingCase as any).nf_saida} target="_blank" rel="noreferrer" className="text-primary underline text-sm">Ver NF Garantia (PDF)</a>
+                    <a href={(viewingCase as any).nf_saida} target="_blank" rel="noreferrer" className="text-primary underline text-sm">Ver Nota Fiscal (PDF)</a>
                   ) : '—'}
                 </div>
                 <div><p className="text-muted-foreground text-xs">Nº Requisição</p><p className="font-mono font-bold">{(viewingCase as any).numero_requisicao || '—'}</p></div>
@@ -772,12 +772,12 @@ export default function GEPosVendasTab() {
                 </div>
                 {/* NF Garantia Upload in Edit */}
                 <div>
-                  <Label>NF Garantia (PDF)</Label>
+                  <Label>Nota Fiscal (PDF)</Label>
                   <input ref={editNfGarantiaRef} type="file" accept=".pdf" className="hidden"
                     onChange={e => setEditNfGarantiaFile(e.target.files?.[0] || null)} />
                   <Button type="button" variant="outline" className="w-full mt-1" onClick={() => editNfGarantiaRef.current?.click()}>
                     <Upload className="w-4 h-4 mr-2" />
-                    {editNfGarantiaFile ? editNfGarantiaFile.name : ((editingCase as any)?.nf_saida ? 'Substituir NF existente' : 'Anexar NF Garantia')}
+                    {editNfGarantiaFile ? editNfGarantiaFile.name : ((editingCase as any)?.nf_saida ? 'Substituir NF existente' : 'Anexar Nota Fiscal')}
                   </Button>
                   {(editingCase as any)?.nf_saida && !editNfGarantiaFile && (
                     <a href={(editingCase as any).nf_saida} target="_blank" rel="noreferrer" className="text-xs text-primary underline mt-1 block">Ver NF atual</a>
