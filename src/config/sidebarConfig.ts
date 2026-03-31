@@ -103,6 +103,14 @@ export const SIDEBAR_ITEMS: Record<AppSetor, SidebarItem[]> = {
     { path: '/criacao/demandas', label: 'Demandas', icon: PenTool },
     { path: '/criacao/arquivo', label: 'Arquivo', icon: FolderOpen },
   ],
+  comercial: [
+    { path: '/comercial', label: 'Dashboard Comercial', icon: LayoutDashboard },
+    { path: '/comercial/clientes-prazo', label: 'Clientes Prazo Loja', icon: Clock },
+    { path: '/comercial/creditos-clientes', label: 'Consulta Crédito', icon: CreditCard },
+    { path: '/comercial/rastreamento', label: 'Rastreamento', icon: MapPin },
+    { path: '/comercial/autorizacao-devolucao', label: 'Autorização Dev./Garantia', icon: ShieldCheck },
+    { path: '/comercial/ficha-analise-credito', label: 'Ficha Análise de Crédito', icon: FileText },
+  ],
   ti: [
     { path: '/ti', label: 'Dashboard TI', icon: LayoutDashboard },
     { path: '/ti/usuarios', label: 'Gestão de Usuários', icon: Users },
