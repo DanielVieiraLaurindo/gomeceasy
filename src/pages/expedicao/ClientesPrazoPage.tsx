@@ -53,12 +53,58 @@ function NovaRequisicaoDialog({ open, onOpenChange, onCreate }: { open: boolean;
     ocorrencia: 'link_pagamento',
     requisicao: '',
     valor: '',
+    codigo_loja: '',
     codigo_cliente: '',
     nome_cliente: '',
     cod_vendedor: '',
     nome_vendedor: '',
     observacao: '',
   });
+  const [loadingApi, setLoadingApi] = useState(false);
+
+  const fetchRequisicaoData = async (reqNumber: string) => {
+    const trimmed = reqNumber.trim();
+    if (!/^\d{1,7}$/.test(trimmed)) return;
+    setLoadingApi(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) { toast.error('Sessão expirada'); return; }
+
+      const res = await supabase.functions.invoke('jacsys-requisicoes', {
+        body: { ids: [trimmed] },
+      });
+
+      if (res.error) throw res.error;
+      const apiData = res.data;
+      const info = apiData?.[trimmed];
+      if (info) {
+        setForm(prev => ({
+          ...prev,
+          codigo_loja: info.codigo_loja || '',
+          valor: String(info.valor || ''),
+          codigo_cliente: info.codigo_cliente || '',
+          nome_cliente: info.nome_cliente || '',
+          cod_vendedor: info.codigo_vendedor || '',
+          nome_vendedor: info.nome_vendedor || '',
+        }));
+        toast.success('Dados da requisição carregados');
+      } else {
+        toast.info('Requisição não encontrada na base Jacsys');
+      }
+    } catch (err: any) {
+      console.error('Erro ao buscar requisição:', err);
+      toast.error('Erro ao buscar dados da requisição');
+    } finally {
+      setLoadingApi(false);
+    }
+  };
+
+  const handleRequisicaoBlur = () => {
+    if (form.requisicao.trim()) {
+      fetchRequisicaoData(form.requisicao);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,6 +118,7 @@ function NovaRequisicaoDialog({ open, onOpenChange, onCreate }: { open: boolean;
       valor: parseFloat(form.valor),
       ocorrencia: form.ocorrencia,
       prazo_cobrar: format(prazo24h, 'yyyy-MM-dd'),
+      codigo_loja: form.codigo_loja || null,
       codigo_cliente: form.codigo_cliente || null,
       nome_cliente: form.nome_cliente,
       cod_vendedor: form.cod_vendedor || null,
@@ -81,7 +128,7 @@ function NovaRequisicaoDialog({ open, onOpenChange, onCreate }: { open: boolean;
       status: isPosterior ? 'aguardando_autorizacao' : 'aguardando_link',
     });
     onOpenChange(false);
-    setForm({ ocorrencia: 'link_pagamento', requisicao: '', valor: '', codigo_cliente: '', nome_cliente: '', cod_vendedor: '', nome_vendedor: '', observacao: '' });
+    setForm({ ocorrencia: 'link_pagamento', requisicao: '', valor: '', codigo_loja: '', codigo_cliente: '', nome_cliente: '', cod_vendedor: '', nome_vendedor: '', observacao: '' });
   };
 
   const update = (key: string, val: string) => setForm(prev => ({ ...prev, [key]: val }));
@@ -107,11 +154,25 @@ function NovaRequisicaoDialog({ open, onOpenChange, onCreate }: { open: boolean;
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-1.5">
               <Label className="text-xs font-bold uppercase text-muted-foreground">Nº Requisição *</Label>
-              <Input value={form.requisicao} onChange={e => update('requisicao', e.target.value)} />
+              <div className="relative">
+                <Input
+                  value={form.requisicao}
+                  onChange={e => update('requisicao', e.target.value.replace(/\D/g, '').slice(0, 7))}
+                  onBlur={handleRequisicaoBlur}
+                  placeholder="Ex: 2596530"
+                  disabled={loadingApi}
+                />
+                {loadingApi && (
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                    <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  </div>
+                )}
+              </div>
+              <p className="text-[10px] text-muted-foreground">Ao sair do campo, os dados serão buscados automaticamente</p>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-bold uppercase text-muted-foreground">Valor (R$) *</Label>
-              <Input type="number" step="0.01" value={form.valor} onChange={e => update('valor', e.target.value)} />
+              <Label className="text-xs font-bold uppercase text-muted-foreground">Código Loja</Label>
+              <Input value={form.codigo_loja} readOnly className="bg-muted" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-bold uppercase text-muted-foreground">Data/Hora Lançamento</Label>
@@ -119,7 +180,11 @@ function NovaRequisicaoDialog({ open, onOpenChange, onCreate }: { open: boolean;
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase text-muted-foreground">Valor (R$) *</Label>
+              <Input type="number" step="0.01" value={form.valor} onChange={e => update('valor', e.target.value)} />
+            </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-bold uppercase text-muted-foreground">Prazo para Cobrar</Label>
               <Input value={format(prazo24h, 'dd/MM/yyyy HH:mm')} readOnly className="bg-muted" />
@@ -134,22 +199,22 @@ function NovaRequisicaoDialog({ open, onOpenChange, onCreate }: { open: boolean;
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label className="text-xs font-bold uppercase text-muted-foreground">Código do Cliente</Label>
-              <Input value={form.codigo_cliente} onChange={e => update('codigo_cliente', e.target.value)} />
+              <Input value={form.codigo_cliente} readOnly className="bg-muted" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-bold uppercase text-muted-foreground">Nome do Cliente *</Label>
-              <Input value={form.nome_cliente} onChange={e => update('nome_cliente', e.target.value)} />
+              <Input value={form.nome_cliente} readOnly className="bg-muted" />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label className="text-xs font-bold uppercase text-muted-foreground">Cód. Vendedor</Label>
-              <Input value={form.cod_vendedor} onChange={e => update('cod_vendedor', e.target.value)} />
+              <Input value={form.cod_vendedor} readOnly className="bg-muted" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-bold uppercase text-muted-foreground">Nome Vendedor</Label>
-              <Input value={form.nome_vendedor} onChange={e => update('nome_vendedor', e.target.value)} />
+              <Input value={form.nome_vendedor} readOnly className="bg-muted" />
             </div>
           </div>
 
@@ -160,7 +225,7 @@ function NovaRequisicaoDialog({ open, onOpenChange, onCreate }: { open: boolean;
 
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="submit">Salvar Requisição</Button>
+            <Button type="submit" disabled={loadingApi}>Salvar Requisição</Button>
           </div>
         </form>
       </DialogContent>
