@@ -311,6 +311,7 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, canAuthor
             {[
               ['Cliente', item.nome_cliente],
               ['Código Cliente', item.codigo_cliente || '—'],
+              ['Código Loja', item.codigo_loja || '—'],
               ['Vendedor', item.nome_vendedor || '—'],
               ['Cód. Vendedor', item.cod_vendedor || '—'],
               ['Autorizado por', item.autorizado_por || '—'],
