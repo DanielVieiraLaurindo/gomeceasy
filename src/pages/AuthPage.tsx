@@ -21,7 +21,7 @@ export default function AuthPage() {
   const [forgotEmail, setForgotEmail] = useState('');
 
   // Login
-  const [loginEmail, setLoginEmail] = useState('');
+  const [loginIdentifier, setLoginIdentifier] = useState('');
   const [loginPw, setLoginPw] = useState('');
 
   // Signup
