@@ -21,7 +21,7 @@ export default function AuthPage() {
   const [forgotEmail, setForgotEmail] = useState('');
 
   // Login
-  const [loginEmail, setLoginEmail] = useState('');
+  const [loginIdentifier, setLoginIdentifier] = useState('');
   const [loginPw, setLoginPw] = useState('');
 
   // Signup
@@ -34,7 +34,8 @@ export default function AuthPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await signIn(loginEmail, loginPw);
+    const email = loginIdentifier.includes('@') ? loginIdentifier : `${loginIdentifier.toLowerCase().trim()}@interno.gomec.com`;
+    const { error } = await signIn(email, loginPw);
     setLoading(false);
     if (error) {
       toast.error('Erro ao fazer login: ' + error.message);
@@ -101,8 +102,8 @@ export default function AuthPage() {
           <form onSubmit={handleLogin} className="space-y-4">
               <h2 className="text-lg font-barlow font-bold mb-2">Login</h2>
               <div>
-                <Label htmlFor="login-email">E-mail</Label>
-                <Input id="login-email" type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} required />
+                <Label htmlFor="login-id">Login (nome.sobrenome ou e-mail)</Label>
+                <Input id="login-id" type="text" placeholder="nome.sobrenome" value={loginIdentifier} onChange={(e) => setLoginIdentifier(e.target.value)} required />
               </div>
               <div>
                 <Label htmlFor="login-pw">Senha</Label>

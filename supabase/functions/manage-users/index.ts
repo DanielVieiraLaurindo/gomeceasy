@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
     const { action } = body
 
     if (action === 'create_user') {
-      const { email, password, nome, setor, role } = body
+      const { email, password, nome, setor, role, login_username } = body
       const { data, error } = await supabaseAdmin.auth.admin.createUser({
         email,
         password,
@@ -39,9 +39,11 @@ Deno.serve(async (req) => {
       })
       if (error) return new Response(JSON.stringify({ error: error.message }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 
-      // Update profile role
+      // Update profile role and login_username
       if (data.user) {
-        await supabaseAdmin.from('profiles').update({ role: role || 'usuario', setor: setor || 'backoffice' }).eq('id', data.user.id)
+        const updates: any = { role: role || 'usuario', setor: setor || 'backoffice' }
+        if (login_username) updates.login_username = login_username
+        await supabaseAdmin.from('profiles').update(updates).eq('id', data.user.id)
       }
 
       // Log activity

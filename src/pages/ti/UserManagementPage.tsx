@@ -93,7 +93,7 @@ export default function UserManagementPage() {
 
   // Create form
   const [cNome, setCNome]   = useState('');
-  const [cEmail, setCEmail] = useState('');
+  const [cLogin, setCLogin] = useState('');
   const [cPw, setCPw]       = useState('');
   const [cSetor, setCSetor] = useState<AppSetor>('backoffice');
   const [cRole, setCRole]   = useState<UserRole>('usuario');
@@ -161,12 +161,14 @@ export default function UserManagementPage() {
   // -------------------------------------------------------------------------
 
   const handleCreate = async () => {
-    if (!cNome || !cEmail || !cPw) { toast.error('Preencha todos os campos'); return; }
+    if (!cNome || !cLogin || !cPw) { toast.error('Preencha todos os campos'); return; }
     if (cPw.length < 6)            { toast.error('Senha mínima: 6 caracteres'); return; }
+    if (!/^[a-zA-Z]+\.[a-zA-Z]+$/.test(cLogin) && !cLogin.includes('@')) { toast.error('Login deve ser nome.sobrenome ou um e-mail válido'); return; }
     setSaving(true);
-    const result = await callManageUsers({ action: 'create_user', email: cEmail, password: cPw, nome: cNome, setor: cSetor, role: cRole });
+    const email = cLogin.includes('@') ? cLogin : `${cLogin.toLowerCase().trim()}@interno.gomec.com`;
+    const result = await callManageUsers({ action: 'create_user', email, password: cPw, nome: cNome, setor: cSetor, role: cRole, login_username: cLogin.toLowerCase().trim() });
     setSaving(false);
-    if (result?.success) { toast.success('Usuário criado'); setCreateOpen(false); setCNome(''); setCEmail(''); setCPw(''); fetchProfiles(); }
+    if (result?.success) { toast.success('Usuário criado'); setCreateOpen(false); setCNome(''); setCLogin(''); setCPw(''); fetchProfiles(); }
   };
 
   const openEdit = (p: Profile) => { setEditingProfile(p); setENome(p.nome); setESetor(p.setor); setERole(p.role); setEditOpen(true); };
@@ -342,7 +344,7 @@ export default function UserManagementPage() {
                         <TableRow key={p.id} className={selectedIds.has(p.id) ? 'bg-muted/50' : ''}>
                           <TableCell><Checkbox checked={selectedIds.has(p.id)} onCheckedChange={() => toggleSelect(p.id)} /></TableCell>
                           <TableCell className="font-medium">{p.nome}</TableCell>
-                          <TableCell className="text-xs font-mono">{p.email}</TableCell>
+                          <TableCell className="text-xs font-mono">{(p as any).login_username || (p.email.endsWith('@interno.gomec.com') ? p.email.replace('@interno.gomec.com', '') : p.email)}</TableCell>
                           <TableCell><Badge variant="outline">{SETOR_LABELS[p.setor] || p.setor}</Badge></TableCell>
                           <TableCell><Badge variant={p.role === 'master' ? 'default' : 'secondary'}>{p.role}</Badge></TableCell>
 
@@ -460,8 +462,12 @@ export default function UserManagementPage() {
           <DialogContent className="max-w-md">
             <DialogHeader><DialogTitle>Novo Usuário</DialogTitle></DialogHeader>
             <div className="space-y-3">
-              <div><Label>Nome</Label><Input value={cNome} onChange={e => setCNome(e.target.value)} /></div>
-              <div><Label>Email</Label><Input type="email" value={cEmail} onChange={e => setCEmail(e.target.value)} /></div>
+              <div><Label>Nome completo</Label><Input value={cNome} onChange={e => setCNome(e.target.value)} placeholder="Ex: João Silva" /></div>
+              <div>
+                <Label>Login (nome.sobrenome ou e-mail)</Label>
+                <Input value={cLogin} onChange={e => setCLogin(e.target.value)} placeholder="joao.silva" />
+                <p className="text-xs text-muted-foreground mt-1">Se não tiver e-mail, use nome.sobrenome</p>
+              </div>
               <div>
                 <Label>Senha</Label>
                 <div className="relative">
