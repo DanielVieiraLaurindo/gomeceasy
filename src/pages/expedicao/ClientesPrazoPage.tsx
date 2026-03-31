@@ -471,10 +471,26 @@ export default function ClientesPrazoPage() {
     });
   };
 
+  const generateWhatsAppMessage = (item: any, link: string, isRenewal: boolean) => {
+    const nomeCliente = item.nome_cliente || 'Cliente';
+    const requisicao = item.requisicao || '';
+    if (isRenewal) {
+      return `Olá, ${nomeCliente}! Tudo bem?\n\nO link de pagamento anterior do seu pedido ${requisicao} expirou. Segue abaixo o novo link para finalizar o pagamento:\n\n🔗 *Novo link de pagamento:* ${link}\n\n⚠️ *Atenção:* Este link é válido por *24 horas*. Após esse prazo, será necessário gerar um novo link.\n\nQualquer dúvida, estamos à disposição! 😊\n\n*Gomec Autopeças*`;
+    }
+    return `Olá ${nomeCliente}! Tudo bem?\n\nSeguem as informações para pagamento referente ao seu pedido ${requisicao} na *Gomec Autopeças*:\n\n🔗 *Link de pagamento:* ${link}\n\n⚠️ *Atenção:* Este link é válido por *24 horas*. Após esse prazo, será necessário gerar um novo link.\n\nQualquer dúvida, estamos à disposição! 😊\n\n*Gomec Autopeças*`;
+  };
+
   const handleUpdateLink = (id: string, link: string) => {
-    // When financeiro inserts link → status changes to aguardando_pagamento
-    update.mutate({ id, link_pagamento: link, status: 'aguardando_pagamento' }, {
-      onSuccess: () => { toast.success('Link salvo — status alterado para Aguardando Pagamento'); setSelectedItem(null); },
+    const item = requisicoes.find((r: any) => r.id === id);
+    const isRenewal = !!(item as any)?.link_pagamento;
+    update.mutate({ id, link_pagamento: link, status: 'aguardando_pagamento', prazo_cobrar: format(addHours(new Date(), 24), 'yyyy-MM-dd') }, {
+      onSuccess: () => {
+        const msg = generateWhatsAppMessage(item, link, isRenewal);
+        const waUrl = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+        window.open(waUrl, '_blank');
+        toast.success(isRenewal ? 'Link renovado — mensagem WhatsApp aberta' : 'Link salvo — mensagem WhatsApp aberta');
+        setSelectedItem(null);
+      },
     });
   };
 
