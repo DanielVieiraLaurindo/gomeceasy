@@ -621,6 +621,7 @@ export type Database = {
           autorizado_por: string | null
           cod_vendedor: string | null
           codigo_cliente: string | null
+          codigo_loja: string | null
           created_at: string
           created_by: string | null
           data_hora_lancamento: string
@@ -644,6 +645,7 @@ export type Database = {
           autorizado_por?: string | null
           cod_vendedor?: string | null
           codigo_cliente?: string | null
+          codigo_loja?: string | null
           created_at?: string
           created_by?: string | null
           data_hora_lancamento?: string
@@ -667,6 +669,7 @@ export type Database = {
           autorizado_por?: string | null
           cod_vendedor?: string | null
           codigo_cliente?: string | null
+          codigo_loja?: string | null
           created_at?: string
           created_by?: string | null
           data_hora_lancamento?: string
