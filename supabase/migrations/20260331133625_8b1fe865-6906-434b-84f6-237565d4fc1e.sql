@@ -1,0 +1,1 @@
+ALTER TABLE public.clientes_prazo ADD COLUMN IF NOT EXISTS codigo_loja text;
