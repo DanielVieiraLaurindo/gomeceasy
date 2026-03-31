@@ -102,8 +102,8 @@ export default function AuthPage() {
           <form onSubmit={handleLogin} className="space-y-4">
               <h2 className="text-lg font-barlow font-bold mb-2">Login</h2>
               <div>
-                <Label htmlFor="login-email">E-mail</Label>
-                <Input id="login-email" type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} required />
+                <Label htmlFor="login-id">Login (nome.sobrenome ou e-mail)</Label>
+                <Input id="login-id" type="text" placeholder="nome.sobrenome" value={loginIdentifier} onChange={(e) => setLoginIdentifier(e.target.value)} required />
               </div>
               <div>
                 <Label htmlFor="login-pw">Senha</Label>

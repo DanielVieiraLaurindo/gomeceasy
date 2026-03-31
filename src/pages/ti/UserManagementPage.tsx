@@ -462,8 +462,12 @@ export default function UserManagementPage() {
           <DialogContent className="max-w-md">
             <DialogHeader><DialogTitle>Novo Usuário</DialogTitle></DialogHeader>
             <div className="space-y-3">
-              <div><Label>Nome</Label><Input value={cNome} onChange={e => setCNome(e.target.value)} /></div>
-              <div><Label>Email</Label><Input type="email" value={cEmail} onChange={e => setCEmail(e.target.value)} /></div>
+              <div><Label>Nome completo</Label><Input value={cNome} onChange={e => setCNome(e.target.value)} placeholder="Ex: João Silva" /></div>
+              <div>
+                <Label>Login (nome.sobrenome ou e-mail)</Label>
+                <Input value={cLogin} onChange={e => setCLogin(e.target.value)} placeholder="joao.silva" />
+                <p className="text-xs text-muted-foreground mt-1">Se não tiver e-mail, use nome.sobrenome</p>
+              </div>
               <div>
                 <Label>Senha</Label>
                 <div className="relative">
