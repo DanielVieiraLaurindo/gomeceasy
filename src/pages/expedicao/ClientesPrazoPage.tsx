@@ -358,18 +358,36 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, canAuthor
           {/* Link de pagamento - financeiro preenche */}
           <div className="space-y-1.5">
             <p className="text-xs text-muted-foreground uppercase font-bold">Link de Pagamento</p>
-            {item.link_pagamento ? (
-              <a href={item.link_pagamento} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline break-all">{item.link_pagamento}</a>
-            ) : (item.status === 'aguardando_link' || item.status === 'aberto') ? (
-              <div className="flex gap-2">
-                <Input placeholder="Cole o link aqui" value={linkInput} onChange={e => setLinkInput(e.target.value)} className="text-sm" />
-                <Button size="sm" variant="outline" onClick={() => { if (linkInput.trim()) { onUpdateLink(item.id, linkInput.trim()); setLinkInput(''); } }}>
-                  <Link2 className="w-4 h-4" />
-                </Button>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">—</p>
-            )}
+            {(() => {
+              const linkExpired = item.link_pagamento && item.prazo_cobrar && new Date(item.prazo_cobrar) < new Date();
+              const canInsertLink = !item.link_pagamento || linkExpired;
+              const showLinkInput = canInsertLink && (item.status === 'aguardando_link' || item.status === 'aberto' || item.status === 'aguardando_pagamento');
+              
+              return (
+                <>
+                  {item.link_pagamento && !linkExpired && (
+                    <a href={item.link_pagamento} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline break-all">{item.link_pagamento}</a>
+                  )}
+                  {item.link_pagamento && linkExpired && (
+                    <div className="bg-warning/10 border border-warning/30 rounded p-2 mb-2">
+                      <p className="text-xs text-warning font-medium">Link expirado - insira um novo link abaixo</p>
+                      <p className="text-xs text-muted-foreground break-all line-through">{item.link_pagamento}</p>
+                    </div>
+                  )}
+                  {showLinkInput && (
+                    <div className="flex gap-2">
+                      <Input placeholder="Cole o link aqui" value={linkInput} onChange={e => setLinkInput(e.target.value)} className="text-sm" />
+                      <Button size="sm" variant="outline" onClick={() => { if (linkInput.trim()) { onUpdateLink(item.id, linkInput.trim()); setLinkInput(''); } }}>
+                        <Link2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
+                  {!showLinkInput && !item.link_pagamento && (
+                    <p className="text-sm text-muted-foreground">—</p>
+                  )}
+                </>
+              );
+            })()}
           </div>
 
           {/* Upload de requisição assinada */}
@@ -471,10 +489,26 @@ export default function ClientesPrazoPage() {
     });
   };
 
+  const generateWhatsAppMessage = (item: any, link: string, isRenewal: boolean) => {
+    const nomeCliente = item.nome_cliente || 'Cliente';
+    const requisicao = item.requisicao || '';
+    if (isRenewal) {
+      return `Olá, ${nomeCliente}! Tudo bem?\n\nO link de pagamento anterior do seu pedido ${requisicao} expirou. Segue abaixo o novo link para finalizar o pagamento:\n\n🔗 *Novo link de pagamento:* ${link}\n\n⚠️ *Atenção:* Este link é válido por *24 horas*. Após esse prazo, será necessário gerar um novo link.\n\nQualquer dúvida, estamos à disposição! 😊\n\n*Gomec Autopeças*`;
+    }
+    return `Olá ${nomeCliente}! Tudo bem?\n\nSeguem as informações para pagamento referente ao seu pedido ${requisicao} na *Gomec Autopeças*:\n\n🔗 *Link de pagamento:* ${link}\n\n⚠️ *Atenção:* Este link é válido por *24 horas*. Após esse prazo, será necessário gerar um novo link.\n\nQualquer dúvida, estamos à disposição! 😊\n\n*Gomec Autopeças*`;
+  };
+
   const handleUpdateLink = (id: string, link: string) => {
-    // When financeiro inserts link → status changes to aguardando_pagamento
-    update.mutate({ id, link_pagamento: link, status: 'aguardando_pagamento' }, {
-      onSuccess: () => { toast.success('Link salvo — status alterado para Aguardando Pagamento'); setSelectedItem(null); },
+    const item = requisicoes.find((r: any) => r.id === id);
+    const isRenewal = !!(item as any)?.link_pagamento;
+    update.mutate({ id, link_pagamento: link, status: 'aguardando_pagamento', prazo_cobrar: format(addHours(new Date(), 24), 'yyyy-MM-dd') }, {
+      onSuccess: () => {
+        const msg = generateWhatsAppMessage(item, link, isRenewal);
+        const waUrl = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+        window.open(waUrl, '_blank');
+        toast.success(isRenewal ? 'Link renovado — mensagem WhatsApp aberta' : 'Link salvo — mensagem WhatsApp aberta');
+        setSelectedItem(null);
+      },
     });
   };
 

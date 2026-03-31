@@ -5,7 +5,8 @@ export type AppSetor =
   | 'pos_vendas' | 'pre_vendas' | 'criacao' | 'backoffice'
   | 'compras' | 'ti' | 'garantia_loja' | 'garantia_ecommerce'
   | 'financeiro' | 'fiscal'
-  | 'expedicao_loja' | 'expedicao_ecommerce';
+  | 'expedicao_loja' | 'expedicao_ecommerce'
+  | 'comercial';
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   master: 'Master',
@@ -26,6 +27,7 @@ export const SETOR_LABELS: Record<AppSetor, string> = {
   fiscal: 'Fiscal',
   expedicao_loja: 'Expedição Loja',
   expedicao_ecommerce: 'Expedição Ecommerce',
+  comercial: 'Comercial',
 };
 
 export const SETOR_OPTIONS: { value: AppSetor; label: string }[] = [
@@ -41,6 +43,7 @@ export const SETOR_OPTIONS: { value: AppSetor; label: string }[] = [
   { value: 'fiscal', label: 'Fiscal' },
   { value: 'expedicao_loja', label: 'Expedição Loja' },
   { value: 'expedicao_ecommerce', label: 'Expedição Ecommerce' },
+  { value: 'comercial', label: 'Comercial' },
 ];
 
 export const SETOR_HOME_ROUTES: Record<AppSetor, string> = {
@@ -56,6 +59,7 @@ export const SETOR_HOME_ROUTES: Record<AppSetor, string> = {
   fiscal: '/fiscal',
   expedicao_loja: '/expedicao-loja',
   expedicao_ecommerce: '/expedicao-ecommerce',
+  comercial: '/comercial',
 };
 
 export interface Profile {

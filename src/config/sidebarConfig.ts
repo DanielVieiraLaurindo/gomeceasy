@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Package, AlertTriangle, ShoppingCart, DollarSign, Search as SearchIcon,
-  Building2, Warehouse, Users, Ticket, FileText, Shield, CreditCard, Receipt,
+  Building2, Warehouse, Users, Ticket, FileText, Shield, ShieldCheck, CreditCard, Receipt,
   Camera, RefreshCw, Briefcase, PenTool, Monitor, Settings, Megaphone,
   TrendingUp, FolderOpen, BookOpen, UserCheck, Columns3, Archive, Scale,
   Truck, MapPin, Bell, Eye, Boxes, CheckSquare, ClipboardList, Route,
@@ -103,6 +103,14 @@ export const SIDEBAR_ITEMS: Record<AppSetor, SidebarItem[]> = {
     { path: '/criacao/demandas', label: 'Demandas', icon: PenTool },
     { path: '/criacao/arquivo', label: 'Arquivo', icon: FolderOpen },
   ],
+  comercial: [
+    { path: '/comercial', label: 'Dashboard Comercial', icon: LayoutDashboard },
+    { path: '/comercial/clientes-prazo', label: 'Clientes Prazo Loja', icon: Clock },
+    { path: '/comercial/creditos-clientes', label: 'Consulta Crédito', icon: CreditCard },
+    { path: '/comercial/rastreamento', label: 'Rastreamento', icon: MapPin },
+    { path: '/comercial/autorizacao-devolucao', label: 'Autorização Dev./Garantia', icon: ShieldCheck },
+    { path: '/comercial/ficha-analise-credito', label: 'Ficha Análise de Crédito', icon: FileText },
+  ],
   ti: [
     { path: '/ti', label: 'Dashboard TI', icon: LayoutDashboard },
     { path: '/ti/usuarios', label: 'Gestão de Usuários', icon: Users },
@@ -126,6 +134,7 @@ export const MASTER_SIDEBAR_GROUPS: MasterSidebarGroup[] = [
   { label: 'Financeiro', setor: 'financeiro' },
   { label: 'Fiscal', setor: 'fiscal' },
   { label: 'Compras', setor: 'compras' },
+  { label: 'Comercial', setor: 'comercial' },
   { label: 'TI', setor: 'ti' },
 ];
 
