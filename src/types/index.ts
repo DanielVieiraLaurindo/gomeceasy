@@ -27,6 +27,7 @@ export const SETOR_LABELS: Record<AppSetor, string> = {
   fiscal: 'Fiscal',
   expedicao_loja: 'Expedição Loja',
   expedicao_ecommerce: 'Expedição Ecommerce',
+  comercial: 'Comercial',
 };
 
 export const SETOR_OPTIONS: { value: AppSetor; label: string }[] = [
