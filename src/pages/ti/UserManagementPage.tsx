@@ -161,12 +161,14 @@ export default function UserManagementPage() {
   // -------------------------------------------------------------------------
 
   const handleCreate = async () => {
-    if (!cNome || !cEmail || !cPw) { toast.error('Preencha todos os campos'); return; }
+    if (!cNome || !cLogin || !cPw) { toast.error('Preencha todos os campos'); return; }
     if (cPw.length < 6)            { toast.error('Senha mínima: 6 caracteres'); return; }
+    if (!/^[a-zA-Z]+\.[a-zA-Z]+$/.test(cLogin) && !cLogin.includes('@')) { toast.error('Login deve ser nome.sobrenome ou um e-mail válido'); return; }
     setSaving(true);
-    const result = await callManageUsers({ action: 'create_user', email: cEmail, password: cPw, nome: cNome, setor: cSetor, role: cRole });
+    const email = cLogin.includes('@') ? cLogin : `${cLogin.toLowerCase().trim()}@interno.gomec.com`;
+    const result = await callManageUsers({ action: 'create_user', email, password: cPw, nome: cNome, setor: cSetor, role: cRole, login_username: cLogin.toLowerCase().trim() });
     setSaving(false);
-    if (result?.success) { toast.success('Usuário criado'); setCreateOpen(false); setCNome(''); setCEmail(''); setCPw(''); fetchProfiles(); }
+    if (result?.success) { toast.success('Usuário criado'); setCreateOpen(false); setCNome(''); setCLogin(''); setCPw(''); fetchProfiles(); }
   };
 
   const openEdit = (p: Profile) => { setEditingProfile(p); setENome(p.nome); setESetor(p.setor); setERole(p.role); setEditOpen(true); };
