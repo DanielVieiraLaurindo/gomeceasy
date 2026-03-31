@@ -43,6 +43,7 @@ export const SETOR_OPTIONS: { value: AppSetor; label: string }[] = [
   { value: 'fiscal', label: 'Fiscal' },
   { value: 'expedicao_loja', label: 'Expedição Loja' },
   { value: 'expedicao_ecommerce', label: 'Expedição Ecommerce' },
+  { value: 'comercial', label: 'Comercial' },
 ];
 
 export const SETOR_HOME_ROUTES: Record<AppSetor, string> = {
