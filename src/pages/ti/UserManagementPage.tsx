@@ -93,7 +93,7 @@ export default function UserManagementPage() {
 
   // Create form
   const [cNome, setCNome]   = useState('');
-  const [cEmail, setCEmail] = useState('');
+  const [cLogin, setCLogin] = useState('');
   const [cPw, setCPw]       = useState('');
   const [cSetor, setCSetor] = useState<AppSetor>('backoffice');
   const [cRole, setCRole]   = useState<UserRole>('usuario');
