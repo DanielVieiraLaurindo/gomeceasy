@@ -134,6 +134,7 @@ export const MASTER_SIDEBAR_GROUPS: MasterSidebarGroup[] = [
   { label: 'Financeiro', setor: 'financeiro' },
   { label: 'Fiscal', setor: 'fiscal' },
   { label: 'Compras', setor: 'compras' },
+  { label: 'Comercial', setor: 'comercial' },
   { label: 'TI', setor: 'ti' },
 ];
 

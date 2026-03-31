@@ -110,6 +110,14 @@ const App = () => (
                   <Route path="/expedicao-loja/rastreamento" element={<PlaceholderPage title="Rastreamento" description="Rastreamento de entregas da loja" />} />
                   <Route path="/expedicao-loja/transportadoras" element={<PlaceholderPage title="Transportadoras" description="Cadastro de transportadoras" />} />
 
+                  {/* Comercial */}
+                  <Route path="/comercial" element={<PlaceholderPage title="Dashboard Comercial" description="Painel do setor comercial" />} />
+                  <Route path="/comercial/clientes-prazo" element={<ClientesPrazoPage />} />
+                  <Route path="/comercial/creditos-clientes" element={<CreditosClientesPage />} />
+                  <Route path="/comercial/rastreamento" element={<PlaceholderPage title="Rastreamento" description="Rastreamento de entregas" />} />
+                  <Route path="/comercial/autorizacao-devolucao" element={<PlaceholderPage title="Autorização Dev./Garantia" description="Autorização de devoluções e garantias" />} />
+                  <Route path="/comercial/ficha-analise-credito" element={<PlaceholderPage title="Ficha Análise de Crédito" description="Análise de crédito de clientes" />} />
+
                   {/* Expedição Ecommerce */}
                   <Route path="/expedicao-ecommerce" element={<ExpedicaoEcommerceDashboard />} />
                   <Route path="/expedicao-ecommerce/operacao-interna" element={<OperacaoInternaPage />} />
