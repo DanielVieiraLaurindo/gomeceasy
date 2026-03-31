@@ -34,7 +34,8 @@ export default function AuthPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await signIn(loginEmail, loginPw);
+    const email = loginIdentifier.includes('@') ? loginIdentifier : `${loginIdentifier.toLowerCase().trim()}@interno.gomec.com`;
+    const { error } = await signIn(email, loginPw);
     setLoading(false);
     if (error) {
       toast.error('Erro ao fazer login: ' + error.message);
