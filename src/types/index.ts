@@ -59,6 +59,7 @@ export const SETOR_HOME_ROUTES: Record<AppSetor, string> = {
   fiscal: '/fiscal',
   expedicao_loja: '/expedicao-loja',
   expedicao_ecommerce: '/expedicao-ecommerce',
+  comercial: '/comercial',
 };
 
 export interface Profile {
