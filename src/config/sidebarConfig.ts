@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Package, AlertTriangle, ShoppingCart, DollarSign, Search as SearchIcon,
-  Building2, Warehouse, Users, Ticket, FileText, Shield, CreditCard, Receipt,
+  Building2, Warehouse, Users, Ticket, FileText, Shield, ShieldCheck, CreditCard, Receipt,
   Camera, RefreshCw, Briefcase, PenTool, Monitor, Settings, Megaphone,
   TrendingUp, FolderOpen, BookOpen, UserCheck, Columns3, Archive, Scale,
   Truck, MapPin, Bell, Eye, Boxes, CheckSquare, ClipboardList, Route,
