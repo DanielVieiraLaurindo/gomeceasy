@@ -358,18 +358,36 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, canAuthor
           {/* Link de pagamento - financeiro preenche */}
           <div className="space-y-1.5">
             <p className="text-xs text-muted-foreground uppercase font-bold">Link de Pagamento</p>
-            {item.link_pagamento ? (
-              <a href={item.link_pagamento} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline break-all">{item.link_pagamento}</a>
-            ) : (item.status === 'aguardando_link' || item.status === 'aberto') ? (
-              <div className="flex gap-2">
-                <Input placeholder="Cole o link aqui" value={linkInput} onChange={e => setLinkInput(e.target.value)} className="text-sm" />
-                <Button size="sm" variant="outline" onClick={() => { if (linkInput.trim()) { onUpdateLink(item.id, linkInput.trim()); setLinkInput(''); } }}>
-                  <Link2 className="w-4 h-4" />
-                </Button>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">—</p>
-            )}
+            {(() => {
+              const linkExpired = item.link_pagamento && item.prazo_cobrar && new Date(item.prazo_cobrar) < new Date();
+              const canInsertLink = !item.link_pagamento || linkExpired;
+              const showLinkInput = canInsertLink && (item.status === 'aguardando_link' || item.status === 'aberto' || item.status === 'aguardando_pagamento');
+              
+              return (
+                <>
+                  {item.link_pagamento && !linkExpired && (
+                    <a href={item.link_pagamento} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline break-all">{item.link_pagamento}</a>
+                  )}
+                  {item.link_pagamento && linkExpired && (
+                    <div className="bg-warning/10 border border-warning/30 rounded p-2 mb-2">
+                      <p className="text-xs text-warning font-medium">Link expirado - insira um novo link abaixo</p>
+                      <p className="text-xs text-muted-foreground break-all line-through">{item.link_pagamento}</p>
+                    </div>
+                  )}
+                  {showLinkInput && (
+                    <div className="flex gap-2">
+                      <Input placeholder="Cole o link aqui" value={linkInput} onChange={e => setLinkInput(e.target.value)} className="text-sm" />
+                      <Button size="sm" variant="outline" onClick={() => { if (linkInput.trim()) { onUpdateLink(item.id, linkInput.trim()); setLinkInput(''); } }}>
+                        <Link2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
+                  {!showLinkInput && !item.link_pagamento && (
+                    <p className="text-sm text-muted-foreground">—</p>
+                  )}
+                </>
+              );
+            })()}
           </div>
 
           {/* Upload de requisição assinada */}
