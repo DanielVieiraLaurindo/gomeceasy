@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { SIDEBAR_ITEMS, MASTER_SIDEBAR_GROUPS, ECOMMERCE_SETOR_LABELS, type SidebarItem } from '@/config/sidebarConfig';
 import { SETOR_LABELS, type AppSetor } from '@/types';
 import { Input } from '@/components/ui/input';
+import { useUserPermissions } from '@/hooks/useUserPermissions';
 
 const FAVORITES_KEY = 'erp_sidebar_favorites';
 
@@ -25,6 +26,7 @@ export function AppSidebar() {
   const { role, setor, signOut, profile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { allowedPaths, visibleSetores } = useUserPermissions();
 
   const isMaster = role === 'master';
 
@@ -53,7 +55,16 @@ export function AppSidebar() {
     setOpenGroups(prev => prev.includes(key) ? prev.filter(g => g !== key) : [...prev, key]);
   };
 
-  // All users see all modules (SAP ERP-style — all modules available)
+  // Filter items based on permissions
+  const allowed = useMemo(() => allowedPaths(), [allowedPaths]);
+  const visSetores = useMemo(() => visibleSetores(), [visibleSetores]);
+
+  const filterItems = useCallback((items: SidebarItem[]): SidebarItem[] => {
+    if (!allowed) return items; // master sees all
+    return items.filter(i => allowed.has(i.path));
+  }, [allowed]);
+
+  // All visible items for search
   const allItems = useMemo(() => {
     const items: SidebarItem[] = [];
     if (isMaster) {
@@ -65,8 +76,9 @@ export function AppSidebar() {
     });
     // Deduplicate
     const seen = new Set<string>();
-    return items.filter(i => { if (seen.has(i.path)) return false; seen.add(i.path); return true; });
-  }, [isMaster]);
+    const deduped = items.filter(i => { if (seen.has(i.path)) return false; seen.add(i.path); return true; });
+    return filterItems(deduped);
+  }, [isMaster, filterItems]);
 
   const searchResults = useMemo(() => {
     if (!searchTerm) return [];
@@ -156,7 +168,12 @@ export function AppSidebar() {
         const isOpen = openGroups.includes(groupKey);
         
         if (group.isModule && group.setores) {
-          const allGroupItems = group.setores.flatMap(s => SIDEBAR_ITEMS[s] || []);
+          // Filter setores that have visible items
+          const visibleGroupSetores = group.setores.filter(s => visSetores.has(s));
+          if (visibleGroupSetores.length === 0) return null;
+
+          const allGroupItems = visibleGroupSetores.flatMap(s => filterItems(SIDEBAR_ITEMS[s] || []));
+          if (allGroupItems.length === 0) return null;
           const hasActiveChild = allGroupItems.some(i => isActive(i.path));
           
           return (
@@ -179,8 +196,9 @@ export function AppSidebar() {
                     exit={{ height: 0, opacity: 0 }}
                     className="overflow-hidden"
                   >
-                    {group.setores.map(setorKey => {
-                      const subItems = SIDEBAR_ITEMS[setorKey] || [];
+                    {visibleGroupSetores.map(setorKey => {
+                      const subItems = filterItems(SIDEBAR_ITEMS[setorKey] || []);
+                      if (subItems.length === 0) return null;
                       const subLabel = ECOMMERCE_SETOR_LABELS[setorKey] || SETOR_LABELS[setorKey];
                       const subIsOpen = openGroups.includes(setorKey);
                       const subHasActive = subItems.some(i => isActive(i.path));
@@ -219,7 +237,10 @@ export function AppSidebar() {
           );
         }
         
-        const items = group.setor ? SIDEBAR_ITEMS[group.setor] || [] : [];
+        const items = group.setor ? filterItems(SIDEBAR_ITEMS[group.setor] || []) : [];
+        if (items.length === 0 && !isMaster) return null;
+        if (group.setor && !visSetores.has(group.setor)) return null;
+
         const hasActiveChild = items.some(i => isActive(i.path));
         return (
           <div key={groupKey}>
@@ -249,17 +270,13 @@ export function AppSidebar() {
         );
       })}
 
-      {collapsed && MASTER_SIDEBAR_GROUPS.flatMap(g => {
-        if (g.setores) return g.setores.flatMap(s => SIDEBAR_ITEMS[s] || []);
-        return g.setor ? SIDEBAR_ITEMS[g.setor] || [] : [];
-      })
-        .filter((item, idx, arr) => arr.findIndex(i => i.path === item.path) === idx)
+      {collapsed && allItems
+        .filter(i => i.path !== '/master')
         .map(renderItem)
       }
     </div>
   );
 
-  // All users now see all modules
   const currentSetor: AppSetor = setor || 'backoffice';
 
   return (
@@ -278,7 +295,7 @@ export function AppSidebar() {
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-sidebar-foreground/40" />
             <Input
-              placeholder="Buscar módulo..."
+              placeholder="Buscar modulo..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               className="h-8 pl-8 text-xs bg-sidebar-accent/10 border-sidebar-border text-sidebar-foreground placeholder:text-sidebar-foreground/40"
@@ -291,7 +308,7 @@ export function AppSidebar() {
       {!collapsed && searchTerm && (
         <div className="px-1 py-1 border-b border-sidebar-border max-h-60 overflow-y-auto">
           {searchResults.length === 0 ? (
-            <p className="text-xs text-sidebar-foreground/40 text-center py-3">Nenhum módulo encontrado</p>
+            <p className="text-xs text-sidebar-foreground/40 text-center py-3">Nenhum modulo encontrado</p>
           ) : searchResults.map(renderItem)}
         </div>
       )}
