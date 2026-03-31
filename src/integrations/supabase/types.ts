@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       access_groups: {
         Row: {
+          acoes_permitidas: string[]
           created_at: string
           descricao: string | null
           id: string
@@ -23,6 +24,7 @@ export type Database = {
           nome: string
         }
         Insert: {
+          acoes_permitidas?: string[]
           created_at?: string
           descricao?: string | null
           id?: string
@@ -30,6 +32,7 @@ export type Database = {
           nome: string
         }
         Update: {
+          acoes_permitidas?: string[]
           created_at?: string
           descricao?: string | null
           id?: string
