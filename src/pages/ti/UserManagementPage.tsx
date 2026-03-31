@@ -344,7 +344,7 @@ export default function UserManagementPage() {
                         <TableRow key={p.id} className={selectedIds.has(p.id) ? 'bg-muted/50' : ''}>
                           <TableCell><Checkbox checked={selectedIds.has(p.id)} onCheckedChange={() => toggleSelect(p.id)} /></TableCell>
                           <TableCell className="font-medium">{p.nome}</TableCell>
-                          <TableCell className="text-xs font-mono">{p.email}</TableCell>
+                          <TableCell className="text-xs font-mono">{(p as any).login_username || (p.email.endsWith('@interno.gomec.com') ? p.email.replace('@interno.gomec.com', '') : p.email)}</TableCell>
                           <TableCell><Badge variant="outline">{SETOR_LABELS[p.setor] || p.setor}</Badge></TableCell>
                           <TableCell><Badge variant={p.role === 'master' ? 'default' : 'secondary'}>{p.role}</Badge></TableCell>
 
