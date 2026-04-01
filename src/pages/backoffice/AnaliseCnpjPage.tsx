@@ -73,6 +73,7 @@ async function extractPdfText(file: File): Promise<string> {
 }
 
 export default function AnaliseCnpjPage() {
+  const { profile } = useAuth();
   const [registros, setRegistros] = useState<AnaliseCnpj[]>([]);
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
