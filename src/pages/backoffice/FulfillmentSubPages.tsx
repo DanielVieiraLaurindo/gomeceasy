@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,13 @@ import { useBrands } from '@/hooks/useEnvios';
 import * as XLSX from 'xlsx';
 
 function useProducts() {
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    const ch = supabase.channel('products-rt').on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
+      queryClient.invalidateQueries({ queryKey: ['products-full'] });
+    }).subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [queryClient]);
   return useQuery({
     queryKey: ['products-full'],
     queryFn: async () => {
@@ -26,6 +33,7 @@ function useProducts() {
       if (error) throw error;
       return data || [];
     },
+    staleTime: 30_000,
   });
 }
 
@@ -504,7 +512,7 @@ export function CadastroProdutosPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [newDialog, setNewDialog] = useState(false);
-  const [form, setForm] = useState<any>({ sku: '', mlb: '', descricao: '', estoque_fullfilment: 0, vendas_30_dias: 0, custo: 0, fornecedor_id: '', codigo_interno: '' });
+  const [form, setForm] = useState<any>({ sku: '', mlb: '', descricao: '', estoque_loja1: 0, estoque_loja3: 0, estoque_fullfilment: 0, vendas_30_dias: 0, custo: 0, fornecedor_id: '', codigo_interno: '' });
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -567,7 +575,7 @@ export function CadastroProdutosPage() {
           <Button variant="outline" size="sm" onClick={handleDownloadTemplate}><Download className="w-4 h-4 mr-1" />Template</Button>
           <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}><Upload className="w-4 h-4 mr-1" />Importar</Button>
           {selectedIds.size > 0 && <Button variant="destructive" size="sm" onClick={handleBulkDelete}><Trash2 className="w-4 h-4 mr-1" />Excluir ({selectedIds.size})</Button>}
-          <Button onClick={() => { setForm({ sku: '', mlb: '', descricao: '', estoque_fullfilment: 0, vendas_30_dias: 0, custo: 0, fornecedor_id: '', codigo_interno: '' }); setNewDialog(true); }} className="gap-2"><Plus className="w-4 h-4" />Novo Produto</Button>
+          <Button onClick={() => { setForm({ sku: '', mlb: '', descricao: '', estoque_loja1: 0, estoque_loja3: 0, estoque_fullfilment: 0, vendas_30_dias: 0, custo: 0, fornecedor_id: '', codigo_interno: '' }); setNewDialog(true); }} className="gap-2"><Plus className="w-4 h-4" />Novo Produto</Button>
         </div>
       </div>
       <div className="relative max-w-sm"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Buscar SKU, descrição ou código interno..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} /></div>
@@ -575,55 +583,68 @@ export function CadastroProdutosPage() {
         <Table>
           <TableHeader><TableRow>
             <TableHead className="w-10"><Checkbox checked={selectedIds.size === filtered.length && filtered.length > 0} onCheckedChange={c => setSelectedIds(c ? new Set(filtered.map((p: any) => p.id)) : new Set())} /></TableHead>
-            <TableHead>SKU</TableHead><TableHead>Cód. Interno</TableHead><TableHead>MLB</TableHead><TableHead>Descrição</TableHead><TableHead className="text-right">Estoque Full</TableHead><TableHead className="text-right">Vendas 30d</TableHead><TableHead className="text-right">Custo</TableHead><TableHead>Ações</TableHead>
+            <TableHead>Código Interno</TableHead><TableHead>SKU</TableHead><TableHead>Marca</TableHead><TableHead>Descrição</TableHead><TableHead className="text-right">L1</TableHead><TableHead className="text-right">L3</TableHead><TableHead className="text-right">Full</TableHead><TableHead className="text-right">V30d</TableHead><TableHead>Ações</TableHead>
           </TableRow></TableHeader>
           <TableBody>
             {filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Nenhum produto encontrado</TableCell></TableRow>
-            ) : filtered.map((p: any) => (
-              <TableRow key={p.id} className="hover:bg-muted/30">
-                <TableCell><Checkbox checked={selectedIds.has(p.id)} onCheckedChange={() => setSelectedIds(prev => { const n = new Set(prev); n.has(p.id) ? n.delete(p.id) : n.add(p.id); return n; })} /></TableCell>
-                <TableCell className="font-mono font-medium">{p.sku}</TableCell>
-                <TableCell className="text-xs">{p.codigo_interno || '-'}</TableCell>
-                <TableCell className="text-xs text-primary">{p.mlb || '-'}</TableCell>
-                <TableCell className="max-w-[200px] truncate">{p.descricao || '-'}</TableCell>
-                <TableCell className="text-right font-mono">{p.estoque_fullfilment || 0}</TableCell>
-                <TableCell className="text-right font-mono">{p.vendas_30_dias || 0}</TableCell>
-                <TableCell className="text-right font-mono">R$ {Number(p.custo || 0).toFixed(2)}</TableCell>
-                <TableCell><Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteProduct.mutate(p.id)}><Trash2 className="w-3.5 h-3.5" /></Button></TableCell>
-              </TableRow>
-            ))}
+              <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Nenhum produto encontrado</TableCell></TableRow>
+            ) : filtered.map((p: any) => {
+              const brand = brands.find((b: any) => b.id === p.fornecedor_id);
+              return (
+                <TableRow key={p.id} className="hover:bg-muted/30">
+                  <TableCell><Checkbox checked={selectedIds.has(p.id)} onCheckedChange={() => setSelectedIds(prev => { const n = new Set(prev); n.has(p.id) ? n.delete(p.id) : n.add(p.id); return n; })} /></TableCell>
+                  <TableCell className="font-mono text-xs">{p.codigo_interno || '-'}</TableCell>
+                  <TableCell className="font-mono font-medium">{p.sku}</TableCell>
+                  <TableCell className="text-sm">{brand?.nome || '-'}</TableCell>
+                  <TableCell className="max-w-[200px] truncate">{p.descricao || '-'}</TableCell>
+                  <TableCell className="text-right font-mono">{p.estoque_loja1 || 0}</TableCell>
+                  <TableCell className="text-right font-mono">{p.estoque_loja3 || 0}</TableCell>
+                  <TableCell className="text-right font-mono">{p.estoque_fullfilment || 0}</TableCell>
+                  <TableCell className="text-right font-mono">{p.vendas_30_dias || 0}</TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setForm({ ...p, fornecedor_id: p.fornecedor_id || '' }); setNewDialog(true); }} title="Editar"><Edit className="w-3.5 h-3.5" /></Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div></CardContent></Card>
 
       <Dialog open={newDialog} onOpenChange={setNewDialog}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Novo Produto</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><Plus className="w-5 h-5" />{form.id ? 'Editar Produto' : 'Novo Produto'}</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>Código Interno 🔍</Label><Input value={form.codigo_interno || ''} onChange={e => setForm((f: any) => ({ ...f, codigo_interno: e.target.value }))} onBlur={() => handleSkuSearch(form.codigo_interno)} placeholder="Buscar cadastro..." /></div>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label>Código Interno</Label>
+                <div className="relative">
+                  <Input value={form.codigo_interno || ''} onChange={e => setForm((f: any) => ({ ...f, codigo_interno: e.target.value }))} onBlur={() => handleSkuSearch(form.codigo_interno)} placeholder="000000" />
+                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                </div>
+              </div>
               <div><Label>SKU *</Label><Input value={form.sku} onChange={e => setForm((f: any) => ({ ...f, sku: e.target.value }))} /></div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>MLB</Label><Input value={form.mlb || ''} onChange={e => setForm((f: any) => ({ ...f, mlb: e.target.value }))} /></div>
               <div><Label>Marca</Label>
                 <Select value={form.fornecedor_id || ''} onValueChange={v => setForm((f: any) => ({ ...f, fornecedor_id: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Selecionar marca" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Nome da marca" /></SelectTrigger>
                   <SelectContent>{brands.map((b: any) => <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
             </div>
-            <div><Label>Descrição</Label><Input value={form.descricao || ''} onChange={e => setForm((f: any) => ({ ...f, descricao: e.target.value }))} /></div>
-            <div className="grid grid-cols-3 gap-4">
-              <div><Label>Estoque Full</Label><Input type="number" value={form.estoque_fullfilment || 0} onChange={e => setForm((f: any) => ({ ...f, estoque_fullfilment: +e.target.value }))} /></div>
-              <div><Label>Vendas 30d</Label><Input type="number" value={form.vendas_30_dias || 0} onChange={e => setForm((f: any) => ({ ...f, vendas_30_dias: +e.target.value }))} /></div>
-              <div><Label>Custo (R$)</Label><Input type="number" step="0.01" value={form.custo || 0} onChange={e => setForm((f: any) => ({ ...f, custo: +e.target.value }))} /></div>
+            <div><Label>Descrição</Label><Textarea value={form.descricao || ''} onChange={e => setForm((f: any) => ({ ...f, descricao: e.target.value }))} rows={2} /></div>
+            <div>
+              <Label className="text-sm font-medium">Estoque</Label>
+              <div className="grid grid-cols-4 gap-4 mt-2">
+                <div><Label className="text-xs text-muted-foreground">Loja 1</Label><Input type="number" value={form.estoque_loja1 || 0} onChange={e => setForm((f: any) => ({ ...f, estoque_loja1: +e.target.value }))} /></div>
+                <div><Label className="text-xs text-muted-foreground">Loja 3</Label><Input type="number" value={form.estoque_loja3 || 0} onChange={e => setForm((f: any) => ({ ...f, estoque_loja3: +e.target.value }))} /></div>
+                <div><Label className="text-xs text-muted-foreground">Fullfilment</Label><Input type="number" value={form.estoque_fullfilment || 0} onChange={e => setForm((f: any) => ({ ...f, estoque_fullfilment: +e.target.value }))} /></div>
+                <div><Label className="text-xs text-muted-foreground">Vendas 30d</Label><Input type="number" value={form.vendas_30_dias || 0} onChange={e => setForm((f: any) => ({ ...f, vendas_30_dias: +e.target.value }))} /></div>
+              </div>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setNewDialog(false)}>Cancelar</Button>
-            <Button onClick={() => { if (!form.sku) { toast.error('SKU obrigatório'); return; } createProduct.mutate(form); }}>Salvar</Button>
+            <Button onClick={() => { if (!form.sku) { toast.error('SKU obrigatório'); return; } createProduct.mutate(form); }} className="gap-2">Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

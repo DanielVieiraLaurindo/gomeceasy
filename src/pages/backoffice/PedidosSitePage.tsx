@@ -9,7 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { exportToExcel } from '@/lib/export-utils';
 import {
@@ -58,9 +60,10 @@ const TRANSPORTADORAS = [
   'TOTAL POINTS', 'PAC', 'SEDEX', 'FLEX', 'RETIRA EM LOJA'
 ];
 
+const PAGE_SIZE = 50;
+
 export default function PedidosSitePage() {
-  const [pedidos, setPedidos] = useState<PedidoSite[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('todos');
   const [editDialog, setEditDialog] = useState<PedidoSite | null>(null);
@@ -68,37 +71,41 @@ export default function PedidosSitePage() {
   const [formData, setFormData] = useState<Partial<PedidoSite>>({});
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const importRef = useRef<HTMLInputElement>(null);
 
-  const fetchPedidos = useCallback(async () => {
-    setLoading(true);
-    const allRows: PedidoSite[] = [];
-    const PAGE_SIZE = 1000;
-    let from = 0;
-    let hasMore = true;
-    while (hasMore) {
-      const { data, error } = await (supabase as any)
-        .from('pedidos_site')
-        .select('*')
-        .order('criado_em', { ascending: false })
-        .range(from, from + PAGE_SIZE - 1);
-      if (error) { toast.error('Erro ao carregar pedidos'); break; }
-      if (data) allRows.push(...(data as PedidoSite[]));
-      hasMore = (data?.length || 0) === PAGE_SIZE;
-      from += PAGE_SIZE;
-    }
-    setPedidos(allRows);
-    setLoading(false);
-  }, []);
+  const { data: pedidos = [], isLoading: loading } = useQuery({
+    queryKey: ['pedidos-site'],
+    queryFn: async () => {
+      const allRows: PedidoSite[] = [];
+      const BATCH = 1000;
+      let from = 0;
+      let hasMore = true;
+      while (hasMore) {
+        const { data, error } = await (supabase as any)
+          .from('pedidos_site')
+          .select('*')
+          .order('criado_em', { ascending: false })
+          .range(from, from + BATCH - 1);
+        if (error) throw error;
+        if (data) allRows.push(...(data as PedidoSite[]));
+        hasMore = (data?.length || 0) === BATCH;
+        from += BATCH;
+      }
+      return allRows;
+    },
+    staleTime: 30_000,
+  });
 
   useEffect(() => {
-    fetchPedidos();
     const channel = supabase
       .channel('pedidos-site-rt')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos_site' }, () => fetchPedidos())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos_site' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['pedidos-site'] });
+      })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [fetchPedidos]);
+  }, [queryClient]);
 
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -158,7 +165,7 @@ export default function PedidosSitePage() {
     if (error) { toast.error('Erro ao criar pedido'); return; }
     toast.success('Pedido criado');
     setNewDialog(false);
-    fetchPedidos();
+    queryClient.invalidateQueries({ queryKey: ['pedidos-site'] });
   };
 
   const handleSaveEdit = async () => {
@@ -184,14 +191,14 @@ export default function PedidosSitePage() {
     if (error) { toast.error('Erro ao atualizar pedido'); return; }
     toast.success('Pedido atualizado');
     setEditDialog(null);
-    fetchPedidos();
+    queryClient.invalidateQueries({ queryKey: ['pedidos-site'] });
   };
 
   const handleDelete = async (id: string) => {
     const { error } = await supabase.from('pedidos_site' as any).delete().eq('id', id);
     if (error) { console.error('Delete error:', error); toast.error('Erro ao excluir: ' + error.message); return; }
     toast.success('Pedido excluído');
-    setPedidos(prev => prev.filter(p => p.id !== id));
+    queryClient.invalidateQueries({ queryKey: ['pedidos-site'] });
   };
 
   const handleBulkDelete = async () => {
@@ -203,7 +210,7 @@ export default function PedidosSitePage() {
     else {
       toast.success(`${ids.length} pedido(s) excluído(s)`);
       setSelectedIds(new Set());
-      setPedidos(prev => prev.filter(p => !ids.includes(p.id)));
+      queryClient.invalidateQueries({ queryKey: ['pedidos-site'] });
     }
     setDeleting(false);
   };
@@ -277,7 +284,7 @@ export default function PedidosSitePage() {
       const { error } = await (supabase as any).from('pedidos_site').insert(mapped);
       if (error) { toast.error('Erro ao importar: ' + error.message); return; }
       toast.success(`${mapped.length} pedidos importados`);
-      fetchPedidos();
+      queryClient.invalidateQueries({ queryKey: ['pedidos-site'] });
     } catch {
       toast.error('Erro ao ler arquivo');
     }
@@ -477,7 +484,7 @@ export default function PedidosSitePage() {
                   <TableRow><TableCell colSpan={16} className="text-center py-8 text-muted-foreground">Carregando...</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
                   <TableRow><TableCell colSpan={16} className="text-center py-8 text-muted-foreground">Nenhum pedido encontrado</TableCell></TableRow>
-                ) : filtered.map(p => {
+                ) : filtered.slice(0, visibleCount).map(p => {
                   const statusConf = STATUS_CONFIG[p.status as PedidoStatus] || STATUS_CONFIG.pendente;
                   const atrasado = isEntregaAtrasada(p);
                   const rastreioLink = getRastreioLink(p.codigo_rastreio);
@@ -543,6 +550,13 @@ export default function PedidosSitePage() {
             </Table>
           </div>
         </CardContent>
+        {visibleCount < filtered.length && (
+          <div className="p-3 border-t flex justify-center">
+            <Button variant="outline" size="sm" onClick={() => setVisibleCount(v => v + PAGE_SIZE)}>
+              Carregar mais ({filtered.length - visibleCount} restantes)
+            </Button>
+          </div>
+        )}
       </Card>
 
       {/* New Dialog */}
