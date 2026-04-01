@@ -92,8 +92,17 @@ export default function NovaRupturaPage() {
         };
       });
 
-      setImportedRows(mapped);
-      toast.success(`${mapped.length} linhas carregadas do arquivo`);
+      // Deduplicate within import batch (keep first occurrence)
+      const seenInBatch = new Set<string>();
+      const deduped = mapped.filter(r => {
+        const key = `${r.numero_pedido}|${r.sku}`;
+        if (!r.numero_pedido || seenInBatch.has(key)) return false;
+        seenInBatch.add(key);
+        return true;
+      });
+
+      setImportedRows(deduped);
+      toast.success(`${deduped.length} linhas carregadas do arquivo${mapped.length - deduped.length > 0 ? ` (${mapped.length - deduped.length} duplicadas removidas)` : ''}`);
     } catch {
       toast.error('Erro ao ler arquivo');
     }
