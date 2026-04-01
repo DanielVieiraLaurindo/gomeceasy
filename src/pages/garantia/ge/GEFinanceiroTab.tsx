@@ -252,18 +252,15 @@ export default function GEFinanceiroTab() {
     let extra: Record<string, any> = {};
 
     if (action === 'reject') {
-      if (currentStatus === 'analise_lider') nextStatus = 'reprovado_gestor';
-      else if (currentStatus === 'analise_fiscal') nextStatus = 'reprovado_fiscal';
+      if (currentStatus === 'analise_fiscal') nextStatus = 'reprovado_fiscal';
       else nextStatus = 'correcao_solicitada';
     } else {
       const flow: Record<string, string> = {
         aguardando_conferencia: 'conferencia_garantia',
-        conferencia_garantia: 'analise_lider',
-        analise_lider: 'analise_fiscal',
+        conferencia_garantia: 'analise_fiscal',
         analise_fiscal: 'financeiro_pagamento',
         financeiro_pagamento: 'pago',
         correcao_solicitada: 'conferencia_garantia',
-        reprovado_gestor: 'aguardando_conferencia',
         reprovado_fiscal: 'conferencia_garantia',
       };
       nextStatus = flow[currentStatus] || 'pago';
