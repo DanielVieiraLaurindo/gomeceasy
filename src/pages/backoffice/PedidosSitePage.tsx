@@ -495,8 +495,20 @@ export default function PedidosSitePage() {
                         <div>{p.medidas || '-'}</div>
                         <div className="text-muted-foreground">{p.peso_kg ? `${p.peso_kg} kg` : ''}</div>
                       </TableCell>
-                      <TableCell className="text-xs">{p.nota_fiscal || '-'}</TableCell>
-                      <TableCell className="text-xs">{p.etiqueta || '-'}</TableCell>
+                      <TableCell className="text-xs" onClick={e => e.stopPropagation()}>
+                        {isFileUrl(p.nota_fiscal) ? (
+                          <a href={p.nota_fiscal} target="_blank" rel="noopener noreferrer">
+                            <Button variant="outline" size="sm" className="gap-1 h-7 text-xs"><FileDown className="w-3 h-3" />NF</Button>
+                          </a>
+                        ) : (p.nota_fiscal || '-')}
+                      </TableCell>
+                      <TableCell className="text-xs" onClick={e => e.stopPropagation()}>
+                        {isFileUrl(p.etiqueta) ? (
+                          <a href={p.etiqueta} target="_blank" rel="noopener noreferrer">
+                            <Button variant="outline" size="sm" className="gap-1 h-7 text-xs"><FileDown className="w-3 h-3" />Etiqueta</Button>
+                          </a>
+                        ) : (p.etiqueta || '-')}
+                      </TableCell>
                       <TableCell><Badge variant="outline" className="text-xs">{p.unidade_negocio || '-'}</Badge></TableCell>
                       <TableCell className="font-mono text-xs">
                         {p.codigo_rastreio ? (
