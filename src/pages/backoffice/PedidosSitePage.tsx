@@ -378,7 +378,7 @@ export default function PedidosSitePage() {
         <div className="flex gap-2">
           <input ref={importRef} type="file" accept=".xls,.xlsx,.csv" className="hidden" onChange={handleImport} />
           <Button variant="ghost" size="sm" onClick={() => {
-            const headers = ['n° pedido site', 'Nome', 'status', 'rastreio', 'transportadora', 'cpf', 'ID', 'data', 'Cidade', 'UF', 'frete site', 'frete cobrado', 'medidas'];
+            const headers = ['ID Site', 'ID Signus', 'Faturar?', 'Cliente', 'Medidas / Peso', 'NF', 'Etiqueta', 'Transportadora', 'Rastreio', 'Status', 'Data Coleta', 'Data Prevista', 'Data Entrega', 'Frete Pago'];
             const ws = XLSX.utils.aoa_to_sheet([headers]);
             ws['!cols'] = headers.map(() => ({ wch: 18 }));
             const wb = XLSX.utils.book_new();
