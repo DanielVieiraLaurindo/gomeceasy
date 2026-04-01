@@ -68,8 +68,9 @@ export default function NovaRupturaPage() {
       if (!rows.length) { toast.error('Arquivo vazio'); return; }
 
       const mapped = rows.map((r, i) => {
-        // Support both ERP format and simplified format (Pedido, SKU, Produto, Qtd, Valor Unit., Valor Total, Canal, Status, etc.)
-        const saldoAtender = Number(r['Saldo a atender'] || r['Qtd'] || r['Quantidade'] || r['quantidade'] || r['Qtd Pedida'] || 1);
+        const qtdPedida = Number(r['Qtd Pedida'] || r['Qtd'] || r['Quantidade'] || r['quantidade'] || 1);
+        const qtdReservada = Number(r['Qtd Reservada'] || 0);
+        const saldoAtender = Number(r['Saldo a atender'] || (qtdPedida - qtdReservada) || qtdPedida);
         const precoLiq = Number(r['Preço Líquido'] || r['Valor Unit.'] || r['Valor'] || r['valor_total'] || 0);
         const valorTotal = Number(r['Produto - Total líquido (pedido)'] || r['Produto - Total bruto (pedido)'] || r['Valor Total'] || precoLiq * saldoAtender || 0);
         return {
