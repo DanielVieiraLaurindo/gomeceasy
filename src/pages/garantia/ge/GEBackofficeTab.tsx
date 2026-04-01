@@ -183,6 +183,19 @@ export default function GEBackofficeTab() {
     toast.success('Exportação concluída');
   };
 
+  const detectMarketplace = (saleNumber: string): { marketplace: string; marketplace_account: string } => {
+    const s = String(saleNumber).trim();
+    if (s.startsWith('20000')) return { marketplace: 'Mercado Livre', marketplace_account: 'MELI_GOMEC' };
+    if (s.startsWith('SP-')) return { marketplace: 'Shopee', marketplace_account: 'SHOPEE_ES' };
+    return { marketplace: 'Mercado Livre', marketplace_account: 'MELI_GOMEC' };
+  };
+
+  const detectBusinessUnit = (doc: string): string => {
+    const digits = (doc || '').replace(/\D/g, '');
+    if (digits.length === 14) return 'GAP';
+    return 'GAP Virtual';
+  };
+
   const handleImportCases = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -191,40 +204,81 @@ export default function GEBackofficeTab() {
       const wb = XLSX.read(data);
       const ws = wb.Sheets[wb.SheetNames[0]];
       const isMeliFormat = ws['A6'] || ws['T6'] || ws['AH6'];
+
+      // Fetch existing sale_numbers to block duplicates
+      const { data: existingCases } = await supabase.from('return_cases').select('sale_number');
+      const existingSet = new Set((existingCases || []).map((c: any) => String(c.sale_number).trim()));
+
       if (isMeliFormat) {
+        // Columns: A(0)=Comprador+Venda, U(20)=SKU, AK(36)=CPF, AU(46)=Rastreio
         const json = XLSX.utils.sheet_to_json<any>(ws, { header: 1, range: 5 });
         const rows = json.slice(1);
-        let imported = 0, errors = 0;
+        let imported = 0, skipped = 0;
+        const batchInsert: any[] = [];
+        const seenSales = new Set<string>();
+
         for (const row of rows) {
           const arr = row as any[];
           const saleNumber = arr[0] ? String(arr[0]).trim() : '';
           if (!saleNumber) continue;
-          const { error } = await supabase.from('return_cases').insert({
-            sale_number: saleNumber, product_sku: arr[19] ? String(arr[19]).trim() : '',
-            client_name: arr[33] ? String(arr[33]).trim() : '-', client_document: arr[35] ? String(arr[35]).trim() : '',
-            fullfilment_tracking: arr[52] ? String(arr[52]).trim() : '', marketplace: 'Mercado Livre',
-            marketplace_account: 'MELI_GOMEC', case_type: 'DEVOLUCAO', status: 'antecipado', is_full: true,
-            entry_date: new Date().toISOString().split('T')[0], created_by: user?.id, sent_to_backoffice: true, origem: 'backoffice',
+          if (existingSet.has(saleNumber) || seenSales.has(saleNumber)) { skipped++; continue; }
+          seenSales.add(saleNumber);
+
+          const clientName = arr[0] ? String(arr[0]).trim() : '-';
+          const sku = arr[20] ? String(arr[20]).trim() : '';
+          const cpf = arr[36] ? String(arr[36]).trim() : '';
+          const tracking = arr[46] ? String(arr[46]).trim() : '';
+          const { marketplace, marketplace_account } = detectMarketplace(saleNumber);
+          const business_unit = detectBusinessUnit(cpf);
+
+          batchInsert.push({
+            sale_number: saleNumber, product_sku: sku,
+            client_name: clientName, client_document: cpf,
+            fullfilment_tracking: tracking, marketplace, marketplace_account,
+            business_unit, case_type: 'DEVOLUCAO', status: 'antecipado', is_full: true,
+            entry_date: new Date().toISOString().split('T')[0], created_by: user?.id,
+            sent_to_backoffice: true, origem: 'backoffice',
           } as any);
-          if (error) errors++; else imported++;
         }
-        toast.success(`${imported} casos importados${errors ? ` (${errors} erros)` : ''}`);
+
+        if (batchInsert.length > 0) {
+          const { error } = await supabase.from('return_cases').insert(batchInsert);
+          imported = error ? 0 : batchInsert.length;
+          if (error) toast.error('Erro ao importar: ' + error.message);
+        }
+        toast.success(`${imported} casos importados${skipped ? ` (${skipped} duplicados ignorados)` : ''}`);
       } else {
         const json = XLSX.utils.sheet_to_json<any>(ws);
-        let imported = 0;
+        const batchInsert: any[] = [];
+        let skipped = 0;
+        const seenSales = new Set<string>();
+
         for (const row of json) {
-          const saleNumber = row['N.º de venda'] || row['Venda'] || row['sale_number'] || '';
+          const saleNumber = String(row['N.º de venda'] || row['Venda'] || row['sale_number'] || '').trim();
           if (!saleNumber) continue;
-          const { error } = await supabase.from('return_cases').insert({
-            client_name: row['Comprador'] || row['Cliente'] || '-', client_document: row['CPF'] || '',
-            sale_number: String(saleNumber), product_sku: row['SKU'] || '', fullfilment_tracking: row['Rastreio'] || '',
-            marketplace: 'Mercado Livre', marketplace_account: 'MELI_GOMEC', case_type: row['Tipo'] || 'DEVOLUCAO',
+          if (existingSet.has(saleNumber) || seenSales.has(saleNumber)) { skipped++; continue; }
+          seenSales.add(saleNumber);
+
+          const cpf = row['CPF'] || '';
+          const { marketplace, marketplace_account } = detectMarketplace(saleNumber);
+          const business_unit = detectBusinessUnit(cpf);
+
+          batchInsert.push({
+            client_name: row['Comprador'] || row['Cliente'] || '-', client_document: cpf,
+            sale_number: saleNumber, product_sku: row['SKU'] || '', fullfilment_tracking: row['Rastreio'] || '',
+            marketplace, marketplace_account, business_unit, case_type: row['Tipo'] || 'DEVOLUCAO',
             status: 'antecipado', is_full: true, entry_date: new Date().toISOString().split('T')[0],
             created_by: user?.id, sent_to_backoffice: true, origem: 'backoffice',
           } as any);
-          if (!error) imported++;
         }
-        toast.success(`${imported} casos importados`);
+
+        if (batchInsert.length > 0) {
+          const { error } = await supabase.from('return_cases').insert(batchInsert);
+          if (error) toast.error('Erro ao importar: ' + error.message);
+          else toast.success(`${batchInsert.length} casos importados${skipped ? ` (${skipped} duplicados ignorados)` : ''}`);
+        } else {
+          toast.warning(`Nenhum caso novo para importar${skipped ? ` (${skipped} duplicados)` : ''}`);
+        }
       }
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (err) {
