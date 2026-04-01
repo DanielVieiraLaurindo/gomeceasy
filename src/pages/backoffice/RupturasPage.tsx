@@ -358,7 +358,7 @@ export default function RupturasPage() {
               statusFilter === s ? "border-primary ring-2 ring-primary/30 shadow-sm" : "border-border hover:border-primary/40"
             )}>
             <span className="text-xs text-muted-foreground leading-tight">{STATUS_LABELS[s]}</span>
-            <span className={cn('text-xl font-bold', statusCounts[s] > 0 ? STATUS_COLORS[s]?.split(' ')[1] : 'text-muted-foreground')}>{statusCounts[s] || 0}</span>
+            <span className={cn('text-xl font-bold', statusCounts[s] > 0 ? STATUS_COUNT_COLORS[s] || 'text-foreground' : 'text-muted-foreground')}>{statusCounts[s] || 0}</span>
           </div>
         ))}
       </div>
