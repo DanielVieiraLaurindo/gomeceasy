@@ -419,7 +419,7 @@ export default function GEFinanceiroTab() {
           </div>
           <div>
             <h1 className="text-2xl font-barlow font-bold">Ressarcimentos</h1>
-            <p className="text-sm text-muted-foreground">Fluxo: Transporte - Conferência - Gestor - Fiscal - Financeiro - Pago</p>
+            <p className="text-sm text-muted-foreground">Fluxo: Transporte → Conferência → Fiscal → Financeiro → Pago</p>
           </div>
         </div>
         {selectedIds.size > 0 && (
