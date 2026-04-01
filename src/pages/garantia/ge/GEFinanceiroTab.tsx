@@ -32,12 +32,10 @@ const STATUS_LABELS: Record<ReembolsoStatus, string> = {
 const STATUS_CLASSES: Record<ReembolsoStatus, string> = {
   aguardando_conferencia: 'bg-warning/15 text-warning',
   conferencia_garantia: 'bg-info/15 text-info',
-  analise_lider: 'bg-purple-500/15 text-purple-600',
   analise_fiscal: 'bg-orange-500/15 text-orange-600',
   financeiro_pagamento: 'bg-primary/15 text-primary',
   pago: 'bg-success/15 text-success',
   correcao_solicitada: 'bg-destructive/15 text-destructive',
-  reprovado_gestor: 'bg-destructive/15 text-destructive',
   reprovado_fiscal: 'bg-destructive/15 text-destructive',
 };
 
