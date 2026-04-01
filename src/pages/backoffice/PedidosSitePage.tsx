@@ -165,7 +165,7 @@ export default function PedidosSitePage() {
     if (error) { toast.error('Erro ao criar pedido'); return; }
     toast.success('Pedido criado');
     setNewDialog(false);
-    fetchPedidos();
+    queryClient.invalidateQueries({ queryKey: ['pedidos-site'] });
   };
 
   const handleSaveEdit = async () => {
