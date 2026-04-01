@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Search, FileText, Clock, CheckCircle2, AlertCircle, Eye, Filter, Download, Loader2, Trash2, Wrench } from 'lucide-react';
 import { format } from 'date-fns';
@@ -72,6 +73,7 @@ async function extractPdfText(file: File): Promise<string> {
 }
 
 export default function AnaliseCnpjPage() {
+  const { profile } = useAuth();
   const [registros, setRegistros] = useState<AnaliseCnpj[]>([]);
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
@@ -149,12 +151,30 @@ export default function AnaliseCnpjPage() {
         bloqueio_credito: String(r.bloqueio_credito || ''),
         liberado_credito: String(r.liberado_credito || ''),
         status: 'aguardando_analise',
+        responsavel: profile?.nome || '',
       }));
 
-      const { error: insertError } = await (supabase as any).from('analise_cnpj').insert(toInsert);
+      // Remove duplicates within import batch
+      const seen = new Set<string>();
+      const uniqueInsert = toInsert.filter(r => {
+        const key = `${r.pedido}|${r.cnpj_cpf}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      const { error: insertError } = await (supabase as any).from('analise_cnpj').insert(uniqueInsert);
       if (insertError) throw insertError;
 
-      toast.success(`${toInsert.length} registros importados do PDF`);
+      // Send notification to Fiscal sector
+      await (supabase as any).from('notificacoes').insert({
+        mensagem: `${uniqueInsert.length} novo(s) registro(s) importados para Análise CNPJ`,
+        tipo: 'importacao_cnpj',
+        referencia_tabela: 'analise_cnpj',
+        setor_destino: 'fiscal',
+      });
+
+      toast.success(`${uniqueInsert.length} registros importados do PDF`);
       fetchRegistros();
     } catch (err: any) {
       console.error('PDF import error:', err);
@@ -166,9 +186,10 @@ export default function AnaliseCnpjPage() {
 
   const handleSaveEdit = async () => {
     if (!selectedRegistro) return;
+    const responsavel = profile?.nome || editResponsavel;
     const { error } = await (supabase as any)
       .from('analise_cnpj')
-      .update({ status: editStatus, observacoes: editObs, responsavel: editResponsavel })
+      .update({ status: editStatus, observacoes: editObs, responsavel })
       .eq('id', selectedRegistro.id);
     if (error) { toast.error('Erro ao atualizar'); } else {
       toast.success('Registro atualizado');

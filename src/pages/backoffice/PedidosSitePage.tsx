@@ -298,14 +298,14 @@ export default function PedidosSitePage() {
         <Checkbox checked={formData.pode_faturar ?? false} onCheckedChange={v => setFormData(p => ({ ...p, pode_faturar: !!v }))} />
         <Label>Faturar?</Label>
       </div>
-      <div><Label>Nome do Cliente</Label><Input value={formData.cliente || ''} onChange={e => setFormData(p => ({ ...p, cliente: e.target.value }))} /></div>
+      <div><Label>Nome do Cliente</Label><Input value={formData.cliente ?? ''} onChange={e => setFormData(prev => ({ ...prev, cliente: e.target.value }))} /></div>
       <div className="grid grid-cols-2 gap-4">
         <div><Label>Medidas (Expedição)</Label><Input placeholder="Ex: 30x20x15 cm" value={formData.medidas || ''} onChange={e => setFormData(p => ({ ...p, medidas: e.target.value }))} /></div>
         <div><Label>Peso (kg)</Label><Input type="number" step="0.01" value={formData.peso_kg || ''} onChange={e => setFormData(p => ({ ...p, peso_kg: parseFloat(e.target.value) || 0 }))} /></div>
       </div>
       <div className="grid grid-cols-2 gap-4">
-        <div><Label>Nota Fiscal</Label><Input placeholder="Número da NF" value={formData.nota_fiscal || ''} onChange={e => setFormData(p => ({ ...p, nota_fiscal: e.target.value }))} /></div>
-        <div><Label>Etiqueta</Label><Input placeholder="Código da etiqueta" value={formData.etiqueta || ''} onChange={e => setFormData(p => ({ ...p, etiqueta: e.target.value }))} /></div>
+        <div><Label>Nota Fiscal (Nº ou PDF)</Label><Input placeholder="Número da NF" value={formData.nota_fiscal || ''} onChange={e => setFormData(p => ({ ...p, nota_fiscal: e.target.value }))} /></div>
+        <div><Label>Etiqueta (Código ou PDF)</Label><Input placeholder="Código da etiqueta" value={formData.etiqueta || ''} onChange={e => setFormData(p => ({ ...p, etiqueta: e.target.value }))} /></div>
       </div>
       <div>
         <Label>Transportadora</Label>
@@ -315,7 +315,7 @@ export default function PedidosSitePage() {
         </Select>
       </div>
       <div className="grid grid-cols-2 gap-4">
-        <div><Label>Código de Rastreio</Label><Input value={formData.codigo_rastreio || ''} onChange={e => setFormData(p => ({ ...p, codigo_rastreio: e.target.value }))} /></div>
+        <div><Label>Rastreio (URL)</Label><Input type="url" placeholder="https://..." value={formData.codigo_rastreio || ''} onChange={e => setFormData(p => ({ ...p, codigo_rastreio: e.target.value }))} /></div>
         <div><Label>Frete Pago (R$)</Label><Input type="number" step="0.01" value={formData.valor_frete || ''} onChange={e => setFormData(p => ({ ...p, valor_frete: parseFloat(e.target.value) || 0 }))} /></div>
       </div>
       <div>

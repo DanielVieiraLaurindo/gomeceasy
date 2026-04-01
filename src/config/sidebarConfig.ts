@@ -28,13 +28,7 @@ export const SIDEBAR_ITEMS: Record<AppSetor, SidebarItem[]> = {
   ],
   pos_vendas: [
     { path: '/pos-vendas', label: 'Dashboard Pós-Vendas', icon: LayoutDashboard },
-    { path: '/pos-vendas/casos', label: 'Casos', icon: FolderOpen },
     { path: '/pos-vendas/conferencia-flex', label: 'Conferência Pedidos Flex', icon: CheckSquare },
-    { path: '/pos-vendas/devolucoes', label: 'Devoluções', icon: RefreshCw },
-    { path: '/pos-vendas/garantia', label: 'Garantias', icon: Shield },
-    { path: '/pos-vendas/reembolsos', label: 'Reembolsos', icon: Receipt },
-    { path: '/pos-vendas/ressarcimento-mo', label: 'Ressarcimento MO', icon: Scale },
-    { path: '/pos-vendas/galeria', label: 'Galeria de Fotos', icon: Camera },
   ],
   garantia_loja: [
     { path: '/garantia-loja', label: 'Dashboard Garantia Loja', icon: LayoutDashboard },
