@@ -605,31 +605,38 @@ export function CadastroProdutosPage() {
 
       <Dialog open={newDialog} onOpenChange={setNewDialog}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Novo Produto</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><Plus className="w-5 h-5" />{form.id ? 'Editar Produto' : 'Novo Produto'}</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>Código Interno 🔍</Label><Input value={form.codigo_interno || ''} onChange={e => setForm((f: any) => ({ ...f, codigo_interno: e.target.value }))} onBlur={() => handleSkuSearch(form.codigo_interno)} placeholder="Buscar cadastro..." /></div>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label>Código Interno</Label>
+                <div className="relative">
+                  <Input value={form.codigo_interno || ''} onChange={e => setForm((f: any) => ({ ...f, codigo_interno: e.target.value }))} onBlur={() => handleSkuSearch(form.codigo_interno)} placeholder="000000" />
+                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                </div>
+              </div>
               <div><Label>SKU *</Label><Input value={form.sku} onChange={e => setForm((f: any) => ({ ...f, sku: e.target.value }))} /></div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><Label>MLB</Label><Input value={form.mlb || ''} onChange={e => setForm((f: any) => ({ ...f, mlb: e.target.value }))} /></div>
               <div><Label>Marca</Label>
                 <Select value={form.fornecedor_id || ''} onValueChange={v => setForm((f: any) => ({ ...f, fornecedor_id: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Selecionar marca" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Nome da marca" /></SelectTrigger>
                   <SelectContent>{brands.map((b: any) => <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
             </div>
-            <div><Label>Descrição</Label><Input value={form.descricao || ''} onChange={e => setForm((f: any) => ({ ...f, descricao: e.target.value }))} /></div>
-            <div className="grid grid-cols-3 gap-4">
-              <div><Label>Estoque Full</Label><Input type="number" value={form.estoque_fullfilment || 0} onChange={e => setForm((f: any) => ({ ...f, estoque_fullfilment: +e.target.value }))} /></div>
-              <div><Label>Vendas 30d</Label><Input type="number" value={form.vendas_30_dias || 0} onChange={e => setForm((f: any) => ({ ...f, vendas_30_dias: +e.target.value }))} /></div>
-              <div><Label>Custo (R$)</Label><Input type="number" step="0.01" value={form.custo || 0} onChange={e => setForm((f: any) => ({ ...f, custo: +e.target.value }))} /></div>
+            <div><Label>Descrição</Label><Textarea value={form.descricao || ''} onChange={e => setForm((f: any) => ({ ...f, descricao: e.target.value }))} rows={2} /></div>
+            <div>
+              <Label className="text-sm font-medium">Estoque</Label>
+              <div className="grid grid-cols-4 gap-4 mt-2">
+                <div><Label className="text-xs text-muted-foreground">Loja 1</Label><Input type="number" value={form.estoque_loja1 || 0} onChange={e => setForm((f: any) => ({ ...f, estoque_loja1: +e.target.value }))} /></div>
+                <div><Label className="text-xs text-muted-foreground">Loja 3</Label><Input type="number" value={form.estoque_loja3 || 0} onChange={e => setForm((f: any) => ({ ...f, estoque_loja3: +e.target.value }))} /></div>
+                <div><Label className="text-xs text-muted-foreground">Fullfilment</Label><Input type="number" value={form.estoque_fullfilment || 0} onChange={e => setForm((f: any) => ({ ...f, estoque_fullfilment: +e.target.value }))} /></div>
+                <div><Label className="text-xs text-muted-foreground">Vendas 30d</Label><Input type="number" value={form.vendas_30_dias || 0} onChange={e => setForm((f: any) => ({ ...f, vendas_30_dias: +e.target.value }))} /></div>
+              </div>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setNewDialog(false)}>Cancelar</Button>
-            <Button onClick={() => { if (!form.sku) { toast.error('SKU obrigatório'); return; } createProduct.mutate(form); }}>Salvar</Button>
+            <Button onClick={() => { if (!form.sku) { toast.error('SKU obrigatório'); return; } createProduct.mutate(form); }} className="gap-2">Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
