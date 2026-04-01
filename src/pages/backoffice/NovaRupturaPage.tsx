@@ -82,6 +82,8 @@ export default function NovaRupturaPage() {
           sku: String(r['Produto - Código'] || r['SKU'] || r['sku'] || ''),
           produto: String(r['Produto - Nome'] || r['Produto'] || r['produto'] || ''),
           quantidade: saldoAtender,
+          quantidade_pedida: qtdPedida,
+          quantidade_reservada: qtdReservada,
           valor_total: valorTotal,
           comprador: String(r['Parceiro - Razão Social'] || r['Comprador'] || r['Responsável'] || r['comprador'] || ''),
           transportadora: String(r['Transportadora'] || r['transportadora'] || ''),
