@@ -89,7 +89,7 @@ export default function NovaRupturaPage() {
         const valorTotal = Number(r['Produto - Total líquido (pedido)'] || r['Produto - Total bruto (pedido)'] || r['Valor Total'] || precoLiq * saldoAtender || 0);
         return {
           _idx: i,
-          numero_pedido: String(r['Nro do Pedido'] || r['Pedido - ID'] || r['Pedido'] || r['numero_pedido'] || r['Número Pedido'] || ''),
+          numero_pedido: String(r['Nro do Pedido'] || r['Pedido - ID'] || r['Pedido'] || r['numero_pedido'] || r['Número Pedido'] || '').replace(/-0$/, ''),
           canal_venda: String(r['Canal de venda'] || r['Canal'] || r['canal_venda'] || ''),
           marketplace: String(r['Canal de venda'] || r['Canal'] || r['Marketplace'] || r['marketplace'] || ''),
           unidade_negocio: String(r['Unidade de negócio'] || r['Unidade'] || r['unidade_negocio'] || 'GAP-Virtual'),

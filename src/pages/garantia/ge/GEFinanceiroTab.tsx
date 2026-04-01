@@ -643,7 +643,7 @@ export default function GEFinanceiroTab() {
                 updateCaseStatus.isPending || uploadingComprovante ||
                 (approvalDialog?.caso.status === 'aguardando_conferencia' && !isPosVendasOrGarantia) ||
                 (approvalDialog?.caso.status === 'conferencia_garantia' && approvalDialog?.action === 'reject' && !improcedenteFotos && !approvalComment) ||
-                (approvalDialog?.caso.status === 'analise_lider' && !canValidateGestor) ||
+                (approvalDialog?.caso.status === 'analise_fiscal' && !isFiscal) ||
                 (approvalDialog?.caso.status === 'analise_fiscal' && !isFiscal) ||
                 (approvalDialog?.caso.status === 'financeiro_pagamento' && !isFinanceiro) ||
                 (approvalDialog?.caso.status === 'financeiro_pagamento' && approvalDialog?.action === 'approve' && !comprovanteFile)
