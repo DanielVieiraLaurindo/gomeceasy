@@ -504,7 +504,7 @@ export function CadastroProdutosPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [newDialog, setNewDialog] = useState(false);
-  const [form, setForm] = useState<any>({ sku: '', mlb: '', descricao: '', estoque_fullfilment: 0, vendas_30_dias: 0, custo: 0, fornecedor_id: '', codigo_interno: '' });
+  const [form, setForm] = useState<any>({ sku: '', mlb: '', descricao: '', estoque_loja1: 0, estoque_loja3: 0, estoque_fullfilment: 0, vendas_30_dias: 0, custo: 0, fornecedor_id: '', codigo_interno: '' });
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
