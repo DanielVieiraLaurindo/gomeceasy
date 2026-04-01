@@ -173,7 +173,9 @@ export default function RupturasPage() {
   const filtered = useMemo(() => {
     const fromDate = dateFrom ? new Date(dateFrom + 'T00:00:00') : null;
     const toDate = dateTo ? new Date(dateTo + 'T23:59:59') : null;
-    let items = abertas.filter(r => {
+    // When searching, search across ALL rupturas (open + closed). Otherwise use only abertas.
+    const source = debouncedSearch ? rupturas : abertas;
+    let items = source.filter(r => {
       const matchSearch = !debouncedSearch || [r.numero_pedido, r.sku, r.produto, r.comprador || '', r.observacoes || '', r.transportadora || '']
         .some(f => f.toLowerCase().includes(debouncedSearch.toLowerCase()));
       const matchStatus = statusFilter === 'all' || r.status === statusFilter;
@@ -193,7 +195,7 @@ export default function RupturasPage() {
       return sortDir === 'asc' ? cmp : -cmp;
     });
     return items;
-  }, [abertas, debouncedSearch, statusFilter, canalFilter, unidadeFilter, skuFilter, produtoFilter, compradorFilter, transportadoraFilter, dateFrom, dateTo, sortField, sortDir]);
+  }, [rupturas, abertas, debouncedSearch, statusFilter, canalFilter, unidadeFilter, skuFilter, produtoFilter, compradorFilter, transportadoraFilter, dateFrom, dateTo, sortField, sortDir]);
 
   const grouped = useMemo(() => {
     const groups: { label: string; items: typeof filtered }[] = [];
