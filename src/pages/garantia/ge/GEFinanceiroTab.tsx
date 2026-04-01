@@ -174,12 +174,10 @@ export default function GEFinanceiroTab() {
       // Notification per stage
       const sectorMap: Record<string, string> = {
         conferencia_garantia: 'garantia',
-        analise_lider: 'pos_vendas',
         analise_fiscal: 'fiscal',
         financeiro_pagamento: 'financeiro',
         pago: 'pos_vendas',
         correcao_solicitada: 'pos_vendas',
-        reprovado_gestor: 'pos_vendas',
         reprovado_fiscal: 'pos_vendas',
       };
       await supabase.from('notificacoes').insert({
