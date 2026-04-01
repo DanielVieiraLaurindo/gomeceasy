@@ -400,11 +400,9 @@ export default function GEFinanceiroTab() {
     switch (status) {
       case 'aguardando_conferencia': return { approve: isPosVendasOrGarantia ? 'Peça Chegou' : '', reject: '' };
       case 'conferencia_garantia': return { approve: isPosVendasOrGarantia ? 'Aprovar (Procedente)' : '', reject: isPosVendasOrGarantia ? 'Improcedente' : '' };
-      case 'analise_lider': return { approve: canValidateGestor ? 'Validar (Gestor)' : '', reject: canValidateGestor ? 'Reprovar' : '' };
       case 'analise_fiscal': return { approve: isFiscal ? 'Aprovar Fiscal' : '', reject: isFiscal ? 'Reprovar Fiscal' : '' };
       case 'financeiro_pagamento': return { approve: isFinanceiro ? 'Pagamento Realizado' : '', reject: '' };
       case 'correcao_solicitada': return { approve: isPosVendasOrGarantia ? 'Reenviar para Conferência' : '', reject: '' };
-      case 'reprovado_gestor': return { approve: isPosVendasOrGarantia ? 'Reenviar para Conferência' : '', reject: '' };
       case 'reprovado_fiscal': return { approve: isPosVendasOrGarantia ? 'Reenviar para Conferência' : '', reject: '' };
       default: return { approve: '', reject: '' };
     }
