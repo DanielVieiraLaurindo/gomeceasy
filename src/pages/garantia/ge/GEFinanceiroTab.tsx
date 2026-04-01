@@ -47,12 +47,10 @@ const FLOW_ORDER: ReembolsoStatus[] = [
 const FLOW_DESCRIPTION: Record<ReembolsoStatus, string> = {
   aguardando_conferencia: 'Peça em transporte. Aguardando chegada para conferência.',
   conferencia_garantia: 'Peça chegou. Conferir produto, validar direito e política.',
-  analise_lider: 'Gestor valida os dados do caso.',
   analise_fiscal: 'Fiscal valida nota, impostos e regras fiscais.',
   financeiro_pagamento: 'Realizar pagamento. Comprovante OBRIGATÓRIO.',
   pago: 'Pagamento realizado e comprovante anexado.',
   correcao_solicitada: 'Caso devolvido ao pós-vendas para correção.',
-  reprovado_gestor: 'Reprovado pelo gestor. Retornar ao pós-vendas.',
   reprovado_fiscal: 'Reprovado pelo fiscal. Retornar ao pós-vendas.',
 };
 
