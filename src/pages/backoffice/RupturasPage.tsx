@@ -265,8 +265,21 @@ export default function RupturasPage() {
     Promise.all(Array.from(selectedIds).map(id => updateRuptura.mutateAsync({ id, status }))).then(() => { setSelectedIds(new Set()); toast.success('Status atualizado'); });
   };
 
-  const updateStatus = (id: string, status: RupturaStatus) => {
-    updateRuptura.mutate({ id, status }, { onSuccess: () => toast.success('Status atualizado') });
+  const updateStatus = async (id: string, status: RupturaStatus) => {
+    updateRuptura.mutate({ id, status }, {
+      onSuccess: async () => {
+        toast.success('Status atualizado');
+        // Persist notification for status change
+        const r = rupturas.find(r => r.id === id);
+        await supabase.from('notificacoes').insert({
+          mensagem: `Ruptura #${r?.numero_pedido || ''} (${r?.produto || ''}) → ${STATUS_LABELS[status]}`,
+          tipo: 'ruptura_status',
+          referencia_id: id,
+          referencia_tabela: 'rupturas',
+          setor_destino: 'backoffice',
+        } as any);
+      }
+    });
   };
 
   const openEdit = (r: any) => { setEditDialog(r); setEditForm({ status: r.status, pedido_compra: r.pedido_compra, prazo_entrega: r.prazo_entrega, numero_transferencia: r.numero_transferencia, motivo_cancelamento: r.motivo_cancelamento, observacoes: r.observacoes, sku: r.sku, canal_venda: r.canal_venda }); };

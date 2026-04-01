@@ -64,12 +64,26 @@ export default function NovaRupturaPage() {
       const data = await file.arrayBuffer();
       const wb = XLSX.read(data);
       const ws = wb.Sheets[wb.SheetNames[0]];
+      // Use both header-based and raw array approach for maximum compatibility
       const rows: any[] = XLSX.utils.sheet_to_json(ws);
+      const rawRows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1 });
       if (!rows.length) { toast.error('Arquivo vazio'); return; }
 
+      // Detect header row to find column indices
+      const headerRow = rawRows[0] as string[];
+      const colIdx = (name: string) => headerRow?.findIndex(h => String(h || '').trim().toLowerCase() === name.toLowerCase()) ?? -1;
+      const qtdPedidaIdx = colIdx('Qtd Pedida');   // Column I = index 8
+      const qtdReservadaIdx = colIdx('Qtd Reservada'); // Column J = index 9
+
       const mapped = rows.map((r, i) => {
-        const qtdPedida = Number(r['Qtd Pedida'] || r['Qtd'] || r['Quantidade'] || r['quantidade'] || 1);
-        const qtdReservada = Number(r['Qtd Reservada'] || 0);
+        const rawRow = rawRows[i + 1] || []; // +1 to skip header
+        // Read Qtd Pedida and Qtd Reservada from exact column positions
+        const qtdPedida = Number(
+          (qtdPedidaIdx >= 0 ? rawRow[qtdPedidaIdx] : null) ?? r['Qtd Pedida'] ?? r['Qtd'] ?? r['Quantidade'] ?? 1
+        );
+        const qtdReservada = Number(
+          (qtdReservadaIdx >= 0 ? rawRow[qtdReservadaIdx] : null) ?? r['Qtd Reservada'] ?? 0
+        );
         const saldoAtender = Number(r['Saldo a atender'] || (qtdPedida - qtdReservada) || qtdPedida);
         const precoLiq = Number(r['Preço Líquido'] || r['Valor Unit.'] || r['Valor'] || r['valor_total'] || 0);
         const valorTotal = Number(r['Produto - Total líquido (pedido)'] || r['Produto - Total bruto (pedido)'] || r['Valor Total'] || precoLiq * saldoAtender || 0);

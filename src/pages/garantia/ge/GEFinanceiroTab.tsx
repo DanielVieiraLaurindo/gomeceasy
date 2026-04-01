@@ -281,9 +281,9 @@ export default function GEFinanceiroTab() {
         return;
       }
 
-      // Gestor: ONLY Vinicius Santos, no master override
+      // Gestor validation
       if (currentStatus === 'analise_lider' && !canValidateGestor) {
-        toast.error(`Apenas ${GESTOR_NAME} pode validar esta etapa.`);
+        toast.error('Você não tem permissão para validar esta etapa.');
         return;
       }
       // Fiscal: ONLY fiscal sector
