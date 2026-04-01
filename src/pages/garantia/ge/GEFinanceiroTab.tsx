@@ -60,7 +60,7 @@ const FLOW_DESCRIPTION: Record<ReembolsoStatus, string> = {
   reprovado_fiscal: 'Reprovado pelo fiscal. Retornar ao pós-vendas.',
 };
 
-const GESTOR_NAME = 'Vinicius Santos';
+// Gestor validation: any user with appropriate role/sector can validate
 
 const ALL_STATUSES = ['aguardando_conferencia', 'conferencia_garantia', 'analise_lider', 'analise_fiscal', 'financeiro_pagamento', 'pago', 'correcao_solicitada', 'reprovado_gestor', 'reprovado_fiscal'];
 
