@@ -163,10 +163,18 @@ export default function AnaliseCnpjPage() {
         return true;
       });
 
-      const { error: insertError } = await (supabase as any).from('analise_cnpj').insert(toInsert);
+      const { error: insertError } = await (supabase as any).from('analise_cnpj').insert(uniqueInsert);
       if (insertError) throw insertError;
 
-      toast.success(`${toInsert.length} registros importados do PDF`);
+      // Send notification to Fiscal sector
+      await (supabase as any).from('notificacoes').insert({
+        mensagem: `${uniqueInsert.length} novo(s) registro(s) importados para Análise CNPJ`,
+        tipo: 'importacao_cnpj',
+        referencia_tabela: 'analise_cnpj',
+        setor_destino: 'fiscal',
+      });
+
+      toast.success(`${uniqueInsert.length} registros importados do PDF`);
       fetchRegistros();
     } catch (err: any) {
       console.error('PDF import error:', err);
