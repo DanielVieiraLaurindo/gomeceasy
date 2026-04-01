@@ -22,7 +22,7 @@ type ReembolsoStatus = 'aguardando_conferencia' | 'conferencia_garantia' | 'anal
 const STATUS_LABELS: Record<ReembolsoStatus, string> = {
   aguardando_conferencia: 'Em Transporte',
   conferencia_garantia: 'Em Conferência',
-  analise_lider: 'Validação Gestor (Vinicius Santos)',
+  analise_lider: 'Validação Gestor',
   analise_fiscal: 'Análise Fiscal',
   financeiro_pagamento: 'Financeiro - Pagamento',
   pago: 'Pago',
