@@ -17,17 +17,15 @@ import { DollarSign, CheckCircle, XCircle, Clock, FileText, Eye, Trash2, AlertTr
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
-type ReembolsoStatus = 'aguardando_conferencia' | 'conferencia_garantia' | 'analise_lider' | 'analise_fiscal' | 'financeiro_pagamento' | 'pago' | 'correcao_solicitada' | 'reprovado_gestor' | 'reprovado_fiscal';
+type ReembolsoStatus = 'aguardando_conferencia' | 'conferencia_garantia' | 'analise_fiscal' | 'financeiro_pagamento' | 'pago' | 'correcao_solicitada' | 'reprovado_fiscal';
 
 const STATUS_LABELS: Record<ReembolsoStatus, string> = {
   aguardando_conferencia: 'Em Transporte',
   conferencia_garantia: 'Em Conferência',
-  analise_lider: 'Validação Gestor',
   analise_fiscal: 'Análise Fiscal',
   financeiro_pagamento: 'Financeiro - Pagamento',
   pago: 'Pago',
   correcao_solicitada: 'Correção Solicitada',
-  reprovado_gestor: 'Reprovado pelo Gestor',
   reprovado_fiscal: 'Reprovado pelo Fiscal',
 };
 
