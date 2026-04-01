@@ -29,7 +29,15 @@ export default function MarcasFornecedoresPage() {
       if (error) throw error;
       return data || [];
     },
+    staleTime: 30_000,
   });
+
+  useEffect(() => {
+    const ch = supabase.channel('brands-rt').on('postgres_changes', { event: '*', schema: 'public', table: 'brands' }, () => {
+      queryClient.invalidateQueries({ queryKey: ['brands-compras'] });
+    }).subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [queryClient]);
 
   const createBrand = useMutation({
     mutationFn: async (data: any) => {
