@@ -284,7 +284,7 @@ export default function PedidosSitePage() {
       const { error } = await (supabase as any).from('pedidos_site').insert(mapped);
       if (error) { toast.error('Erro ao importar: ' + error.message); return; }
       toast.success(`${mapped.length} pedidos importados`);
-      fetchPedidos();
+      queryClient.invalidateQueries({ queryKey: ['pedidos-site'] });
     } catch {
       toast.error('Erro ao ler arquivo');
     }
