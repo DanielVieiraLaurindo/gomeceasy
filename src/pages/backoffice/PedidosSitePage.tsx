@@ -288,6 +288,18 @@ export default function PedidosSitePage() {
     return `https://www.google.com/search?q=rastreio+${c}`;
   };
 
+  const handleFileUpload = async (field: 'nota_fiscal' | 'etiqueta', file: File) => {
+    const ext = file.name.split('.').pop();
+    const path = `${field}/${Date.now()}_${file.name}`;
+    const { error } = await supabase.storage.from('pedidos-site').upload(path, file);
+    if (error) { toast.error('Erro ao enviar arquivo'); return; }
+    const { data: urlData } = supabase.storage.from('pedidos-site').getPublicUrl(path);
+    setFormData(p => ({ ...p, [field]: urlData.publicUrl }));
+    toast.success('Arquivo enviado');
+  };
+
+  const isFileUrl = (val: string | null | undefined) => val && (val.startsWith('http://') || val.startsWith('https://'));
+
   const FormFields = () => (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
@@ -304,8 +316,30 @@ export default function PedidosSitePage() {
         <div><Label>Peso (kg)</Label><Input type="number" step="0.01" value={formData.peso_kg || ''} onChange={e => setFormData(p => ({ ...p, peso_kg: parseFloat(e.target.value) || 0 }))} /></div>
       </div>
       <div className="grid grid-cols-2 gap-4">
-        <div><Label>Nota Fiscal (Nº ou PDF)</Label><Input placeholder="Número da NF" value={formData.nota_fiscal || ''} onChange={e => setFormData(p => ({ ...p, nota_fiscal: e.target.value }))} /></div>
-        <div><Label>Etiqueta (Código ou PDF)</Label><Input placeholder="Código da etiqueta" value={formData.etiqueta || ''} onChange={e => setFormData(p => ({ ...p, etiqueta: e.target.value }))} /></div>
+        <div>
+          <Label>Nota Fiscal (PDF)</Label>
+          <div className="flex items-center gap-2 mt-1">
+            <Input type="file" accept=".pdf" onChange={e => { const f = e.target.files?.[0]; if (f) handleFileUpload('nota_fiscal', f); e.target.value = ''; }} />
+            {isFileUrl(formData.nota_fiscal) && (
+              <a href={formData.nota_fiscal!} target="_blank" rel="noopener noreferrer">
+                <Button type="button" variant="outline" size="sm" className="gap-1 shrink-0"><FileDown className="w-4 h-4" />Baixar</Button>
+              </a>
+            )}
+          </div>
+          {isFileUrl(formData.nota_fiscal) && <p className="text-xs text-muted-foreground mt-1 truncate">✓ Arquivo anexado</p>}
+        </div>
+        <div>
+          <Label>Etiqueta (PDF)</Label>
+          <div className="flex items-center gap-2 mt-1">
+            <Input type="file" accept=".pdf" onChange={e => { const f = e.target.files?.[0]; if (f) handleFileUpload('etiqueta', f); e.target.value = ''; }} />
+            {isFileUrl(formData.etiqueta) && (
+              <a href={formData.etiqueta!} target="_blank" rel="noopener noreferrer">
+                <Button type="button" variant="outline" size="sm" className="gap-1 shrink-0"><FileDown className="w-4 h-4" />Baixar</Button>
+              </a>
+            )}
+          </div>
+          {isFileUrl(formData.etiqueta) && <p className="text-xs text-muted-foreground mt-1 truncate">✓ Arquivo anexado</p>}
+        </div>
       </div>
       <div>
         <Label>Transportadora</Label>
