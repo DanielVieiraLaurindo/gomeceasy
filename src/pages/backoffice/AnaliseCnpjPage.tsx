@@ -186,9 +186,10 @@ export default function AnaliseCnpjPage() {
 
   const handleSaveEdit = async () => {
     if (!selectedRegistro) return;
+    const responsavel = profile?.nome || editResponsavel;
     const { error } = await (supabase as any)
       .from('analise_cnpj')
-      .update({ status: editStatus, observacoes: editObs, responsavel: editResponsavel })
+      .update({ status: editStatus, observacoes: editObs, responsavel })
       .eq('id', selectedRegistro.id);
     if (error) { toast.error('Erro ao atualizar'); } else {
       toast.success('Registro atualizado');
