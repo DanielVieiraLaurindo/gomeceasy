@@ -489,7 +489,10 @@ export default function RupturasPage() {
                             <p className="text-sm truncate">{r.produto}</p>
                           </div>
                         </td>
-                        <td className="p-3 text-right">{r.quantidade}</td>
+                        <td className="p-3 text-right">
+                          <span className="font-semibold">{r.quantidade}</span>
+                          {r.quantidade_reservada > 0 && <span className="text-xs text-muted-foreground ml-1">({r.quantidade_reservada} res.)</span>}
+                        </td>
                         <td className="p-3">
                           <Select value={r.status} onValueChange={v => updateStatus(r.id, v as RupturaStatus)}>
                             <SelectTrigger className="h-7 w-auto border-0 px-0">
