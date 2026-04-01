@@ -210,7 +210,7 @@ export default function PedidosSitePage() {
     else {
       toast.success(`${ids.length} pedido(s) excluído(s)`);
       setSelectedIds(new Set());
-      setPedidos(prev => prev.filter(p => !ids.includes(p.id)));
+      queryClient.invalidateQueries({ queryKey: ['pedidos-site'] });
     }
     setDeleting(false);
   };
