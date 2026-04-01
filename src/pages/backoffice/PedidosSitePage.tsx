@@ -191,7 +191,7 @@ export default function PedidosSitePage() {
     if (error) { toast.error('Erro ao atualizar pedido'); return; }
     toast.success('Pedido atualizado');
     setEditDialog(null);
-    fetchPedidos();
+    queryClient.invalidateQueries({ queryKey: ['pedidos-site'] });
   };
 
   const handleDelete = async (id: string) => {
