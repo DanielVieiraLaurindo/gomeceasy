@@ -19,6 +19,13 @@ import { useBrands } from '@/hooks/useEnvios';
 import * as XLSX from 'xlsx';
 
 function useProducts() {
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    const ch = supabase.channel('products-rt').on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => {
+      queryClient.invalidateQueries({ queryKey: ['products-full'] });
+    }).subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [queryClient]);
   return useQuery({
     queryKey: ['products-full'],
     queryFn: async () => {
@@ -26,6 +33,7 @@ function useProducts() {
       if (error) throw error;
       return data || [];
     },
+    staleTime: 30_000,
   });
 }
 
