@@ -30,7 +30,17 @@ import { format, isToday, isYesterday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 const FLEX_TRANSPORTADORAS = ['UPFLORA COMERCIO DE VARIEDADES LTDA', 'PEX TA ENTREGUE LOGISTICA LTDA'];
-const KANBAN_COLUMNS: RupturaStatus[] = ['ruptura_identificada', 'aguardando_compras', 'aguardando_retorno_cliente', 'solicitado_compra', 'solicitado_transferencia'];
+const KANBAN_COLUMNS: RupturaStatus[] = ['ruptura_identificada', 'aguardando_compras', 'aguardando_retorno_cliente', 'solicitado_compra', 'solicitado_transferencia', 'revertida', 'cancelada'];
+
+const STATUS_COUNT_COLORS: Record<string, string> = {
+  ruptura_identificada: 'text-amber-500',
+  aguardando_compras: 'text-blue-500',
+  aguardando_retorno_cliente: 'text-purple-500',
+  solicitado_compra: 'text-cyan-500',
+  solicitado_transferencia: 'text-indigo-500',
+  revertida: 'text-emerald-500',
+  cancelada: 'text-red-500',
+};
 
 type SortField = 'numero_pedido' | 'canal_venda' | 'produto' | 'valor_total' | 'status' | 'created_at';
 type SortDir = 'asc' | 'desc';
