@@ -46,6 +46,7 @@ const ResumoOperacaoPage = React.lazy(() => import("@/pages/expedicao/ResumoOper
 const SomatorioPage = React.lazy(() => import("@/pages/expedicao/SomatorioPage"));
 const PlaceholderPage = React.lazy(() => import("@/components/PlaceholderPage"));
 const PrecificacaoPage = React.lazy(() => import("@/pages/compras/PrecificacaoPage"));
+const MarcasFornecedoresPage = React.lazy(() => import("@/pages/compras/MarcasFornecedoresPage"));
 const UserManagementPage = React.lazy(() => import("@/pages/ti/UserManagementPage"));
 const ActivityLogPage = React.lazy(() => import("@/pages/ti/ActivityLogPage"));
 const ChamadosPage = React.lazy(() => import("@/pages/ti/ChamadosPage"));
@@ -184,7 +185,7 @@ const App = () => (
                   <Route path="/compras/divergencias/:id" element={<DetalheDivergenciaPage />} />
                   <Route path="/compras/precificacao" element={<PrecificacaoPage />} />
                   {/* marcas removed - use marcas-fornecedores */}
-                  <Route path="/compras/marcas-fornecedores" element={<PlaceholderPage title="Marcas e Fornecedores" description="Gestão de marcas e fornecedores" />} />
+                  <Route path="/compras/marcas-fornecedores" element={<MarcasFornecedoresPage />} />
                   <Route path="/compras/follow-up" element={<PlaceholderPage title="Follow - Up" description="Acompanhamento de pedidos e fornecedores" />} />
                   <Route path="/compras/contratos" element={<PlaceholderPage title="Contratos" description="Gestão de contratos com fornecedores" />} />
                   <Route path="/compras/avaliacao-fornecedores" element={<PlaceholderPage title="Avaliação de Fornecedores" description="Avaliação e classificação de fornecedores" />} />

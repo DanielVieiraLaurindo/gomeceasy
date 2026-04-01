@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Search, Plus, Trash2, Edit, Package, ShoppingCart, Star, AlertTriangle, Download, Upload, Send, LayoutGrid, List, Eye } from 'lucide-react';
+import { Search, Plus, Trash2, Edit, Package, ShoppingCart, Star, AlertTriangle, Download, Upload, Send, LayoutGrid, List, Eye, RefreshCw } from 'lucide-react';
 import { useBrands } from '@/hooks/useEnvios';
 import * as XLSX from 'xlsx';
 
@@ -127,9 +127,13 @@ export function CentralEstoquePage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div><h2 className="text-xl font-bold">Central de Estoque Full</h2><p className="text-sm text-muted-foreground">Planejamento e gestão de estoque</p></div>
-        {selectedIds.size > 0 && <Button variant="destructive" size="sm" onClick={handleBulkDelete}><Trash2 className="w-4 h-4 mr-1" />Excluir {selectedIds.size}</Button>}
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => toast.info('Configurar endpoint da API de estoque nas configurações.')}><RefreshCw className="w-4 h-4" />Atualizar Estoque</Button>
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => toast.info('Configurar URL do Webhook nas configurações.')}><Send className="w-4 h-4" />Webhook</Button>
+          {selectedIds.size > 0 && <Button variant="destructive" size="sm" onClick={handleBulkDelete}><Trash2 className="w-4 h-4 mr-1" />Excluir {selectedIds.size}</Button>}
+        </div>
       </div>
       <div className="relative max-w-sm"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Buscar SKU, descrição ou MLB..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} /></div>
       <Card><CardContent className="p-0"><div className="overflow-x-auto">

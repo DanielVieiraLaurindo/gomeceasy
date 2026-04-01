@@ -17,52 +17,46 @@ import { DollarSign, CheckCircle, XCircle, Clock, FileText, Eye, Trash2, AlertTr
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
-type ReembolsoStatus = 'aguardando_conferencia' | 'conferencia_garantia' | 'analise_lider' | 'analise_fiscal' | 'financeiro_pagamento' | 'pago' | 'correcao_solicitada' | 'reprovado_gestor' | 'reprovado_fiscal';
+type ReembolsoStatus = 'aguardando_conferencia' | 'conferencia_garantia' | 'analise_fiscal' | 'financeiro_pagamento' | 'pago' | 'correcao_solicitada' | 'reprovado_fiscal';
 
 const STATUS_LABELS: Record<ReembolsoStatus, string> = {
   aguardando_conferencia: 'Em Transporte',
   conferencia_garantia: 'Em Conferência',
-  analise_lider: 'Validação Gestor',
   analise_fiscal: 'Análise Fiscal',
   financeiro_pagamento: 'Financeiro - Pagamento',
   pago: 'Pago',
   correcao_solicitada: 'Correção Solicitada',
-  reprovado_gestor: 'Reprovado pelo Gestor',
   reprovado_fiscal: 'Reprovado pelo Fiscal',
 };
 
 const STATUS_CLASSES: Record<ReembolsoStatus, string> = {
   aguardando_conferencia: 'bg-warning/15 text-warning',
   conferencia_garantia: 'bg-info/15 text-info',
-  analise_lider: 'bg-purple-500/15 text-purple-600',
   analise_fiscal: 'bg-orange-500/15 text-orange-600',
   financeiro_pagamento: 'bg-primary/15 text-primary',
   pago: 'bg-success/15 text-success',
   correcao_solicitada: 'bg-destructive/15 text-destructive',
-  reprovado_gestor: 'bg-destructive/15 text-destructive',
   reprovado_fiscal: 'bg-destructive/15 text-destructive',
 };
 
 const FLOW_ORDER: ReembolsoStatus[] = [
-  'aguardando_conferencia', 'conferencia_garantia', 'analise_lider',
+  'aguardando_conferencia', 'conferencia_garantia',
   'analise_fiscal', 'financeiro_pagamento', 'pago',
 ];
 
 const FLOW_DESCRIPTION: Record<ReembolsoStatus, string> = {
   aguardando_conferencia: 'Peça em transporte. Aguardando chegada para conferência.',
   conferencia_garantia: 'Peça chegou. Conferir produto, validar direito e política.',
-  analise_lider: 'Gestor valida os dados do caso.',
   analise_fiscal: 'Fiscal valida nota, impostos e regras fiscais.',
   financeiro_pagamento: 'Realizar pagamento. Comprovante OBRIGATÓRIO.',
   pago: 'Pagamento realizado e comprovante anexado.',
   correcao_solicitada: 'Caso devolvido ao pós-vendas para correção.',
-  reprovado_gestor: 'Reprovado pelo gestor. Retornar ao pós-vendas.',
   reprovado_fiscal: 'Reprovado pelo fiscal. Retornar ao pós-vendas.',
 };
 
 // Gestor validation: any user with appropriate role/sector can validate
 
-const ALL_STATUSES = ['aguardando_conferencia', 'conferencia_garantia', 'analise_lider', 'analise_fiscal', 'financeiro_pagamento', 'pago', 'correcao_solicitada', 'reprovado_gestor', 'reprovado_fiscal'];
+const ALL_STATUSES = ['aguardando_conferencia', 'conferencia_garantia', 'analise_fiscal', 'financeiro_pagamento', 'pago', 'correcao_solicitada', 'reprovado_fiscal'];
 
 interface ReembolsoCase {
   id: string;
@@ -111,8 +105,7 @@ export default function GEFinanceiroTab() {
   const nfDevRef = useRef<HTMLInputElement>(null);
   const [uploadingComprovante, setUploadingComprovante] = useState(false);
 
-  // Gestor validation: master, admin, or garantia_ecommerce sector can validate
-  const canValidateGestor = profile?.role === 'master' || profile?.role === 'admin' || profile?.setor === 'garantia_ecommerce';
+  // Gestor validation removed from flow
 
   // Sector-based permissions
   const isFiscal = profile?.setor === 'fiscal'; // NO master override
@@ -181,12 +174,10 @@ export default function GEFinanceiroTab() {
       // Notification per stage
       const sectorMap: Record<string, string> = {
         conferencia_garantia: 'garantia',
-        analise_lider: 'pos_vendas',
         analise_fiscal: 'fiscal',
         financeiro_pagamento: 'financeiro',
         pago: 'pos_vendas',
         correcao_solicitada: 'pos_vendas',
-        reprovado_gestor: 'pos_vendas',
         reprovado_fiscal: 'pos_vendas',
       };
       await supabase.from('notificacoes').insert({
@@ -259,18 +250,15 @@ export default function GEFinanceiroTab() {
     let extra: Record<string, any> = {};
 
     if (action === 'reject') {
-      if (currentStatus === 'analise_lider') nextStatus = 'reprovado_gestor';
-      else if (currentStatus === 'analise_fiscal') nextStatus = 'reprovado_fiscal';
+      if (currentStatus === 'analise_fiscal') nextStatus = 'reprovado_fiscal';
       else nextStatus = 'correcao_solicitada';
     } else {
       const flow: Record<string, string> = {
         aguardando_conferencia: 'conferencia_garantia',
-        conferencia_garantia: 'analise_lider',
-        analise_lider: 'analise_fiscal',
+        conferencia_garantia: 'analise_fiscal',
         analise_fiscal: 'financeiro_pagamento',
         financeiro_pagamento: 'pago',
         correcao_solicitada: 'conferencia_garantia',
-        reprovado_gestor: 'aguardando_conferencia',
         reprovado_fiscal: 'conferencia_garantia',
       };
       nextStatus = flow[currentStatus] || 'pago';
@@ -281,11 +269,6 @@ export default function GEFinanceiroTab() {
         return;
       }
 
-      // Gestor validation
-      if (currentStatus === 'analise_lider' && !canValidateGestor) {
-        toast.error('Você não tem permissão para validar esta etapa.');
-        return;
-      }
       // Fiscal: ONLY fiscal sector
       if (currentStatus === 'analise_fiscal' && !isFiscal) {
         toast.error('Apenas o setor Fiscal pode validar esta etapa.');
@@ -417,11 +400,9 @@ export default function GEFinanceiroTab() {
     switch (status) {
       case 'aguardando_conferencia': return { approve: isPosVendasOrGarantia ? 'Peça Chegou' : '', reject: '' };
       case 'conferencia_garantia': return { approve: isPosVendasOrGarantia ? 'Aprovar (Procedente)' : '', reject: isPosVendasOrGarantia ? 'Improcedente' : '' };
-      case 'analise_lider': return { approve: canValidateGestor ? 'Validar (Gestor)' : '', reject: canValidateGestor ? 'Reprovar' : '' };
       case 'analise_fiscal': return { approve: isFiscal ? 'Aprovar Fiscal' : '', reject: isFiscal ? 'Reprovar Fiscal' : '' };
       case 'financeiro_pagamento': return { approve: isFinanceiro ? 'Pagamento Realizado' : '', reject: '' };
       case 'correcao_solicitada': return { approve: isPosVendasOrGarantia ? 'Reenviar para Conferência' : '', reject: '' };
-      case 'reprovado_gestor': return { approve: isPosVendasOrGarantia ? 'Reenviar para Conferência' : '', reject: '' };
       case 'reprovado_fiscal': return { approve: isPosVendasOrGarantia ? 'Reenviar para Conferência' : '', reject: '' };
       default: return { approve: '', reject: '' };
     }
@@ -438,7 +419,7 @@ export default function GEFinanceiroTab() {
           </div>
           <div>
             <h1 className="text-2xl font-barlow font-bold">Ressarcimentos</h1>
-            <p className="text-sm text-muted-foreground">Fluxo: Transporte - Conferência - Gestor - Fiscal - Financeiro - Pago</p>
+            <p className="text-sm text-muted-foreground">Fluxo: Transporte → Conferência → Fiscal → Financeiro → Pago</p>
           </div>
         </div>
         {selectedIds.size > 0 && (
@@ -610,18 +591,8 @@ export default function GEFinanceiroTab() {
               </div>
             )}
 
-            {approvalDialog?.caso.status === 'analise_lider' && !canValidateGestor && (
-              <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30">
-                <div className="flex items-center gap-2 text-destructive font-semibold"><ShieldAlert className="w-4 h-4" /><span>Acesso Negado</span></div>
-                <p className="text-sm text-destructive mt-1">Você não tem permissão para validar esta etapa. Você está logado como <strong>{profile?.nome}</strong>.</p>
-              </div>
-            )}
 
-            {approvalDialog?.caso.status === 'analise_lider' && canValidateGestor && approvalDialog.action === 'approve' && (
-              <div className="p-3 rounded-lg bg-success/10 border border-success/30">
-                <p className="text-sm text-success font-medium">Você está autorizado a validar como gestor ({profile?.nome}).</p>
-              </div>
-            )}
+
 
             {approvalDialog?.caso.status === 'analise_fiscal' && !isFiscal && (
               <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30">
@@ -672,7 +643,7 @@ export default function GEFinanceiroTab() {
                 updateCaseStatus.isPending || uploadingComprovante ||
                 (approvalDialog?.caso.status === 'aguardando_conferencia' && !isPosVendasOrGarantia) ||
                 (approvalDialog?.caso.status === 'conferencia_garantia' && approvalDialog?.action === 'reject' && !improcedenteFotos && !approvalComment) ||
-                (approvalDialog?.caso.status === 'analise_lider' && !canValidateGestor) ||
+                (approvalDialog?.caso.status === 'analise_fiscal' && !isFiscal) ||
                 (approvalDialog?.caso.status === 'analise_fiscal' && !isFiscal) ||
                 (approvalDialog?.caso.status === 'financeiro_pagamento' && !isFinanceiro) ||
                 (approvalDialog?.caso.status === 'financeiro_pagamento' && approvalDialog?.action === 'approve' && !comprovanteFile)
