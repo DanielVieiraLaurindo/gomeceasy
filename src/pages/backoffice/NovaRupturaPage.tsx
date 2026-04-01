@@ -35,13 +35,14 @@ export default function NovaRupturaPage() {
   const [importing, setImporting] = useState(false);
 
   const handleManualSave = async () => {
-    if (!form.numero_pedido || !form.sku || !form.produto) {
+    const cleanPedido = form.numero_pedido.replace(/-0$/, '');
+    if (!cleanPedido || !form.sku || !form.produto) {
       toast.error('Preencha Pedido, SKU e Produto'); return;
     }
     // Check for duplicate
     const { data: existing } = await supabase.from('rupturas')
       .select('id, numero_pedido, sku')
-      .eq('numero_pedido', form.numero_pedido)
+      .eq('numero_pedido', cleanPedido)
       .eq('sku', form.sku);
     if (existing && existing.length > 0) {
       toast.error(`Pedido duplicado! Já existe ruptura para pedido ${form.numero_pedido} com SKU ${form.sku}`);
