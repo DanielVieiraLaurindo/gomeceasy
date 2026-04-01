@@ -575,24 +575,30 @@ export function CadastroProdutosPage() {
         <Table>
           <TableHeader><TableRow>
             <TableHead className="w-10"><Checkbox checked={selectedIds.size === filtered.length && filtered.length > 0} onCheckedChange={c => setSelectedIds(c ? new Set(filtered.map((p: any) => p.id)) : new Set())} /></TableHead>
-            <TableHead>SKU</TableHead><TableHead>Cód. Interno</TableHead><TableHead>MLB</TableHead><TableHead>Descrição</TableHead><TableHead className="text-right">Estoque Full</TableHead><TableHead className="text-right">Vendas 30d</TableHead><TableHead className="text-right">Custo</TableHead><TableHead>Ações</TableHead>
+            <TableHead>Código Interno</TableHead><TableHead>SKU</TableHead><TableHead>Marca</TableHead><TableHead>Descrição</TableHead><TableHead className="text-right">L1</TableHead><TableHead className="text-right">L3</TableHead><TableHead className="text-right">Full</TableHead><TableHead className="text-right">V30d</TableHead><TableHead>Ações</TableHead>
           </TableRow></TableHeader>
           <TableBody>
             {filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Nenhum produto encontrado</TableCell></TableRow>
-            ) : filtered.map((p: any) => (
-              <TableRow key={p.id} className="hover:bg-muted/30">
-                <TableCell><Checkbox checked={selectedIds.has(p.id)} onCheckedChange={() => setSelectedIds(prev => { const n = new Set(prev); n.has(p.id) ? n.delete(p.id) : n.add(p.id); return n; })} /></TableCell>
-                <TableCell className="font-mono font-medium">{p.sku}</TableCell>
-                <TableCell className="text-xs">{p.codigo_interno || '-'}</TableCell>
-                <TableCell className="text-xs text-primary">{p.mlb || '-'}</TableCell>
-                <TableCell className="max-w-[200px] truncate">{p.descricao || '-'}</TableCell>
-                <TableCell className="text-right font-mono">{p.estoque_fullfilment || 0}</TableCell>
-                <TableCell className="text-right font-mono">{p.vendas_30_dias || 0}</TableCell>
-                <TableCell className="text-right font-mono">R$ {Number(p.custo || 0).toFixed(2)}</TableCell>
-                <TableCell><Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteProduct.mutate(p.id)}><Trash2 className="w-3.5 h-3.5" /></Button></TableCell>
-              </TableRow>
-            ))}
+              <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Nenhum produto encontrado</TableCell></TableRow>
+            ) : filtered.map((p: any) => {
+              const brand = brands.find((b: any) => b.id === p.fornecedor_id);
+              return (
+                <TableRow key={p.id} className="hover:bg-muted/30">
+                  <TableCell><Checkbox checked={selectedIds.has(p.id)} onCheckedChange={() => setSelectedIds(prev => { const n = new Set(prev); n.has(p.id) ? n.delete(p.id) : n.add(p.id); return n; })} /></TableCell>
+                  <TableCell className="font-mono text-xs">{p.codigo_interno || '-'}</TableCell>
+                  <TableCell className="font-mono font-medium">{p.sku}</TableCell>
+                  <TableCell className="text-sm">{brand?.nome || '-'}</TableCell>
+                  <TableCell className="max-w-[200px] truncate">{p.descricao || '-'}</TableCell>
+                  <TableCell className="text-right font-mono">{p.estoque_loja1 || 0}</TableCell>
+                  <TableCell className="text-right font-mono">{p.estoque_loja3 || 0}</TableCell>
+                  <TableCell className="text-right font-mono">{p.estoque_fullfilment || 0}</TableCell>
+                  <TableCell className="text-right font-mono">{p.vendas_30_dias || 0}</TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setForm({ ...p, fornecedor_id: p.fornecedor_id || '' }); setNewDialog(true); }} title="Editar"><Edit className="w-3.5 h-3.5" /></Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div></CardContent></Card>
