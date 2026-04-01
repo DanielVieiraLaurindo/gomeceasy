@@ -613,7 +613,7 @@ export default function GEFinanceiroTab() {
             {approvalDialog?.caso.status === 'analise_lider' && !canValidateGestor && (
               <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30">
                 <div className="flex items-center gap-2 text-destructive font-semibold"><ShieldAlert className="w-4 h-4" /><span>Acesso Negado</span></div>
-                <p className="text-sm text-destructive mt-1">Apenas <strong>{GESTOR_NAME}</strong> pode validar esta etapa. Você está logado como <strong>{profile?.nome}</strong>.</p>
+                <p className="text-sm text-destructive mt-1">Você não tem permissão para validar esta etapa. Você está logado como <strong>{profile?.nome}</strong>.</p>
               </div>
             )}
 
