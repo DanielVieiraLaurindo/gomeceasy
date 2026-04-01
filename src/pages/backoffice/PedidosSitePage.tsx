@@ -550,6 +550,13 @@ export default function PedidosSitePage() {
             </Table>
           </div>
         </CardContent>
+        {visibleCount < filtered.length && (
+          <div className="p-3 border-t flex justify-center">
+            <Button variant="outline" size="sm" onClick={() => setVisibleCount(v => v + PAGE_SIZE)}>
+              Carregar mais ({filtered.length - visibleCount} restantes)
+            </Button>
+          </div>
+        )}
       </Card>
 
       {/* New Dialog */}
