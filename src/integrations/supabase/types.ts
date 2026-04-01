@@ -2615,6 +2615,8 @@ export type Database = {
           prazo_entrega: string | null
           produto: string
           quantidade: number | null
+          quantidade_pedida: number | null
+          quantidade_reservada: number | null
           sku: string
           status: string
           status_alterado_em: string | null
@@ -2638,6 +2640,8 @@ export type Database = {
           prazo_entrega?: string | null
           produto: string
           quantidade?: number | null
+          quantidade_pedida?: number | null
+          quantidade_reservada?: number | null
           sku: string
           status?: string
           status_alterado_em?: string | null
@@ -2661,6 +2665,8 @@ export type Database = {
           prazo_entrega?: string | null
           produto?: string
           quantidade?: number | null
+          quantidade_pedida?: number | null
+          quantidade_reservada?: number | null
           sku?: string
           status?: string
           status_alterado_em?: string | null

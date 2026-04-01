@@ -258,15 +258,18 @@ export default function PedidosSitePage() {
       const mapped = rows.map(r => ({
         numero_pedido_site: String(r['ID Site'] || r['numero_pedido_site'] || ''),
         pedido_id_erp: String(r['ID Signus'] || r['pedido_id_erp'] || ''),
-        pode_faturar: r['Faturar'] === 'Sim' || r['pode_faturar'] === true,
+        pode_faturar: r['Faturar?'] === 'Sim' || r['Faturar'] === 'Sim' || r['pode_faturar'] === true,
         cliente: String(r['Cliente'] || r['cliente'] || ''),
-        medidas: String(r['Medidas'] || r['medidas'] || ''),
+        medidas: String(r['Medidas / Peso'] || r['Medidas'] || r['medidas'] || ''),
         peso_kg: Number(r['Peso (kg)'] || r['peso_kg'] || 0),
-        nota_fiscal: String(r['Nota Fiscal'] || r['nota_fiscal'] || ''),
+        nota_fiscal: String(r['NF'] || r['Nota Fiscal'] || r['nota_fiscal'] || ''),
         etiqueta: String(r['Etiqueta'] || r['etiqueta'] || ''),
         unidade_negocio: String(r['Transportadora'] || r['unidade_negocio'] || ''),
-        codigo_rastreio: r['Código Rastreio'] || r['codigo_rastreio'] || null,
+        codigo_rastreio: r['Rastreio'] || r['Código Rastreio'] || r['codigo_rastreio'] || null,
         status: 'pendente' as const,
+        data_coleta: r['Data Coleta'] || null,
+        data_prevista: r['Data Prevista'] || null,
+        data_entrega: r['Data Entrega'] || null,
         valor_frete: Number(r['Frete Pago'] || r['valor_frete'] || 0),
         observacoes: String(r['Observações'] || r['observacoes'] || ''),
       })).filter(r => r.numero_pedido_site);
@@ -288,6 +291,18 @@ export default function PedidosSitePage() {
     return `https://www.google.com/search?q=rastreio+${c}`;
   };
 
+  const handleFileUpload = async (field: 'nota_fiscal' | 'etiqueta', file: File) => {
+    const ext = file.name.split('.').pop();
+    const path = `${field}/${Date.now()}_${file.name}`;
+    const { error } = await supabase.storage.from('pedidos-site').upload(path, file);
+    if (error) { toast.error('Erro ao enviar arquivo'); return; }
+    const { data: urlData } = supabase.storage.from('pedidos-site').getPublicUrl(path);
+    setFormData(p => ({ ...p, [field]: urlData.publicUrl }));
+    toast.success('Arquivo enviado');
+  };
+
+  const isFileUrl = (val: string | null | undefined) => val && (val.startsWith('http://') || val.startsWith('https://'));
+
   const FormFields = () => (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
@@ -304,8 +319,30 @@ export default function PedidosSitePage() {
         <div><Label>Peso (kg)</Label><Input type="number" step="0.01" value={formData.peso_kg || ''} onChange={e => setFormData(p => ({ ...p, peso_kg: parseFloat(e.target.value) || 0 }))} /></div>
       </div>
       <div className="grid grid-cols-2 gap-4">
-        <div><Label>Nota Fiscal (Nº ou PDF)</Label><Input placeholder="Número da NF" value={formData.nota_fiscal || ''} onChange={e => setFormData(p => ({ ...p, nota_fiscal: e.target.value }))} /></div>
-        <div><Label>Etiqueta (Código ou PDF)</Label><Input placeholder="Código da etiqueta" value={formData.etiqueta || ''} onChange={e => setFormData(p => ({ ...p, etiqueta: e.target.value }))} /></div>
+        <div>
+          <Label>Nota Fiscal (PDF)</Label>
+          <div className="flex items-center gap-2 mt-1">
+            <Input type="file" accept=".pdf" onChange={e => { const f = e.target.files?.[0]; if (f) handleFileUpload('nota_fiscal', f); e.target.value = ''; }} />
+            {isFileUrl(formData.nota_fiscal) && (
+              <a href={formData.nota_fiscal!} target="_blank" rel="noopener noreferrer">
+                <Button type="button" variant="outline" size="sm" className="gap-1 shrink-0"><FileDown className="w-4 h-4" />Baixar</Button>
+              </a>
+            )}
+          </div>
+          {isFileUrl(formData.nota_fiscal) && <p className="text-xs text-muted-foreground mt-1 truncate">✓ Arquivo anexado</p>}
+        </div>
+        <div>
+          <Label>Etiqueta (PDF)</Label>
+          <div className="flex items-center gap-2 mt-1">
+            <Input type="file" accept=".pdf" onChange={e => { const f = e.target.files?.[0]; if (f) handleFileUpload('etiqueta', f); e.target.value = ''; }} />
+            {isFileUrl(formData.etiqueta) && (
+              <a href={formData.etiqueta!} target="_blank" rel="noopener noreferrer">
+                <Button type="button" variant="outline" size="sm" className="gap-1 shrink-0"><FileDown className="w-4 h-4" />Baixar</Button>
+              </a>
+            )}
+          </div>
+          {isFileUrl(formData.etiqueta) && <p className="text-xs text-muted-foreground mt-1 truncate">✓ Arquivo anexado</p>}
+        </div>
       </div>
       <div>
         <Label>Transportadora</Label>
@@ -344,7 +381,7 @@ export default function PedidosSitePage() {
         <div className="flex gap-2">
           <input ref={importRef} type="file" accept=".xls,.xlsx,.csv" className="hidden" onChange={handleImport} />
           <Button variant="ghost" size="sm" onClick={() => {
-            const headers = ['n° pedido site', 'Nome', 'status', 'rastreio', 'transportadora', 'cpf', 'ID', 'data', 'Cidade', 'UF', 'frete site', 'frete cobrado', 'medidas'];
+            const headers = ['ID Site', 'ID Signus', 'Faturar?', 'Cliente', 'Medidas / Peso', 'NF', 'Etiqueta', 'Transportadora', 'Rastreio', 'Status', 'Data Coleta', 'Data Prevista', 'Data Entrega', 'Frete Pago'];
             const ws = XLSX.utils.aoa_to_sheet([headers]);
             ws['!cols'] = headers.map(() => ({ wch: 18 }));
             const wb = XLSX.utils.book_new();
@@ -461,8 +498,20 @@ export default function PedidosSitePage() {
                         <div>{p.medidas || '-'}</div>
                         <div className="text-muted-foreground">{p.peso_kg ? `${p.peso_kg} kg` : ''}</div>
                       </TableCell>
-                      <TableCell className="text-xs">{p.nota_fiscal || '-'}</TableCell>
-                      <TableCell className="text-xs">{p.etiqueta || '-'}</TableCell>
+                      <TableCell className="text-xs" onClick={e => e.stopPropagation()}>
+                        {isFileUrl(p.nota_fiscal) ? (
+                          <a href={p.nota_fiscal} target="_blank" rel="noopener noreferrer">
+                            <Button variant="outline" size="sm" className="gap-1 h-7 text-xs"><FileDown className="w-3 h-3" />NF</Button>
+                          </a>
+                        ) : (p.nota_fiscal || '-')}
+                      </TableCell>
+                      <TableCell className="text-xs" onClick={e => e.stopPropagation()}>
+                        {isFileUrl(p.etiqueta) ? (
+                          <a href={p.etiqueta} target="_blank" rel="noopener noreferrer">
+                            <Button variant="outline" size="sm" className="gap-1 h-7 text-xs"><FileDown className="w-3 h-3" />Etiqueta</Button>
+                          </a>
+                        ) : (p.etiqueta || '-')}
+                      </TableCell>
                       <TableCell><Badge variant="outline" className="text-xs">{p.unidade_negocio || '-'}</Badge></TableCell>
                       <TableCell className="font-mono text-xs">
                         {p.codigo_rastreio ? (

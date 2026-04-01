@@ -82,6 +82,8 @@ export default function NovaRupturaPage() {
           sku: String(r['Produto - Código'] || r['SKU'] || r['sku'] || ''),
           produto: String(r['Produto - Nome'] || r['Produto'] || r['produto'] || ''),
           quantidade: saldoAtender,
+          quantidade_pedida: qtdPedida,
+          quantidade_reservada: qtdReservada,
           valor_total: valorTotal,
           comprador: String(r['Parceiro - Razão Social'] || r['Comprador'] || r['Responsável'] || r['comprador'] || ''),
           transportadora: String(r['Transportadora'] || r['transportadora'] || ''),
@@ -156,7 +158,7 @@ export default function NovaRupturaPage() {
       motivo_cancelamento: motivo_cancelamento || undefined,
     }));
 
-    const { error } = await supabase.from('rupturas').insert(toInsert);
+    const { error } = await supabase.from('rupturas').upsert(toInsert, { onConflict: 'numero_pedido,sku', ignoreDuplicates: true });
     setImporting(false);
     if (error) { toast.error('Erro ao importar: ' + error.message); return; }
     toast.success(`${toInsert.length} rupturas importadas${duplicates.length > 0 ? ` (${duplicates.length} duplicadas ignoradas)` : ''}`);

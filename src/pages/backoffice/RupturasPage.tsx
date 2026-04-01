@@ -173,7 +173,9 @@ export default function RupturasPage() {
   const filtered = useMemo(() => {
     const fromDate = dateFrom ? new Date(dateFrom + 'T00:00:00') : null;
     const toDate = dateTo ? new Date(dateTo + 'T23:59:59') : null;
-    let items = abertas.filter(r => {
+    // When searching, search across ALL rupturas (open + closed). Otherwise use only abertas.
+    const source = debouncedSearch ? rupturas : abertas;
+    let items = source.filter(r => {
       const matchSearch = !debouncedSearch || [r.numero_pedido, r.sku, r.produto, r.comprador || '', r.observacoes || '', r.transportadora || '']
         .some(f => f.toLowerCase().includes(debouncedSearch.toLowerCase()));
       const matchStatus = statusFilter === 'all' || r.status === statusFilter;
@@ -193,7 +195,7 @@ export default function RupturasPage() {
       return sortDir === 'asc' ? cmp : -cmp;
     });
     return items;
-  }, [abertas, debouncedSearch, statusFilter, canalFilter, unidadeFilter, skuFilter, produtoFilter, compradorFilter, transportadoraFilter, dateFrom, dateTo, sortField, sortDir]);
+  }, [rupturas, abertas, debouncedSearch, statusFilter, canalFilter, unidadeFilter, skuFilter, produtoFilter, compradorFilter, transportadoraFilter, dateFrom, dateTo, sortField, sortDir]);
 
   const grouped = useMemo(() => {
     const groups: { label: string; items: typeof filtered }[] = [];
@@ -355,7 +357,7 @@ export default function RupturasPage() {
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative max-w-sm flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Buscar por pedido, SKU, produto ou observação..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} />
+          <Input placeholder="Buscar por nº pedido, nome da peça ou código (SKU)..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-44"><SelectValue placeholder="Todos os status" /></SelectTrigger>
@@ -487,7 +489,10 @@ export default function RupturasPage() {
                             <p className="text-sm truncate">{r.produto}</p>
                           </div>
                         </td>
-                        <td className="p-3 text-right">{r.quantidade}</td>
+                        <td className="p-3 text-right">
+                          <span className="font-semibold">{r.quantidade}</span>
+                          {r.quantidade_reservada > 0 && <span className="text-xs text-muted-foreground ml-1">({r.quantidade_reservada} res.)</span>}
+                        </td>
                         <td className="p-3">
                           <Select value={r.status} onValueChange={v => updateStatus(r.id, v as RupturaStatus)}>
                             <SelectTrigger className="h-7 w-auto border-0 px-0">

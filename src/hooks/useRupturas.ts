@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect, useCallback } from 'react';
 
-const RUPTURAS_COLUMNS = 'id,numero_pedido,canal_venda,marketplace,unidade_negocio,sku,produto,quantidade,valor_total,status,comprador,transportadora,data_entrada_falta,observacoes,pedido_compra,prazo_entrega,numero_transferencia,motivo_cancelamento,created_at,created_by,status_alterado_em';
+const RUPTURAS_COLUMNS = 'id,numero_pedido,canal_venda,marketplace,unidade_negocio,sku,produto,quantidade,quantidade_pedida,quantidade_reservada,valor_total,status,comprador,transportadora,data_entrada_falta,observacoes,pedido_compra,prazo_entrega,numero_transferencia,motivo_cancelamento,created_at,created_by,status_alterado_em';
 
 export function useRupturas() {
   const queryClient = useQueryClient();
