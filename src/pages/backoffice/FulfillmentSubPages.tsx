@@ -567,7 +567,7 @@ export function CadastroProdutosPage() {
           <Button variant="outline" size="sm" onClick={handleDownloadTemplate}><Download className="w-4 h-4 mr-1" />Template</Button>
           <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}><Upload className="w-4 h-4 mr-1" />Importar</Button>
           {selectedIds.size > 0 && <Button variant="destructive" size="sm" onClick={handleBulkDelete}><Trash2 className="w-4 h-4 mr-1" />Excluir ({selectedIds.size})</Button>}
-          <Button onClick={() => { setForm({ sku: '', mlb: '', descricao: '', estoque_fullfilment: 0, vendas_30_dias: 0, custo: 0, fornecedor_id: '', codigo_interno: '' }); setNewDialog(true); }} className="gap-2"><Plus className="w-4 h-4" />Novo Produto</Button>
+          <Button onClick={() => { setForm({ sku: '', mlb: '', descricao: '', estoque_loja1: 0, estoque_loja3: 0, estoque_fullfilment: 0, vendas_30_dias: 0, custo: 0, fornecedor_id: '', codigo_interno: '' }); setNewDialog(true); }} className="gap-2"><Plus className="w-4 h-4" />Novo Produto</Button>
         </div>
       </div>
       <div className="relative max-w-sm"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Buscar SKU, descrição ou código interno..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} /></div>
