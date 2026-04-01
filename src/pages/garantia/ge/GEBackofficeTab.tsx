@@ -581,7 +581,12 @@ export default function GEBackofficeTab() {
                       <TableCell onClick={e => e.stopPropagation()}>
                         <Checkbox checked={selectedIds.has(c.id)} onCheckedChange={() => toggleSelect(c.id)} />
                       </TableCell>
-                      <TableCell className="font-mono-data font-medium">{c.case_number}</TableCell>
+                      <TableCell className="font-mono-data font-medium">
+                        <span className="flex items-center gap-1">
+                          {c.is_full && <Zap className="w-3.5 h-3.5 text-green-500" />}
+                          {c.case_number}
+                        </span>
+                      </TableCell>
                       <TableCell>
                         <div>
                           <p className="font-medium text-sm">{c.client_name}</p>
