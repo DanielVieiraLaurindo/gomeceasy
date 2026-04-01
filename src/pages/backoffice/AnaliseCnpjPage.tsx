@@ -151,7 +151,17 @@ export default function AnaliseCnpjPage() {
         bloqueio_credito: String(r.bloqueio_credito || ''),
         liberado_credito: String(r.liberado_credito || ''),
         status: 'aguardando_analise',
+        responsavel: profile?.nome || '',
       }));
+
+      // Remove duplicates within import batch
+      const seen = new Set<string>();
+      const uniqueInsert = toInsert.filter(r => {
+        const key = `${r.pedido}|${r.cnpj_cpf}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
 
       const { error: insertError } = await (supabase as any).from('analise_cnpj').insert(toInsert);
       if (insertError) throw insertError;
