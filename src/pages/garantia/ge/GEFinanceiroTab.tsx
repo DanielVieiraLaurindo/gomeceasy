@@ -111,9 +111,8 @@ export default function GEFinanceiroTab() {
   const nfDevRef = useRef<HTMLInputElement>(null);
   const [uploadingComprovante, setUploadingComprovante] = useState(false);
 
-  // STRICT: Only Vinicius Santos can validate gestor, NOT other masters
-  const isGestor = profile?.nome?.trim() === GESTOR_NAME;
-  const canValidateGestor = isGestor; // NO master override
+  // Gestor validation: master, admin, or garantia_ecommerce sector can validate
+  const canValidateGestor = profile?.role === 'master' || profile?.role === 'admin' || profile?.setor === 'garantia_ecommerce';
 
   // Sector-based permissions
   const isFiscal = profile?.setor === 'fiscal'; // NO master override
