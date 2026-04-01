@@ -40,7 +40,7 @@ const STATUS_CLASSES: Record<ReembolsoStatus, string> = {
 };
 
 const FLOW_ORDER: ReembolsoStatus[] = [
-  'aguardando_conferencia', 'conferencia_garantia', 'analise_lider',
+  'aguardando_conferencia', 'conferencia_garantia',
   'analise_fiscal', 'financeiro_pagamento', 'pago',
 ];
 
