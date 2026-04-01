@@ -484,7 +484,7 @@ export default function PedidosSitePage() {
                   <TableRow><TableCell colSpan={16} className="text-center py-8 text-muted-foreground">Carregando...</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
                   <TableRow><TableCell colSpan={16} className="text-center py-8 text-muted-foreground">Nenhum pedido encontrado</TableCell></TableRow>
-                ) : filtered.map(p => {
+                ) : filtered.slice(0, visibleCount).map(p => {
                   const statusConf = STATUS_CONFIG[p.status as PedidoStatus] || STATUS_CONFIG.pendente;
                   const atrasado = isEntregaAtrasada(p);
                   const rastreioLink = getRastreioLink(p.codigo_rastreio);
