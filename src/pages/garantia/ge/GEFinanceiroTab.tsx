@@ -105,8 +105,7 @@ export default function GEFinanceiroTab() {
   const nfDevRef = useRef<HTMLInputElement>(null);
   const [uploadingComprovante, setUploadingComprovante] = useState(false);
 
-  // Gestor validation: master, admin, or garantia_ecommerce sector can validate
-  const canValidateGestor = profile?.role === 'master' || profile?.role === 'admin' || profile?.setor === 'garantia_ecommerce';
+  // Gestor validation removed from flow
 
   // Sector-based permissions
   const isFiscal = profile?.setor === 'fiscal'; // NO master override
