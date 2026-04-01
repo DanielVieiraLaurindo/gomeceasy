@@ -198,7 +198,7 @@ export default function PedidosSitePage() {
     const { error } = await supabase.from('pedidos_site' as any).delete().eq('id', id);
     if (error) { console.error('Delete error:', error); toast.error('Erro ao excluir: ' + error.message); return; }
     toast.success('Pedido excluído');
-    setPedidos(prev => prev.filter(p => p.id !== id));
+    queryClient.invalidateQueries({ queryKey: ['pedidos-site'] });
   };
 
   const handleBulkDelete = async () => {
