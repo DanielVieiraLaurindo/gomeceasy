@@ -22,7 +22,7 @@ type ReembolsoStatus = 'aguardando_conferencia' | 'conferencia_garantia' | 'anal
 const STATUS_LABELS: Record<ReembolsoStatus, string> = {
   aguardando_conferencia: 'Em Transporte',
   conferencia_garantia: 'Em Conferência',
-  analise_lider: 'Validação Gestor (Vinicius Santos)',
+  analise_lider: 'Validação Gestor',
   analise_fiscal: 'Análise Fiscal',
   financeiro_pagamento: 'Financeiro - Pagamento',
   pago: 'Pago',
@@ -51,7 +51,7 @@ const FLOW_ORDER: ReembolsoStatus[] = [
 const FLOW_DESCRIPTION: Record<ReembolsoStatus, string> = {
   aguardando_conferencia: 'Peça em transporte. Aguardando chegada para conferência.',
   conferencia_garantia: 'Peça chegou. Conferir produto, validar direito e política.',
-  analise_lider: 'OBRIGATÓRIO: Apenas Vinicius Santos pode validar.',
+  analise_lider: 'Gestor valida os dados do caso.',
   analise_fiscal: 'Fiscal valida nota, impostos e regras fiscais.',
   financeiro_pagamento: 'Realizar pagamento. Comprovante OBRIGATÓRIO.',
   pago: 'Pagamento realizado e comprovante anexado.',
@@ -60,7 +60,7 @@ const FLOW_DESCRIPTION: Record<ReembolsoStatus, string> = {
   reprovado_fiscal: 'Reprovado pelo fiscal. Retornar ao pós-vendas.',
 };
 
-const GESTOR_NAME = 'Vinicius Santos';
+// Gestor validation: any user with appropriate role/sector can validate
 
 const ALL_STATUSES = ['aguardando_conferencia', 'conferencia_garantia', 'analise_lider', 'analise_fiscal', 'financeiro_pagamento', 'pago', 'correcao_solicitada', 'reprovado_gestor', 'reprovado_fiscal'];
 
@@ -111,9 +111,8 @@ export default function GEFinanceiroTab() {
   const nfDevRef = useRef<HTMLInputElement>(null);
   const [uploadingComprovante, setUploadingComprovante] = useState(false);
 
-  // STRICT: Only Vinicius Santos can validate gestor, NOT other masters
-  const isGestor = profile?.nome?.trim() === GESTOR_NAME;
-  const canValidateGestor = isGestor; // NO master override
+  // Gestor validation: master, admin, or garantia_ecommerce sector can validate
+  const canValidateGestor = profile?.role === 'master' || profile?.role === 'admin' || profile?.setor === 'garantia_ecommerce';
 
   // Sector-based permissions
   const isFiscal = profile?.setor === 'fiscal'; // NO master override
@@ -282,9 +281,9 @@ export default function GEFinanceiroTab() {
         return;
       }
 
-      // Gestor: ONLY Vinicius Santos, no master override
+      // Gestor validation
       if (currentStatus === 'analise_lider' && !canValidateGestor) {
-        toast.error(`Apenas ${GESTOR_NAME} pode validar esta etapa.`);
+        toast.error('Você não tem permissão para validar esta etapa.');
         return;
       }
       // Fiscal: ONLY fiscal sector
@@ -614,7 +613,7 @@ export default function GEFinanceiroTab() {
             {approvalDialog?.caso.status === 'analise_lider' && !canValidateGestor && (
               <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30">
                 <div className="flex items-center gap-2 text-destructive font-semibold"><ShieldAlert className="w-4 h-4" /><span>Acesso Negado</span></div>
-                <p className="text-sm text-destructive mt-1">Apenas <strong>{GESTOR_NAME}</strong> pode validar esta etapa. Você está logado como <strong>{profile?.nome}</strong>.</p>
+                <p className="text-sm text-destructive mt-1">Você não tem permissão para validar esta etapa. Você está logado como <strong>{profile?.nome}</strong>.</p>
               </div>
             )}
 

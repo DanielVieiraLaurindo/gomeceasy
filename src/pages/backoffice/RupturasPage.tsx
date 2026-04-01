@@ -30,7 +30,17 @@ import { format, isToday, isYesterday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 const FLEX_TRANSPORTADORAS = ['UPFLORA COMERCIO DE VARIEDADES LTDA', 'PEX TA ENTREGUE LOGISTICA LTDA'];
-const KANBAN_COLUMNS: RupturaStatus[] = ['ruptura_identificada', 'aguardando_compras', 'aguardando_retorno_cliente', 'solicitado_compra', 'solicitado_transferencia'];
+const KANBAN_COLUMNS: RupturaStatus[] = ['ruptura_identificada', 'aguardando_compras', 'aguardando_retorno_cliente', 'solicitado_compra', 'solicitado_transferencia', 'revertida', 'cancelada'];
+
+const STATUS_COUNT_COLORS: Record<string, string> = {
+  ruptura_identificada: 'text-amber-500',
+  aguardando_compras: 'text-blue-500',
+  aguardando_retorno_cliente: 'text-purple-500',
+  solicitado_compra: 'text-cyan-500',
+  solicitado_transferencia: 'text-indigo-500',
+  revertida: 'text-emerald-500',
+  cancelada: 'text-red-500',
+};
 
 type SortField = 'numero_pedido' | 'canal_venda' | 'produto' | 'valor_total' | 'status' | 'created_at';
 type SortDir = 'asc' | 'desc';
@@ -255,8 +265,21 @@ export default function RupturasPage() {
     Promise.all(Array.from(selectedIds).map(id => updateRuptura.mutateAsync({ id, status }))).then(() => { setSelectedIds(new Set()); toast.success('Status atualizado'); });
   };
 
-  const updateStatus = (id: string, status: RupturaStatus) => {
-    updateRuptura.mutate({ id, status }, { onSuccess: () => toast.success('Status atualizado') });
+  const updateStatus = async (id: string, status: RupturaStatus) => {
+    updateRuptura.mutate({ id, status }, {
+      onSuccess: async () => {
+        toast.success('Status atualizado');
+        // Persist notification for status change
+        const r = rupturas.find(r => r.id === id);
+        await supabase.from('notificacoes').insert({
+          mensagem: `Ruptura #${r?.numero_pedido || ''} (${r?.produto || ''}) → ${STATUS_LABELS[status]}`,
+          tipo: 'ruptura_status',
+          referencia_id: id,
+          referencia_tabela: 'rupturas',
+          setor_destino: 'backoffice',
+        } as any);
+      }
+    });
   };
 
   const openEdit = (r: any) => { setEditDialog(r); setEditForm({ status: r.status, pedido_compra: r.pedido_compra, prazo_entrega: r.prazo_entrega, numero_transferencia: r.numero_transferencia, motivo_cancelamento: r.motivo_cancelamento, observacoes: r.observacoes, sku: r.sku, canal_venda: r.canal_venda }); };
@@ -348,7 +371,7 @@ export default function RupturasPage() {
               statusFilter === s ? "border-primary ring-2 ring-primary/30 shadow-sm" : "border-border hover:border-primary/40"
             )}>
             <span className="text-xs text-muted-foreground leading-tight">{STATUS_LABELS[s]}</span>
-            <span className={cn('text-xl font-bold', statusCounts[s] > 0 ? STATUS_COLORS[s]?.split(' ')[1] : 'text-muted-foreground')}>{statusCounts[s] || 0}</span>
+            <span className={cn('text-xl font-bold', statusCounts[s] > 0 ? STATUS_COUNT_COLORS[s] || 'text-foreground' : 'text-muted-foreground')}>{statusCounts[s] || 0}</span>
           </div>
         ))}
       </div>
