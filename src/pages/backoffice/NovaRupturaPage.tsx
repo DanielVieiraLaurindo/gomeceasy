@@ -50,6 +50,7 @@ export default function NovaRupturaPage() {
     }
     const { error } = await supabase.from('rupturas').insert({
       ...form,
+      numero_pedido: cleanPedido,
       created_by: user?.id,
       status: 'ruptura_identificada',
     });
