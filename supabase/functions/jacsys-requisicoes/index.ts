@@ -66,12 +66,26 @@ Deno.serve(async (req) => {
       headers: { 'Authorization': `Basic ${basicAuth}` },
     });
 
+    const rawText = await response.text();
+
     if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`Jacsys API error [${response.status}]: ${text}`);
+      throw new Error(`Jacsys API error [${response.status}]: ${rawText}`);
     }
 
-    const data = await response.json();
+    if (!rawText || rawText.trim().length === 0) {
+      return new Response(JSON.stringify({}), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      console.error('Failed to parse Jacsys response:', rawText.substring(0, 500));
+      throw new Error('Invalid JSON response from Jacsys API');
+    }
 
     return new Response(JSON.stringify(data), {
       status: 200,
