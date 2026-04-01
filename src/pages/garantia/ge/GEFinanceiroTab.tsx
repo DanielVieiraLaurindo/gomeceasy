@@ -271,11 +271,6 @@ export default function GEFinanceiroTab() {
         return;
       }
 
-      // Gestor validation
-      if (currentStatus === 'analise_lider' && !canValidateGestor) {
-        toast.error('Você não tem permissão para validar esta etapa.');
-        return;
-      }
       // Fiscal: ONLY fiscal sector
       if (currentStatus === 'analise_fiscal' && !isFiscal) {
         toast.error('Apenas o setor Fiscal pode validar esta etapa.');
