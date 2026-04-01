@@ -9,7 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { exportToExcel } from '@/lib/export-utils';
 import {
@@ -58,9 +60,10 @@ const TRANSPORTADORAS = [
   'TOTAL POINTS', 'PAC', 'SEDEX', 'FLEX', 'RETIRA EM LOJA'
 ];
 
+const PAGE_SIZE = 50;
+
 export default function PedidosSitePage() {
-  const [pedidos, setPedidos] = useState<PedidoSite[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('todos');
   const [editDialog, setEditDialog] = useState<PedidoSite | null>(null);
@@ -68,37 +71,41 @@ export default function PedidosSitePage() {
   const [formData, setFormData] = useState<Partial<PedidoSite>>({});
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const importRef = useRef<HTMLInputElement>(null);
 
-  const fetchPedidos = useCallback(async () => {
-    setLoading(true);
-    const allRows: PedidoSite[] = [];
-    const PAGE_SIZE = 1000;
-    let from = 0;
-    let hasMore = true;
-    while (hasMore) {
-      const { data, error } = await (supabase as any)
-        .from('pedidos_site')
-        .select('*')
-        .order('criado_em', { ascending: false })
-        .range(from, from + PAGE_SIZE - 1);
-      if (error) { toast.error('Erro ao carregar pedidos'); break; }
-      if (data) allRows.push(...(data as PedidoSite[]));
-      hasMore = (data?.length || 0) === PAGE_SIZE;
-      from += PAGE_SIZE;
-    }
-    setPedidos(allRows);
-    setLoading(false);
-  }, []);
+  const { data: pedidos = [], isLoading: loading } = useQuery({
+    queryKey: ['pedidos-site'],
+    queryFn: async () => {
+      const allRows: PedidoSite[] = [];
+      const BATCH = 1000;
+      let from = 0;
+      let hasMore = true;
+      while (hasMore) {
+        const { data, error } = await (supabase as any)
+          .from('pedidos_site')
+          .select('*')
+          .order('criado_em', { ascending: false })
+          .range(from, from + BATCH - 1);
+        if (error) throw error;
+        if (data) allRows.push(...(data as PedidoSite[]));
+        hasMore = (data?.length || 0) === BATCH;
+        from += BATCH;
+      }
+      return allRows;
+    },
+    staleTime: 30_000,
+  });
 
   useEffect(() => {
-    fetchPedidos();
     const channel = supabase
       .channel('pedidos-site-rt')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos_site' }, () => fetchPedidos())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos_site' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['pedidos-site'] });
+      })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [fetchPedidos]);
+  }, [queryClient]);
 
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = {};
