@@ -156,7 +156,7 @@ export default function NovaRupturaPage() {
       motivo_cancelamento: motivo_cancelamento || undefined,
     }));
 
-    const { error } = await supabase.from('rupturas').insert(toInsert);
+    const { error } = await supabase.from('rupturas').upsert(toInsert, { onConflict: 'numero_pedido,sku', ignoreDuplicates: true });
     setImporting(false);
     if (error) { toast.error('Erro ao importar: ' + error.message); return; }
     toast.success(`${toInsert.length} rupturas importadas${duplicates.length > 0 ? ` (${duplicates.length} duplicadas ignoradas)` : ''}`);
