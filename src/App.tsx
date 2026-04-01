@@ -46,6 +46,7 @@ const ResumoOperacaoPage = React.lazy(() => import("@/pages/expedicao/ResumoOper
 const SomatorioPage = React.lazy(() => import("@/pages/expedicao/SomatorioPage"));
 const PlaceholderPage = React.lazy(() => import("@/components/PlaceholderPage"));
 const PrecificacaoPage = React.lazy(() => import("@/pages/compras/PrecificacaoPage"));
+const MarcasFornecedoresPage = React.lazy(() => import("@/pages/compras/MarcasFornecedoresPage"));
 const UserManagementPage = React.lazy(() => import("@/pages/ti/UserManagementPage"));
 const ActivityLogPage = React.lazy(() => import("@/pages/ti/ActivityLogPage"));
 const ChamadosPage = React.lazy(() => import("@/pages/ti/ChamadosPage"));
