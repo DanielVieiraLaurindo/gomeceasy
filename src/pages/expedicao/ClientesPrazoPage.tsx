@@ -611,9 +611,11 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissio
 // MAIN PAGE
 // ================================================================
 export default function ClientesPrazoPage() {
-  const { data: requisicoes = [], isLoading, create, update, remove } = useClientesPrazo();
   const { user, profile } = useAuth();
   const permissions = usePagePermissions();
+  // Comercial users: filter at DB level to avoid flicker
+  const filterUserId = permissions.onlyOwnRequisitions ? user?.id : null;
+  const { data: requisicoes = [], isLoading, create, update, remove } = useClientesPrazo(filterUserId);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [novaOpen, setNovaOpen] = useState(false);
