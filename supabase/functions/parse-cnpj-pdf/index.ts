@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,11 +11,39 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    // Auth check
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Não autorizado" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Não autorizado" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { pdfText } = await req.json();
-    if (!pdfText) throw new Error("pdfText is required");
+    if (!pdfText) {
+      return new Response(JSON.stringify({ error: "pdfText é obrigatório" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!lovableApiKey) throw new Error("LOVABLE_API_KEY not configured");
+    if (!lovableApiKey) {
+      console.error("LOVABLE_API_KEY not configured");
+      return new Response(JSON.stringify({ error: "Serviço de IA indisponível" }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -57,13 +86,14 @@ Return valid JSON only, no markdown.`
     try {
       data = JSON.parse(rawText);
     } catch {
-      throw new Error("AI API returned invalid JSON response: " + rawText.substring(0, 200));
+      console.error("AI API returned invalid JSON response");
+      return new Response(JSON.stringify({ error: "Erro ao processar resposta da IA" }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
     const content = data.choices?.[0]?.message?.content || "[]";
     
-    // Clean potential markdown wrapping and extract JSON array
     let cleaned = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    // Extract first JSON array if there's extra text
     const arrayMatch = cleaned.match(/\[[\s\S]*\]/);
     if (arrayMatch) cleaned = arrayMatch[0];
     const rows = JSON.parse(cleaned);
@@ -72,7 +102,8 @@ Return valid JSON only, no markdown.`
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error("parse-cnpj-pdf error:", error);
+    return new Response(JSON.stringify({ error: "Erro interno ao processar PDF" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
