@@ -1,21 +1,45 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useEffect } from 'react';
 
-export function useClientesPrazo() {
+/**
+ * @param filterByUserId – when set, only returns rows where created_by = userId (for comercial users)
+ */
+export function useClientesPrazo(filterByUserId?: string | null) {
   const qc = useQueryClient();
 
   const query = useQuery({
-    queryKey: ['clientes-prazo'],
+    queryKey: ['clientes-prazo', filterByUserId || 'all'],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      let q = (supabase as any)
         .from('clientes_prazo')
         .select('*')
         .order('created_at', { ascending: false });
+      if (filterByUserId) {
+        q = q.eq('created_by', filterByUserId);
+      }
+      const { data, error } = await q;
       if (error) throw error;
       return data || [];
     },
   });
+
+  // Realtime subscription
+  useEffect(() => {
+    const channel = supabase
+      .channel('clientes-prazo-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'clientes_prazo' },
+        () => {
+          qc.invalidateQueries({ queryKey: ['clientes-prazo'] });
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [qc]);
 
   const create = useMutation({
     mutationFn: async (item: any) => {
