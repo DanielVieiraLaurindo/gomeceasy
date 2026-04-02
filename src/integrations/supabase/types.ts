@@ -618,6 +618,48 @@ export type Database = {
         }
         Relationships: []
       }
+      cliente_scores: {
+        Row: {
+          codigo_cliente: string
+          created_at: string
+          id: string
+          media_dias_atraso: number
+          nome_cliente: string
+          requisicoes_atrasadas: number
+          requisicoes_em_dia: number
+          score_estrelas: number
+          total_requisicoes: number
+          updated_at: string
+          valor_total_movimentado: number
+        }
+        Insert: {
+          codigo_cliente: string
+          created_at?: string
+          id?: string
+          media_dias_atraso?: number
+          nome_cliente: string
+          requisicoes_atrasadas?: number
+          requisicoes_em_dia?: number
+          score_estrelas?: number
+          total_requisicoes?: number
+          updated_at?: string
+          valor_total_movimentado?: number
+        }
+        Update: {
+          codigo_cliente?: string
+          created_at?: string
+          id?: string
+          media_dias_atraso?: number
+          nome_cliente?: string
+          requisicoes_atrasadas?: number
+          requisicoes_em_dia?: number
+          score_estrelas?: number
+          total_requisicoes?: number
+          updated_at?: string
+          valor_total_movimentado?: number
+        }
+        Relationships: []
+      }
       clientes_prazo: {
         Row: {
           autorizacao_url: string | null
