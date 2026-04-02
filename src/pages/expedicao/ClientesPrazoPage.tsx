@@ -103,14 +103,14 @@ function usePagePermissions(): Permissions {
 
   return {
     canCreate: isMaster || isComercial || isSupervisor || isFinanceiro,
-    canInsertLink: isMaster || isFinanceiro,
+    canInsertLink: isMaster || isFinanceiro || isComercial,
     canDelete: isMaster, // only master deletes
     canAuthorize: isMaster || isSupervisor,
     canEdit: isMaster || isSupervisor,
     canRegisterPayment: isMaster || isFinanceiro,
     onlyOwnRequisitions: isComercial, // comercial sees only own
     requireObservation: isComercial, // comercial must fill observation
-    canSelectPosterior: isMaster || isSupervisor || isFinanceiro, // comercial cannot select "pagar_posteriormente"
+    canSelectPosterior: isMaster || isSupervisor || isFinanceiro || isComercial,
     linkPagoSimple: true, // when link_pagamento, just click "Pago"
   };
 }
