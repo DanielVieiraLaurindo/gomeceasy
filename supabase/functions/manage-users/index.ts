@@ -16,7 +16,10 @@ Deno.serve(async (req) => {
     )
 
     // Verify caller is master/admin
-    const authHeader = req.headers.get('Authorization')!
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Não autorizado' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
     const token = authHeader.replace('Bearer ', '')
     const { data: { user: caller } } = await supabaseAdmin.auth.getUser(token)
     if (!caller) return new Response(JSON.stringify({ error: 'Não autorizado' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
@@ -37,7 +40,7 @@ Deno.serve(async (req) => {
         email_confirm: true,
         user_metadata: { nome, setor },
       })
-      if (error) return new Response(JSON.stringify({ error: error.message }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      if (error) return new Response(JSON.stringify({ error: 'Erro ao criar usuário' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 
       // Update profile role and login_username
       if (data.user) {
@@ -60,7 +63,7 @@ Deno.serve(async (req) => {
     if (action === 'reset_password') {
       const { user_id, new_password } = body
       const { error } = await supabaseAdmin.auth.admin.updateUserById(user_id, { password: new_password })
-      if (error) return new Response(JSON.stringify({ error: error.message }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      if (error) return new Response(JSON.stringify({ error: 'Erro ao redefinir senha' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 
       await supabaseAdmin.from('activity_log').insert({
         usuario_id: caller.id, acao: 'redefinir_senha', tabela: 'profiles',
@@ -108,6 +111,7 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({ error: 'Ação inválida' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    console.error('manage-users error:', err);
+    return new Response(JSON.stringify({ error: 'Erro interno' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   }
 })
