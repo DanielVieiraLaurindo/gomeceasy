@@ -87,110 +87,367 @@ export function FulfillmentDashboard() {
   );
 }
 
+function useMLAnuncios() {
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    const ch = supabase.channel('ml-anuncios-rt').on('postgres_changes', { event: '*', schema: 'public', table: 'ml_anuncios' }, () => {
+      queryClient.invalidateQueries({ queryKey: ['ml-anuncios'] });
+    }).subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [queryClient]);
+  return useQuery({
+    queryKey: ['ml-anuncios'],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from('ml_anuncios').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 30_000,
+  });
+}
+
+/** Parse composite SKU like "1;087198+1;F23081" into components [{qty:1, sku:"087198"}, {qty:1, sku:"F23081"}] */
+function parseCompositeSku(sku: string): { qty: number; sku: string }[] {
+  if (!sku) return [];
+  return sku.split('+').map(part => {
+    const match = part.match(/^(\d+);(.+)$/);
+    if (match) return { qty: parseInt(match[1]), sku: match[2].trim() };
+    return { qty: 1, sku: part.trim() };
+  });
+}
+
 export function CentralEstoquePage() {
-  const { data: products = [], isLoading } = useProducts();
+  const { data: anuncios = [], isLoading } = useMLAnuncios();
+  const { data: products = [] } = useProducts();
   const { data: allBuyerBrands = [] } = useAllBuyerBrands();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [newDialog, setNewDialog] = useState(false);
+  const [editDialog, setEditDialog] = useState<any | null>(null);
+  const [form, setForm] = useState<any>({ titulo: '', sku: '', mlb: '', foto_url: '', suitable_for_sale: 0, not_suitable_for_sale: 0, on_the_way: 0, vendas_30_dias: 0 });
+  const [filter, setFilter] = useState<string>('all');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const updateProduct = useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: any }) => {
-      const { error } = await (supabase as any).from('products').update(updates).eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['products-full'] }),
+  const createAnuncio = useMutation({
+    mutationFn: async (data: any) => { const { error } = await (supabase as any).from('ml_anuncios').insert(data); if (error) throw error; },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['ml-anuncios'] }); toast.success('Anúncio criado'); setNewDialog(false); },
   });
 
-  const deleteProduct = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await (supabase as any).from('products').update({ ativo: false }).eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['products-full'] }); toast.success('Produto removido'); },
+  const updateAnuncio = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: any }) => { const { error } = await (supabase as any).from('ml_anuncios').update(updates).eq('id', id); if (error) throw error; },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['ml-anuncios'] }); toast.success('Anúncio atualizado'); setEditDialog(null); },
+  });
+
+  const deleteAnuncio = useMutation({
+    mutationFn: async (id: string) => { const { error } = await (supabase as any).from('ml_anuncios').delete().eq('id', id); if (error) throw error; },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['ml-anuncios'] }); toast.success('Anúncio removido'); },
   });
 
   const sendToPurchases = useMutation({
-    mutationFn: async (p: any) => {
-      const buyerId = p.fornecedor_id ? findBuyerForBrand(allBuyerBrands as any[], p.fornecedor_id) : null;
-      const insertData: any = { sku: p.sku, fornecedor: '', quantidade: getSuggestion(p), status: 'Iniciar' };
-      if (buyerId) insertData.comprador_atribuido = buyerId;
-      const { error } = await (supabase as any).from('purchases_full').insert(insertData);
-      if (error) throw error;
+    mutationFn: async (a: any) => {
+      const components = parseCompositeSku(a.sku);
+      for (const comp of components) {
+        const product = (products as any[]).find((p: any) => p.sku.toLowerCase() === comp.sku.toLowerCase() || (p.codigo_interno || '').toLowerCase() === comp.sku.toLowerCase());
+        const buyerId = product?.fornecedor_id ? findBuyerForBrand(allBuyerBrands as any[], product.fornecedor_id) : null;
+        const insertData: any = { sku: comp.sku, fornecedor: '', quantidade: comp.qty * getSuggestion(a), status: 'Iniciar' };
+        if (buyerId) insertData.comprador_atribuido = buyerId;
+        const { error } = await (supabase as any).from('purchases_full').insert(insertData);
+        if (error) throw error;
+      }
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['purchases-full'] }); toast.success('Enviado para Pedidos de Compras'); },
   });
 
+  const getDaysOfCoverage = (a: any) => { const v = a.vendas_30_dias || 0; if (v === 0) return '∞'; return Math.floor(((a.suitable_for_sale || 0) / v) * 30); };
+  const getSuggestion = (a: any) => { const v = a.vendas_30_dias || 0; const apt = a.suitable_for_sale || 0; return Math.max(0, Math.ceil((v / 30) * 50) - apt); };
+
+  const getStockStatus = (a: any) => {
+    const apt = a.suitable_for_sale || 0;
+    const v = a.vendas_30_dias || 0;
+    const cov = v > 0 ? Math.floor((apt / v) * 30) : 999;
+    if (apt === 0 && v > 0) return 'falta';
+    if (cov <= 7) return 'baixo';
+    return 'ok';
+  };
+
+  const canLoja1Cover = (a: any) => {
+    const components = parseCompositeSku(a.sku);
+    return components.length > 0 && components.every(comp => {
+      const product = (products as any[]).find((p: any) => p.sku.toLowerCase() === comp.sku.toLowerCase() || (p.codigo_interno || '').toLowerCase() === comp.sku.toLowerCase());
+      return product && (product.estoque_loja1 || 0) >= comp.qty;
+    });
+  };
+
+  const hasSalesDrop = (a: any) => {
+    // Simple heuristic: if stock is high but sales dropped to 0
+    return (a.suitable_for_sale || 0) > 20 && (a.vendas_30_dias || 0) === 0;
+  };
+
   const filtered = useMemo(() => {
+    let items = anuncios;
     const s = search.toLowerCase();
-    if (!s) return products;
-    return products.filter((p: any) => p.sku.toLowerCase().includes(s) || (p.descricao || '').toLowerCase().includes(s) || (p.mlb || '').toLowerCase().includes(s));
-  }, [products, search]);
+    if (s) items = items.filter((a: any) => (a.titulo || '').toLowerCase().includes(s) || (a.sku || '').toLowerCase().includes(s) || (a.mlb || '').toLowerCase().includes(s));
+    if (filter === 'ok') items = items.filter((a: any) => getStockStatus(a) === 'ok');
+    if (filter === 'loja1') items = items.filter((a: any) => canLoja1Cover(a));
+    if (filter === 'falta') items = items.filter((a: any) => getStockStatus(a) === 'falta');
+    if (filter === 'queda') items = items.filter((a: any) => hasSalesDrop(a));
+    return items;
+  }, [anuncios, search, filter, products]);
 
-  const getDaysOfCoverage = (p: any) => { const v = p.vendas_30_dias || 0; if (v === 0) return '∞'; return Math.floor(((p.suitable_for_sale || p.estoque_fullfilment || 0) / v) * 30); };
-  const getSuggestion = (p: any) => { const v = p.vendas_30_dias || 0; const a = p.suitable_for_sale || p.estoque_fullfilment || 0; return Math.max(0, Math.ceil((v / 30) * 50) - a); };
+  const statusCounts = useMemo(() => ({
+    ok: anuncios.filter((a: any) => getStockStatus(a) === 'ok').length,
+    loja1: anuncios.filter((a: any) => canLoja1Cover(a)).length,
+    falta: anuncios.filter((a: any) => getStockStatus(a) === 'falta').length,
+    queda: anuncios.filter((a: any) => hasSalesDrop(a)).length,
+  }), [anuncios, products]);
 
-  const handleBulkDelete = async () => {
-    for (const id of selectedIds) await deleteProduct.mutateAsync(id);
-    setSelectedIds(new Set());
-    toast.success(`${selectedIds.size} produtos removidos`);
+  const getComponentsInfo = (sku: string) => {
+    const components = parseCompositeSku(sku);
+    return components.map(comp => {
+      const product = (products as any[]).find((p: any) => p.sku.toLowerCase() === comp.sku.toLowerCase() || (p.codigo_interno || '').toLowerCase() === comp.sku.toLowerCase());
+      return { ...comp, product };
+    });
+  };
+
+  const handleBulkDelete = async () => { for (const id of selectedIds) await deleteAnuncio.mutateAsync(id); setSelectedIds(new Set()); };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; if (!file) return;
+    try {
+      const ab = await file.arrayBuffer(); const wb = XLSX.read(ab); const ws = wb.Sheets[wb.SheetNames[0]]; const json = XLSX.utils.sheet_to_json<any>(ws);
+      let imported = 0;
+      for (const row of json) {
+        const sku = row['SKU'] || row['sku']; if (!sku) continue;
+        const { error } = await (supabase as any).from('ml_anuncios').insert({
+          titulo: row['Titulo'] || row['titulo'] || row['Título'] || '',
+          sku, mlb: row['MLB'] || row['mlb'] || '', foto_url: row['Foto'] || row['foto_url'] || '',
+          suitable_for_sale: parseInt(row['Apto'] || row['suitable_for_sale'] || '0') || 0,
+          not_suitable_for_sale: parseInt(row['Inapto'] || row['not_suitable_for_sale'] || '0') || 0,
+          on_the_way: parseInt(row['A Caminho'] || row['on_the_way'] || '0') || 0,
+          vendas_30_dias: parseInt(row['Vendas 30d'] || row['vendas_30_dias'] || '0') || 0,
+        });
+        if (!error) imported++;
+      }
+      toast.success(`${imported} anúncios importados`);
+      queryClient.invalidateQueries({ queryKey: ['ml-anuncios'] });
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } catch { toast.error('Erro ao importar'); }
   };
 
   if (isLoading) return <div className="space-y-2">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12" />)}</div>;
 
   return (
     <div className="space-y-4">
+      <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImport} />
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div><h2 className="text-xl font-bold">Central de Estoque Full</h2><p className="text-sm text-muted-foreground">Planejamento e gestão de estoque</p></div>
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-primary/10 rounded-lg"><Warehouse className="h-6 w-6 text-primary" /></div>
+          <div><h2 className="text-xl font-bold">Central de Estoque Full</h2><p className="text-sm text-muted-foreground">Planejamento e gestão de estoque Mercado Livre Full</p></div>
+        </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="gap-2" onClick={() => toast.info('Configurar endpoint da API de estoque nas configurações.')}><RefreshCw className="w-4 h-4" />Atualizar Estoque</Button>
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => toast.info('Configurar URL do Webhook nas configurações.')}><Send className="w-4 h-4" />Webhook</Button>
-          {selectedIds.size > 0 && <Button variant="destructive" size="sm" onClick={handleBulkDelete}><Trash2 className="w-4 h-4 mr-1" />Excluir {selectedIds.size}</Button>}
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => toast.info('Configurar URL do Webhook nas configurações.')}><Link2 className="w-4 h-4" />Webhook</Button>
+          <Button onClick={() => { setForm({ titulo: '', sku: '', mlb: '', foto_url: '', suitable_for_sale: 0, not_suitable_for_sale: 0, on_the_way: 0, vendas_30_dias: 0 }); setNewDialog(true); }} className="gap-2"><Plus className="w-4 h-4" />Novo Produto</Button>
         </div>
       </div>
-      <div className="relative max-w-sm"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Buscar SKU, descrição ou MLB..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} /></div>
-      <Card><CardContent className="p-0"><div className="overflow-x-auto">
-        <Table>
-          <TableHeader><TableRow>
-            <TableHead className="w-10"><Checkbox checked={selectedIds.size === filtered.length && filtered.length > 0} onCheckedChange={c => setSelectedIds(c ? new Set(filtered.map((p: any) => p.id)) : new Set())} /></TableHead>
-            <TableHead>Foto</TableHead>
-            <TableHead>Título/SKU</TableHead>
-            <TableHead className="text-center">⭐</TableHead>
-            <TableHead className="text-right">Apto</TableHead>
-            <TableHead className="text-right">A Caminho</TableHead>
-            <TableHead className="text-right">Vendas 30d</TableHead>
-            <TableHead className="text-center">Sugestão</TableHead>
-            <TableHead className="text-right">Cobertura</TableHead>
-            <TableHead>Ações</TableHead>
-          </TableRow></TableHeader>
-          <TableBody>
-            {filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Nenhum produto encontrado</TableCell></TableRow>
-            ) : filtered.map((p: any) => {
-              const sug = getSuggestion(p); const cov = getDaysOfCoverage(p);
+
+      <Card><CardContent className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold">Anúncios ({anuncios.length})</h3>
+          <div className="flex items-center gap-3">
+            <div className="flex border rounded-lg overflow-hidden">
+              <button className={`p-1.5 ${viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'bg-card'}`} onClick={() => setViewMode('list')}><List className="w-4 h-4" /></button>
+              <button className={`p-1.5 ${viewMode === 'grid' ? 'bg-primary text-primary-foreground' : 'bg-card'}`} onClick={() => setViewMode('grid')}><LayoutGrid className="w-4 h-4" /></button>
+            </div>
+            <div className="relative max-w-xs"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Buscar SKU, MLB ou título..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} /></div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2 mb-4">
+          <Badge className={`cursor-pointer px-3 py-1.5 ${filter === 'ok' ? 'bg-green-500/20 text-green-700 ring-1 ring-green-500/30' : 'bg-green-500/10 text-green-600'}`} onClick={() => setFilter(filter === 'ok' ? 'all' : 'ok')}>
+            🟢 Estoque OK
+          </Badge>
+          <Badge className={`cursor-pointer px-3 py-1.5 ${filter === 'loja1' ? 'bg-yellow-500/20 text-yellow-700 ring-1 ring-yellow-500/30' : 'bg-yellow-500/10 text-yellow-600'}`} onClick={() => setFilter(filter === 'loja1' ? 'all' : 'loja1')}>
+            🟡 Loja 1 pode cobrir
+          </Badge>
+          <Badge className={`cursor-pointer px-3 py-1.5 ${filter === 'falta' ? 'bg-destructive/20 text-destructive ring-1 ring-destructive/30' : 'bg-destructive/10 text-destructive'}`} onClick={() => setFilter(filter === 'falta' ? 'all' : 'falta')}>
+            🔴 Falta detectada
+          </Badge>
+          <Badge className={`cursor-pointer px-3 py-1.5 ${filter === 'queda' ? 'bg-muted ring-1 ring-border' : 'bg-muted/50 text-muted-foreground'}`} onClick={() => setFilter(filter === 'queda' ? 'all' : 'queda')}>
+            ↘ Queda de vendas
+          </Badge>
+        </div>
+
+        {selectedIds.size > 0 && <div className="flex items-center gap-2 p-2 bg-destructive/5 rounded-lg mb-3"><span className="text-sm">{selectedIds.size} selecionados</span><Button variant="destructive" size="sm" onClick={handleBulkDelete}><Trash2 className="w-4 h-4 mr-1" />Excluir</Button></div>}
+
+        {viewMode === 'list' ? (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader><TableRow>
+                <TableHead className="w-10"><Checkbox checked={selectedIds.size === filtered.length && filtered.length > 0} onCheckedChange={c => setSelectedIds(c ? new Set(filtered.map((a: any) => a.id)) : new Set())} /></TableHead>
+                <TableHead>Foto</TableHead>
+                <TableHead>Título / SKU</TableHead>
+                <TableHead className="text-center">⭐</TableHead>
+                <TableHead className="text-right">Apto ↕</TableHead>
+                <TableHead className="text-right">A Caminho ↕</TableHead>
+                <TableHead className="text-right">Inapto ↕</TableHead>
+                <TableHead className="text-right">Vendas 30d ↕</TableHead>
+                <TableHead className="text-center">Sugestão ↕</TableHead>
+                <TableHead className="text-right">Cobertura ↕</TableHead>
+                <TableHead>Ações</TableHead>
+              </TableRow></TableHeader>
+              <TableBody>
+                {filtered.length === 0 ? (
+                  <TableRow><TableCell colSpan={11} className="text-center py-8 text-muted-foreground">Nenhum anúncio encontrado</TableCell></TableRow>
+                ) : filtered.map((a: any) => {
+                  const sug = getSuggestion(a);
+                  const cov = getDaysOfCoverage(a);
+                  const components = getComponentsInfo(a.sku);
+                  const identifiedCount = components.filter(c => c.product).length;
+                  const isExpanded = expandedId === a.id;
+                  return (
+                    <React.Fragment key={a.id}>
+                      <TableRow className="hover:bg-muted/30">
+                        <TableCell><Checkbox checked={selectedIds.has(a.id)} onCheckedChange={() => setSelectedIds(prev => { const n = new Set(prev); n.has(a.id) ? n.delete(a.id) : n.add(a.id); return n; })} /></TableCell>
+                        <TableCell>
+                          {a.foto_url ? (
+                            <img src={a.foto_url} alt={a.titulo} className="w-14 h-14 rounded object-cover border" />
+                          ) : (
+                            <div className="w-14 h-14 rounded bg-muted flex items-center justify-center"><ImageIcon className="w-5 h-5 text-muted-foreground" /></div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <p className="font-medium text-sm max-w-[250px] truncate">{a.titulo || '—'}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="font-mono text-xs text-muted-foreground">{a.sku}</span>
+                            {a.mlb && <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-mono">{a.mlb}</Badge>}
+                          </div>
+                          {components.length > 1 && (
+                            <button onClick={() => setExpandedId(isExpanded ? null : a.id)} className="flex items-center gap-1 mt-1 text-xs text-muted-foreground hover:text-foreground">
+                              {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                              <Package className="w-3 h-3" />
+                              {identifiedCount}/{components.length} componentes identificados
+                            </button>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <button onClick={() => updateAnuncio.mutate({ id: a.id, updates: { is_star_product: !a.is_star_product } })} className={a.is_star_product ? 'text-yellow-500' : 'text-muted-foreground/30'}>
+                            <Star className="w-4 h-4" fill={a.is_star_product ? 'currentColor' : 'none'} />
+                          </button>
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-green-600">{a.suitable_for_sale || 0}</TableCell>
+                        <TableCell className="text-right">
+                          <span className="font-mono text-blue-600">{a.on_the_way || 0}</span>
+                          {(a.on_the_way || 0) > 0 && <span className="ml-1 text-muted-foreground text-xs">⏳</span>}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {(a.not_suitable_for_sale || 0) > 0 ? (
+                            <span className="font-mono text-destructive">{a.not_suitable_for_sale}<span className="ml-1">⚠️</span></span>
+                          ) : <span className="text-muted-foreground text-xs">-</span>}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">{a.vendas_30_dias || 0}</TableCell>
+                        <TableCell className="text-center">
+                          {sug > 0 ? <span className="font-mono text-blue-600 font-medium">{sug}</span> : <span className="text-muted-foreground text-xs">0</span>}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Badge variant={typeof cov === 'number' && cov <= 7 ? 'destructive' : typeof cov === 'number' && cov <= 15 ? 'secondary' : 'outline'} className="text-xs font-mono">{cov === '∞' ? '∞' : `${cov}d`}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditDialog(a); setForm(a); }} title="Editar"><Edit className="w-3.5 h-3.5" /></Button>
+                            {sug > 0 && <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => sendToPurchases.mutate(a)} title="Enviar para Compras"><ShoppingCart className="w-3.5 h-3.5" /></Button>}
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteAnuncio.mutate(a.id)} title="Excluir"><Trash2 className="w-3.5 h-3.5" /></Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                      {isExpanded && components.length > 1 && (
+                        <TableRow className="bg-muted/20">
+                          <TableCell colSpan={11} className="py-2 px-12">
+                            <div className="space-y-1">
+                              {components.map((comp, i) => (
+                                <div key={i} className="flex items-center gap-3 text-xs">
+                                  <span className="font-mono font-medium">{comp.qty}x {comp.sku}</span>
+                                  {comp.product ? (
+                                    <span className="text-green-600 flex items-center gap-1">✅ {comp.product.descricao || comp.product.sku}</span>
+                                  ) : (
+                                    <span className="text-muted-foreground">❌ Não identificado</span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            {filtered.map((a: any) => {
+              const sug = getSuggestion(a);
+              const cov = getDaysOfCoverage(a);
               return (
-                <TableRow key={p.id} className="hover:bg-muted/30">
-                  <TableCell><Checkbox checked={selectedIds.has(p.id)} onCheckedChange={() => setSelectedIds(prev => { const n = new Set(prev); n.has(p.id) ? n.delete(p.id) : n.add(p.id); return n; })} /></TableCell>
-                  <TableCell><div className="w-10 h-10 rounded bg-muted flex items-center justify-center text-xs text-muted-foreground">—</div></TableCell>
-                  <TableCell><p className="font-mono font-medium">{p.sku}</p><p className="text-xs text-muted-foreground max-w-[200px] truncate">{p.descricao || '—'}</p></TableCell>
-                  <TableCell className="text-center"><button onClick={() => updateProduct.mutate({ id: p.id, updates: { is_star_product: !p.is_star_product } })} className={p.is_star_product ? 'text-yellow-500' : 'text-muted-foreground/30'}><Star className="w-4 h-4" fill={p.is_star_product ? 'currentColor' : 'none'} /></button></TableCell>
-                  <TableCell className="text-right font-mono">{p.suitable_for_sale || p.estoque_fullfilment || 0}</TableCell>
-                  <TableCell className="text-right font-mono">{p.on_the_way || 0}</TableCell>
-                  <TableCell className="text-right font-mono">{p.vendas_30_dias || 0}</TableCell>
-                  <TableCell className="text-center">{sug > 0 ? <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => sendToPurchases.mutate(p)}>{sug} un</Button> : <span className="text-muted-foreground text-xs">—</span>}</TableCell>
-                  <TableCell className="text-right"><Badge variant={typeof cov === 'number' && cov < 15 ? 'destructive' : 'outline'} className="text-xs">{cov}d</Badge></TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => sendToPurchases.mutate(p)} title="Enviar para Compras Full"><Send className="w-3.5 h-3.5" /></Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteProduct.mutate(p.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                <Card key={a.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => { setEditDialog(a); setForm(a); }}>
+                  <div className="aspect-square bg-muted relative">
+                    {a.foto_url ? <img src={a.foto_url} alt={a.titulo} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><ImageIcon className="w-8 h-8 text-muted-foreground" /></div>}
+                    {a.is_star_product && <Star className="absolute top-2 left-2 w-5 h-5 text-yellow-500" fill="currentColor" />}
+                    <Badge variant={typeof cov === 'number' && cov <= 7 ? 'destructive' : 'outline'} className="absolute top-2 right-2 text-[10px]">{cov === '∞' ? '∞' : `${cov}d`}</Badge>
+                  </div>
+                  <CardContent className="p-3 space-y-1">
+                    <p className="text-sm font-medium truncate">{a.titulo || '—'}</p>
+                    <p className="font-mono text-xs text-muted-foreground truncate">{a.sku}</p>
+                    {a.mlb && <Badge variant="outline" className="text-[10px] font-mono">{a.mlb}</Badge>}
+                    <div className="flex justify-between text-xs pt-1">
+                      <span className="text-green-600">Apto: {a.suitable_for_sale || 0}</span>
+                      <span>V30d: {a.vendas_30_dias || 0}</span>
                     </div>
-                  </TableCell>
-                </TableRow>
+                    {sug > 0 && <p className="text-xs text-blue-600 font-medium">Sugestão: {sug} un</p>}
+                  </CardContent>
+                </Card>
               );
             })}
-          </TableBody>
-        </Table>
-      </div></CardContent></Card>
+          </div>
+        )}
+      </CardContent></Card>
+
+      {/* New / Edit Dialog */}
+      <Dialog open={newDialog || !!editDialog} onOpenChange={open => { if (!open) { setNewDialog(false); setEditDialog(null); } }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>{editDialog ? 'Editar' : 'Novo'} Anúncio ML</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div><Label>Título *</Label><Input value={form.titulo || ''} onChange={e => setForm((f: any) => ({ ...f, titulo: e.target.value }))} placeholder="Tampa De Válvula Com Vedação..." /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>SKU (composta) *</Label><Input value={form.sku || ''} onChange={e => setForm((f: any) => ({ ...f, sku: e.target.value }))} placeholder="1;087198+1;F23081" /></div>
+              <div><Label>MLB</Label><Input value={form.mlb || ''} onChange={e => setForm((f: any) => ({ ...f, mlb: e.target.value }))} placeholder="MLB12345678" /></div>
+            </div>
+            <div><Label>URL da Foto</Label><Input value={form.foto_url || ''} onChange={e => setForm((f: any) => ({ ...f, foto_url: e.target.value }))} placeholder="https://..." /></div>
+            <div className="grid grid-cols-4 gap-3">
+              <div><Label className="text-xs">Apto</Label><Input type="number" value={form.suitable_for_sale || 0} onChange={e => setForm((f: any) => ({ ...f, suitable_for_sale: +e.target.value }))} /></div>
+              <div><Label className="text-xs">Inapto</Label><Input type="number" value={form.not_suitable_for_sale || 0} onChange={e => setForm((f: any) => ({ ...f, not_suitable_for_sale: +e.target.value }))} /></div>
+              <div><Label className="text-xs">A Caminho</Label><Input type="number" value={form.on_the_way || 0} onChange={e => setForm((f: any) => ({ ...f, on_the_way: +e.target.value }))} /></div>
+              <div><Label className="text-xs">Vendas 30d</Label><Input type="number" value={form.vendas_30_dias || 0} onChange={e => setForm((f: any) => ({ ...f, vendas_30_dias: +e.target.value }))} /></div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setNewDialog(false); setEditDialog(null); }}>Cancelar</Button>
+            <Button onClick={() => {
+              if (!form.sku) { toast.error('SKU é obrigatório'); return; }
+              if (editDialog) {
+                const { id, created_at, updated_at, ...updates } = form;
+                updateAnuncio.mutate({ id: editDialog.id, updates });
+              } else {
+                createAnuncio.mutate(form);
+              }
+            }}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
