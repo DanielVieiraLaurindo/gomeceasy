@@ -20,6 +20,7 @@ const MENU_ITEMS = [
   { key: 'fiscal', label: 'Dados Fiscais', icon: FileText },
   { key: 'cds', label: 'Centro de Distribuição', icon: MapPin },
   { key: 'produtos', label: 'Cadastro de Produtos', icon: Package },
+  { key: 'marcas', label: 'Minhas Marcas', icon: Tag },
 ];
 
 function CentrosDistribuicaoPage() {
