@@ -248,8 +248,26 @@ export function CentralEstoquePage() {
           <div><h2 className="text-xl font-bold">Central de Estoque Full</h2><p className="text-sm text-muted-foreground">Planejamento e gestão de estoque Mercado Livre Full</p></div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => toast.info('Configurar endpoint da API de estoque nas configurações.')}><RefreshCw className="w-4 h-4" />Atualizar Estoque</Button>
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => toast.info('Configurar URL do Webhook nas configurações.')}><Link2 className="w-4 h-4" />Webhook</Button>
+          <Button variant="outline" size="sm" className="gap-2" onClick={async () => {
+            try {
+              toast.info('Sincronizando estoque via webhook...');
+              const res = await fetch('https://zlpwomncbzdjwyymdlzo.supabase.co/functions/v1/ml-inventory-webhook', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpscHdvbW5jYnpkand5eW1kbHpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU0NTgzODcsImV4cCI6MjA4MTAzNDM4N30.sZeTs7gKoeXOQ88Yz26YK8FkI6FqSd9qvdduenhgqk8' },
+                body: JSON.stringify({ action: 'sync' }),
+              });
+              if (!res.ok) throw new Error(`Erro ${res.status}`);
+              const data = await res.json();
+              toast.success(`Webhook executado com sucesso! ${data.updated ?? ''}`);
+              queryClient.invalidateQueries({ queryKey: ['ml-anuncios'] });
+            } catch (err: any) {
+              toast.error(`Erro ao chamar webhook: ${err.message}`);
+            }
+          }}><RefreshCw className="w-4 h-4" />Atualizar Estoque</Button>
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => {
+            navigator.clipboard.writeText('https://zlpwomncbzdjwyymdlzo.supabase.co/functions/v1/ml-inventory-webhook');
+            toast.success('URL do Webhook copiada!');
+          }}><Link2 className="w-4 h-4" />Webhook</Button>
           <Button onClick={() => { setForm({ titulo: '', sku: '', mlb: '', foto_url: '', suitable_for_sale: 0, not_suitable_for_sale: 0, on_the_way: 0, vendas_30_dias: 0 }); setNewDialog(true); }} className="gap-2"><Plus className="w-4 h-4" />Novo Produto</Button>
         </div>
       </div>
