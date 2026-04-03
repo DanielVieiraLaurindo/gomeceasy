@@ -89,6 +89,7 @@ export function FulfillmentDashboard() {
 
 export function CentralEstoquePage() {
   const { data: products = [], isLoading } = useProducts();
+  const { data: allBuyerBrands = [] } = useAllBuyerBrands();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
