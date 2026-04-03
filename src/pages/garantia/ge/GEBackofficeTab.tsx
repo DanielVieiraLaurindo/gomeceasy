@@ -434,6 +434,7 @@ export default function GEBackofficeTab() {
           </div>
           <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImportCases} />
           <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}><Upload className="w-4 h-4 mr-1" />Importar</Button>
+          <Button variant="ghost" size="sm" onClick={handleDownloadTemplate}><FileDown className="w-4 h-4 mr-1" />Modelo</Button>
           <Button variant="outline" size="sm" onClick={handleExportCases}><Download className="w-4 h-4 mr-1" />Exportar</Button>
           <Button onClick={() => setIsNewCaseOpen(true)}><Plus className="w-4 h-4 mr-1" />Novo Caso</Button>
         </div>
