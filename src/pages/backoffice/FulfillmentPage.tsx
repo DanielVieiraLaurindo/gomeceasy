@@ -121,6 +121,7 @@ export default function FulfillmentPage() {
       case 'fiscal': return <DadosFiscaisPage />;
       case 'cds': return <CentrosDistribuicaoPage />;
       case 'produtos': return <CadastroProdutosPage />;
+      case 'marcas': return <MinhasMarcasPage />;
       default: return <FulfillmentDashboard />;
     }
   };
