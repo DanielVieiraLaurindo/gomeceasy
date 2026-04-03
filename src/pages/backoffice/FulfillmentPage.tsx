@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, Warehouse, ShoppingCart, Truck, FileText, MapPin, Package, Plus, Trash2 } from 'lucide-react';
+import { LayoutDashboard, Warehouse, ShoppingCart, Truck, FileText, MapPin, Package, Plus, Trash2, Tag } from 'lucide-react';
 import { FulfillmentDashboard, CentralEstoquePage, PedidosComprasPage, DadosFiscaisPage, CadastroProdutosPage } from './FulfillmentSubPages';
 import EnviosFullPage from './EnviosFullPage';
+import MinhasMarcasPage from './MinhasMarcasPage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
