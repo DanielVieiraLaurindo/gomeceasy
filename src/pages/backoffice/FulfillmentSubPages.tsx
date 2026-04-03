@@ -391,7 +391,7 @@ export function PedidosComprasPage() {
           <Table>
             <TableHeader><TableRow>
               <TableHead className="w-10"><Checkbox checked={selectedIds.size === filtered.length && filtered.length > 0} onCheckedChange={c => setSelectedIds(c ? new Set(filtered.map((p: any) => p.id)) : new Set())} /></TableHead>
-              <TableHead>SKU</TableHead><TableHead>Fornecedor</TableHead><TableHead className="text-right">Custo</TableHead><TableHead className="text-center">Qtd</TableHead><TableHead className="text-right">Total</TableHead><TableHead>Previsão</TableHead><TableHead>Status</TableHead><TableHead>Obs</TableHead><TableHead>Ações</TableHead>
+              <TableHead>SKU</TableHead><TableHead>Fornecedor</TableHead><TableHead>Comprador</TableHead><TableHead className="text-right">Custo</TableHead><TableHead className="text-center">Qtd</TableHead><TableHead className="text-right">Total</TableHead><TableHead>Previsão</TableHead><TableHead>Status</TableHead><TableHead>Obs</TableHead><TableHead>Ações</TableHead>
             </TableRow></TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
