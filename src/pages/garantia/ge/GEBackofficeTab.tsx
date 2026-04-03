@@ -386,6 +386,25 @@ export default function GEBackofficeTab() {
     });
   };
 
+  const handleDownloadTemplate = () => {
+    const templateHeaders = [
+      'Status', 'Cliente', 'Documento', 'Nº Venda', 'Unidade', 'Marketplace',
+      'Tipo', 'Data Entrada', 'Analista', 'Condição', 'Motivo', 'Códigos Produto',
+      'Protocolo', 'Mediador', 'Reembolsado', 'Valor Reembolso', 'Full',
+      'Rastreio Fullfilment', 'NF Solicitada', 'Obs NF', 'Sem Antecipação'
+    ];
+    const exampleRow = [
+      'Antecipado', 'Nome do Cliente', '00000000000', '2000012345678', 'GAP',
+      'Mercado Livre', 'Devolução', '2026-01-01', 'Analista', 'Bom estado', 'Arrependimento',
+      'SKU001', '', '', 'Não', '0', 'Sim', '', 'Não', '', 'Não'
+    ];
+    const wsData = [templateHeaders, exampleRow];
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Modelo');
+    XLSX.writeFile(wb, 'modelo_importacao_backoffice.xlsx');
+  };
+
   const clearFilters = () => { setSearchInput(''); setFilters({ origemFilter: 'backoffice' }); };
   const hasFilters = Object.entries(filters).some(([k, v]) => k !== 'origemFilter' && v !== undefined && v !== '');
 
