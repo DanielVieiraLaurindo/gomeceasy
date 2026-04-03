@@ -368,6 +368,12 @@ export function PedidosComprasPage() {
                         <p className="font-mono font-medium text-sm">{p.sku}</p>
                         <p className="text-xs text-muted-foreground">{p.fornecedor}</p>
                         <div className="flex justify-between text-xs"><span>{p.quantidade} un</span><span className="font-mono">R$ {(Number(p.custo || 0) * (p.quantidade || 1)).toFixed(2)}</span></div>
+                        <div className="flex items-center gap-1 text-xs">
+                          <User className="w-3 h-3" />
+                          <span className={p.comprador_atribuido ? 'text-foreground' : 'text-muted-foreground italic'}>
+                            {p.comprador_atribuido ? profileMap.get(p.comprador_atribuido) || 'Desconhecido' : 'Sem atribuição'}
+                          </span>
+                        </div>
                         <Select value={p.status} onValueChange={v => updatePurchase.mutate({ id: p.id, updates: { status: v } })}>
                           <SelectTrigger className="h-6 text-xs border-0 p-0"><SelectValue /></SelectTrigger>
                           <SelectContent>{STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
