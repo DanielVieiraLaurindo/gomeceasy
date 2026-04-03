@@ -188,6 +188,7 @@ const App = () => (
                   <Route path="/compras/precificacao" element={<PrecificacaoPage />} />
                   {/* marcas removed - use marcas-fornecedores */}
                   <Route path="/compras/marcas-fornecedores" element={<MarcasFornecedoresPage />} />
+                  <Route path="/compras/minhas-marcas" element={<MinhasMarcasPage />} />
                   <Route path="/compras/follow-up" element={<PlaceholderPage title="Follow - Up" description="Acompanhamento de pedidos e fornecedores" />} />
                   <Route path="/compras/contratos" element={<PlaceholderPage title="Contratos" description="Gestão de contratos com fornecedores" />} />
                   <Route path="/compras/avaliacao-fornecedores" element={<PlaceholderPage title="Avaliação de Fornecedores" description="Avaliação e classificação de fornecedores" />} />
