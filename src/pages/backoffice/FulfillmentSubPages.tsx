@@ -112,7 +112,10 @@ export function CentralEstoquePage() {
 
   const sendToPurchases = useMutation({
     mutationFn: async (p: any) => {
-      const { error } = await (supabase as any).from('purchases_full').insert({ sku: p.sku, fornecedor: '', quantidade: getSuggestion(p), status: 'Iniciar' });
+      const buyerId = p.fornecedor_id ? findBuyerForBrand(allBuyerBrands as any[], p.fornecedor_id) : null;
+      const insertData: any = { sku: p.sku, fornecedor: '', quantidade: getSuggestion(p), status: 'Iniciar' };
+      if (buyerId) insertData.comprador_atribuido = buyerId;
+      const { error } = await (supabase as any).from('purchases_full').insert(insertData);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['purchases-full'] }); toast.success('Enviado para Pedidos de Compras'); },
