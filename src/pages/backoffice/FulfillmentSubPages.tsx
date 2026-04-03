@@ -14,8 +14,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Search, Plus, Trash2, Edit, Package, ShoppingCart, Star, AlertTriangle, Download, Upload, Send, LayoutGrid, List, Eye, RefreshCw } from 'lucide-react';
+import { Search, Plus, Trash2, Edit, Package, ShoppingCart, Star, AlertTriangle, Download, Upload, Send, LayoutGrid, List, Eye, RefreshCw, User } from 'lucide-react';
 import { useBrands } from '@/hooks/useEnvios';
+import { useAllBuyerBrands, findBuyerForBrand } from '@/hooks/useUserBrands';
 import * as XLSX from 'xlsx';
 
 function useProducts() {
