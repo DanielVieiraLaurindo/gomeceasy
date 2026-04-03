@@ -1543,6 +1543,51 @@ export type Database = {
         }
         Relationships: []
       }
+      ml_anuncios: {
+        Row: {
+          created_at: string
+          foto_url: string | null
+          id: string
+          is_star_product: boolean | null
+          mlb: string | null
+          not_suitable_for_sale: number | null
+          on_the_way: number | null
+          sku: string
+          suitable_for_sale: number | null
+          titulo: string
+          updated_at: string
+          vendas_30_dias: number | null
+        }
+        Insert: {
+          created_at?: string
+          foto_url?: string | null
+          id?: string
+          is_star_product?: boolean | null
+          mlb?: string | null
+          not_suitable_for_sale?: number | null
+          on_the_way?: number | null
+          sku?: string
+          suitable_for_sale?: number | null
+          titulo?: string
+          updated_at?: string
+          vendas_30_dias?: number | null
+        }
+        Update: {
+          created_at?: string
+          foto_url?: string | null
+          id?: string
+          is_star_product?: boolean | null
+          mlb?: string | null
+          not_suitable_for_sale?: number | null
+          on_the_way?: number | null
+          sku?: string
+          suitable_for_sale?: number | null
+          titulo?: string
+          updated_at?: string
+          vendas_30_dias?: number | null
+        }
+        Relationships: []
+      }
       motivos_cancelamento: {
         Row: {
           contagem: number | null
