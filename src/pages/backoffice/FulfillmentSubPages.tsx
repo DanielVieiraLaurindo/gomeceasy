@@ -14,8 +14,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Search, Plus, Trash2, Edit, Package, ShoppingCart, Star, AlertTriangle, Download, Upload, Send, LayoutGrid, List, Eye, RefreshCw } from 'lucide-react';
+import { Search, Plus, Trash2, Edit, Package, ShoppingCart, Star, AlertTriangle, Download, Upload, Send, LayoutGrid, List, Eye, RefreshCw, User } from 'lucide-react';
 import { useBrands } from '@/hooks/useEnvios';
+import { useAllBuyerBrands, findBuyerForBrand } from '@/hooks/useUserBrands';
 import * as XLSX from 'xlsx';
 
 function useProducts() {
@@ -88,6 +89,7 @@ export function FulfillmentDashboard() {
 
 export function CentralEstoquePage() {
   const { data: products = [], isLoading } = useProducts();
+  const { data: allBuyerBrands = [] } = useAllBuyerBrands();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -110,7 +112,10 @@ export function CentralEstoquePage() {
 
   const sendToPurchases = useMutation({
     mutationFn: async (p: any) => {
-      const { error } = await (supabase as any).from('purchases_full').insert({ sku: p.sku, fornecedor: '', quantidade: getSuggestion(p), status: 'Iniciar' });
+      const buyerId = p.fornecedor_id ? findBuyerForBrand(allBuyerBrands as any[], p.fornecedor_id) : null;
+      const insertData: any = { sku: p.sku, fornecedor: '', quantidade: getSuggestion(p), status: 'Iniciar' };
+      if (buyerId) insertData.comprador_atribuido = buyerId;
+      const { error } = await (supabase as any).from('purchases_full').insert(insertData);
       if (error) throw error;
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['purchases-full'] }); toast.success('Enviado para Pedidos de Compras'); },
@@ -192,15 +197,42 @@ export function CentralEstoquePage() {
 
 export function PedidosComprasPage() {
   const { data: purchases = [], isLoading } = usePurchasesFull();
+  const { data: brands = [] } = useBrands();
+  const { data: allBuyerBrands = [] } = useAllBuyerBrands();
+  const { data: profiles = [] } = useQuery({
+    queryKey: ['profiles-buyers'],
+    queryFn: async () => {
+      const { data } = await supabase.from('profiles').select('id, nome');
+      return data || [];
+    },
+    staleTime: 120_000,
+  });
+  const { data: products = [] } = useProducts();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [buyerFilter, setBuyerFilter] = useState('all');
   const [editDialog, setEditDialog] = useState<any | null>(null);
   const [newDialog, setNewDialog] = useState(false);
   const [form, setForm] = useState<any>({});
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const profileMap = useMemo(() => new Map((profiles as any[]).map((p: any) => [p.id, p.nome])), [profiles]);
+
+  // Get distinct buyers that have brands assigned
+  const buyerOptions = useMemo(() => {
+    const ids = [...new Set(allBuyerBrands.map(ub => ub.user_id))];
+    return ids.map(id => ({ id, nome: profileMap.get(id) || 'Desconhecido' })).sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [allBuyerBrands, profileMap]);
+
+  /** Given a SKU, find the brand and then the assigned buyer */
+  const findBuyerBySku = useCallback((sku: string): string | null => {
+    const product = (products as any[]).find((p: any) => p.sku.toLowerCase() === sku.toLowerCase());
+    if (!product?.fornecedor_id) return null;
+    return findBuyerForBrand(allBuyerBrands as any[], product.fornecedor_id);
+  }, [products, allBuyerBrands]);
 
   const updatePurchase = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: any }) => {
@@ -212,6 +244,11 @@ export function PedidosComprasPage() {
 
   const createPurchase = useMutation({
     mutationFn: async (data: any) => {
+      // Auto-assign buyer based on SKU → brand → buyer
+      if (!data.comprador_atribuido) {
+        const buyer = findBuyerBySku(data.sku);
+        if (buyer) data.comprador_atribuido = buyer;
+      }
       const { error } = await (supabase as any).from('purchases_full').insert(data);
       if (error) throw error;
     },
@@ -231,9 +268,10 @@ export function PedidosComprasPage() {
     return purchases.filter((p: any) => {
       const matchSearch = !s || p.sku.toLowerCase().includes(s) || p.fornecedor.toLowerCase().includes(s);
       const matchStatus = statusFilter === 'all' || p.status === statusFilter;
-      return matchSearch && matchStatus;
+      const matchBuyer = buyerFilter === 'all' || (buyerFilter === 'unassigned' ? !p.comprador_atribuido : p.comprador_atribuido === buyerFilter);
+      return matchSearch && matchStatus && matchBuyer;
     });
-  }, [purchases, search, statusFilter]);
+  }, [purchases, search, statusFilter, buyerFilter]);
 
   const statusCounts = useMemo(() => ({
     'Iniciar': purchases.filter((p: any) => p.status === 'Iniciar').length,
@@ -241,6 +279,8 @@ export function PedidosComprasPage() {
     'Em Falta': purchases.filter((p: any) => p.status === 'Em Falta').length,
     'Concluída': purchases.filter((p: any) => p.status === 'Concluída').length,
   }), [purchases]);
+
+  const unassignedCount = useMemo(() => purchases.filter((p: any) => !p.comprador_atribuido).length, [purchases]);
 
   const openNew = () => { setForm({ sku: '', fornecedor: '', custo: 0, quantidade: 1, observacoes: '', status: 'Iniciar', previsao_entrega: '' }); setNewDialog(true); };
 
@@ -301,9 +341,22 @@ export function PedidosComprasPage() {
             {status}: <strong className="ml-1">{count}</strong>
           </Badge>
         ))}
+        <Badge className={`cursor-pointer px-3 py-1.5 ${buyerFilter === 'unassigned' ? 'bg-destructive/10 text-destructive ring-1 ring-destructive/30' : 'bg-muted text-muted-foreground'}`} onClick={() => setBuyerFilter(buyerFilter === 'unassigned' ? 'all' : 'unassigned')}>
+          Sem Atribuição: <strong className="ml-1">{unassignedCount}</strong>
+        </Badge>
       </div>
       {selectedIds.size > 0 && <div className="flex items-center gap-2 p-2 bg-destructive/5 rounded-lg"><span className="text-sm">{selectedIds.size} selecionados</span><Button variant="destructive" size="sm" onClick={handleBulkDelete}><Trash2 className="w-4 h-4 mr-1" />Excluir</Button></div>}
-      <div className="flex gap-3"><div className="relative max-w-sm flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Buscar SKU ou fornecedor..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} /></div></div>
+      <div className="flex gap-3">
+        <div className="relative max-w-sm flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Buscar SKU ou fornecedor..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} /></div>
+        <Select value={buyerFilter} onValueChange={setBuyerFilter}>
+          <SelectTrigger className="w-[200px]"><User className="w-4 h-4 mr-2" /><SelectValue placeholder="Comprador" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os compradores</SelectItem>
+            <SelectItem value="unassigned">Sem Atribuição</SelectItem>
+            {buyerOptions.map(b => <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
 
       {viewMode === 'kanban' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -319,6 +372,12 @@ export function PedidosComprasPage() {
                         <p className="font-mono font-medium text-sm">{p.sku}</p>
                         <p className="text-xs text-muted-foreground">{p.fornecedor}</p>
                         <div className="flex justify-between text-xs"><span>{p.quantidade} un</span><span className="font-mono">R$ {(Number(p.custo || 0) * (p.quantidade || 1)).toFixed(2)}</span></div>
+                        <div className="flex items-center gap-1 text-xs">
+                          <User className="w-3 h-3" />
+                          <span className={p.comprador_atribuido ? 'text-foreground' : 'text-muted-foreground italic'}>
+                            {p.comprador_atribuido ? profileMap.get(p.comprador_atribuido) || 'Desconhecido' : 'Sem atribuição'}
+                          </span>
+                        </div>
                         <Select value={p.status} onValueChange={v => updatePurchase.mutate({ id: p.id, updates: { status: v } })}>
                           <SelectTrigger className="h-6 text-xs border-0 p-0"><SelectValue /></SelectTrigger>
                           <SelectContent>{STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
@@ -336,16 +395,17 @@ export function PedidosComprasPage() {
           <Table>
             <TableHeader><TableRow>
               <TableHead className="w-10"><Checkbox checked={selectedIds.size === filtered.length && filtered.length > 0} onCheckedChange={c => setSelectedIds(c ? new Set(filtered.map((p: any) => p.id)) : new Set())} /></TableHead>
-              <TableHead>SKU</TableHead><TableHead>Fornecedor</TableHead><TableHead className="text-right">Custo</TableHead><TableHead className="text-center">Qtd</TableHead><TableHead className="text-right">Total</TableHead><TableHead>Previsão</TableHead><TableHead>Status</TableHead><TableHead>Obs</TableHead><TableHead>Ações</TableHead>
+              <TableHead>SKU</TableHead><TableHead>Fornecedor</TableHead><TableHead>Comprador</TableHead><TableHead className="text-right">Custo</TableHead><TableHead className="text-center">Qtd</TableHead><TableHead className="text-right">Total</TableHead><TableHead>Previsão</TableHead><TableHead>Status</TableHead><TableHead>Obs</TableHead><TableHead>Ações</TableHead>
             </TableRow></TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Nenhuma compra encontrada</TableCell></TableRow>
+                <TableRow><TableCell colSpan={11} className="text-center py-8 text-muted-foreground">Nenhuma compra encontrada</TableCell></TableRow>
               ) : filtered.map((p: any) => (
                 <TableRow key={p.id} className="hover:bg-muted/30">
                   <TableCell><Checkbox checked={selectedIds.has(p.id)} onCheckedChange={() => setSelectedIds(prev => { const n = new Set(prev); n.has(p.id) ? n.delete(p.id) : n.add(p.id); return n; })} /></TableCell>
                   <TableCell className="font-mono font-medium">{p.sku}</TableCell>
                   <TableCell>{p.fornecedor}</TableCell>
+                  <TableCell className="text-sm">{p.comprador_atribuido ? profileMap.get(p.comprador_atribuido) || '—' : <span className="text-muted-foreground italic">Sem atribuição</span>}</TableCell>
                   <TableCell className="text-right font-mono">R$ {Number(p.custo || 0).toFixed(2)}</TableCell>
                   <TableCell className="text-center">{p.quantidade}</TableCell>
                   <TableCell className="text-right font-mono font-medium">R$ {(Number(p.custo || 0) * (p.quantidade || 1)).toFixed(2)}</TableCell>

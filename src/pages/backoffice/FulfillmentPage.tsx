@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, Warehouse, ShoppingCart, Truck, FileText, MapPin, Package, Plus, Trash2 } from 'lucide-react';
+import { LayoutDashboard, Warehouse, ShoppingCart, Truck, FileText, MapPin, Package, Plus, Trash2, Tag } from 'lucide-react';
 import { FulfillmentDashboard, CentralEstoquePage, PedidosComprasPage, DadosFiscaisPage, CadastroProdutosPage } from './FulfillmentSubPages';
 import EnviosFullPage from './EnviosFullPage';
+import MinhasMarcasPage from './MinhasMarcasPage';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,6 +20,7 @@ const MENU_ITEMS = [
   { key: 'fiscal', label: 'Dados Fiscais', icon: FileText },
   { key: 'cds', label: 'Centro de Distribuição', icon: MapPin },
   { key: 'produtos', label: 'Cadastro de Produtos', icon: Package },
+  { key: 'marcas', label: 'Minhas Marcas', icon: Tag },
 ];
 
 function CentrosDistribuicaoPage() {
@@ -119,6 +121,7 @@ export default function FulfillmentPage() {
       case 'fiscal': return <DadosFiscaisPage />;
       case 'cds': return <CentrosDistribuicaoPage />;
       case 'produtos': return <CadastroProdutosPage />;
+      case 'marcas': return <MinhasMarcasPage />;
       default: return <FulfillmentDashboard />;
     }
   };
