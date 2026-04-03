@@ -119,7 +119,14 @@ export default function GEPosVendasTab() {
     return c.analyst_name === atendenteFilter;
   });
 
-  const activeCases = atendenteFiltered.filter(c => !['finalizado', 'arquivado', 'aguardando_conferencia', 'conferencia_garantia', 'analise_lider', 'analise_fiscal', 'financeiro_pagamento', 'pago', 'correcao_solicitada', 'reprovado_gestor', 'reprovado_fiscal', 'em_reembolso', 'ressarcimento_mo'].includes(c.status));
+  // Cases with metodo_pagamento set go exclusively to Ressarcimentos tab; others stay here
+  const hasFinancialFlow = (c: ReturnCase) => !!(c as any).metodo_pagamento;
+  const activeCases = atendenteFiltered.filter(c => {
+    if (['finalizado', 'arquivado'].includes(c.status)) return false;
+    // If case has financial type AND is in reembolso flow statuses, hide from here (it's in Ressarcimentos)
+    if (hasFinancialFlow(c) && ['aguardando_conferencia', 'conferencia_garantia', 'analise_fiscal', 'financeiro_pagamento', 'pago', 'correcao_solicitada', 'reprovado_fiscal'].includes(c.status)) return false;
+    return true;
+  });
   const archivedCases = atendenteFiltered.filter(c => ['finalizado', 'arquivado'].includes(c.status));
 
   const uploadNfGarantia = async (caseId: string, file: File): Promise<string> => {

@@ -119,6 +119,7 @@ export default function GEFinanceiroTab() {
         .from('return_cases')
         .select('*')
         .in('status', ALL_STATUSES)
+        .not('metodo_pagamento', 'is', null)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data || []).map(c => ({
