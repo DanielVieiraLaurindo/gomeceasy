@@ -2766,7 +2766,10 @@ export type Database = {
       shipment_items_full: {
         Row: {
           created_at: string | null
+          custo: number | null
           descricao: string | null
+          est_loja1: number | null
+          est_loja3: number | null
           foto_url: string | null
           id: string
           mlb: string | null
@@ -2774,10 +2777,14 @@ export type Database = {
           requisicao_venda: boolean | null
           shipment_id: string
           sku: string
+          tipo: string | null
         }
         Insert: {
           created_at?: string | null
+          custo?: number | null
           descricao?: string | null
+          est_loja1?: number | null
+          est_loja3?: number | null
           foto_url?: string | null
           id?: string
           mlb?: string | null
@@ -2785,10 +2792,14 @@ export type Database = {
           requisicao_venda?: boolean | null
           shipment_id: string
           sku: string
+          tipo?: string | null
         }
         Update: {
           created_at?: string | null
+          custo?: number | null
           descricao?: string | null
+          est_loja1?: number | null
+          est_loja3?: number | null
           foto_url?: string | null
           id?: string
           mlb?: string | null
@@ -2796,6 +2807,7 @@ export type Database = {
           requisicao_venda?: boolean | null
           shipment_id?: string
           sku?: string
+          tipo?: string | null
         }
         Relationships: [
           {
@@ -3126,6 +3138,140 @@ export type Database = {
             columns: ["shipment_id"]
             isOneToOne: false
             referencedRelation: "envios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      warranty_claims: {
+        Row: {
+          cliente_email: string | null
+          cliente_nome: string
+          cliente_telefone: string | null
+          created_at: string
+          created_by: string | null
+          data_contato_cliente: string | null
+          data_envio_distribuidor: string | null
+          data_limite: string | null
+          data_resposta_fabricante: string | null
+          distribuidor_email: string | null
+          distribuidor_nome: string | null
+          fabricante_email: string | null
+          fabricante_nome: string | null
+          id: string
+          laudo_url: string | null
+          marca: string | null
+          nota_fiscal_garantia_url: string | null
+          nota_fiscal_servico_url: string | null
+          numero_os: string
+          numero_serie: string | null
+          observacoes: string | null
+          produto_descricao: string | null
+          proximo_envio_cobranca: string | null
+          status: string
+          tipo_retorno: string | null
+          total_cobrancas_enviadas: number | null
+          updated_at: string
+          valor_ressarcimento: number | null
+        }
+        Insert: {
+          cliente_email?: string | null
+          cliente_nome?: string
+          cliente_telefone?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_contato_cliente?: string | null
+          data_envio_distribuidor?: string | null
+          data_limite?: string | null
+          data_resposta_fabricante?: string | null
+          distribuidor_email?: string | null
+          distribuidor_nome?: string | null
+          fabricante_email?: string | null
+          fabricante_nome?: string | null
+          id?: string
+          laudo_url?: string | null
+          marca?: string | null
+          nota_fiscal_garantia_url?: string | null
+          nota_fiscal_servico_url?: string | null
+          numero_os?: string
+          numero_serie?: string | null
+          observacoes?: string | null
+          produto_descricao?: string | null
+          proximo_envio_cobranca?: string | null
+          status?: string
+          tipo_retorno?: string | null
+          total_cobrancas_enviadas?: number | null
+          updated_at?: string
+          valor_ressarcimento?: number | null
+        }
+        Update: {
+          cliente_email?: string | null
+          cliente_nome?: string
+          cliente_telefone?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_contato_cliente?: string | null
+          data_envio_distribuidor?: string | null
+          data_limite?: string | null
+          data_resposta_fabricante?: string | null
+          distribuidor_email?: string | null
+          distribuidor_nome?: string | null
+          fabricante_email?: string | null
+          fabricante_nome?: string | null
+          id?: string
+          laudo_url?: string | null
+          marca?: string | null
+          nota_fiscal_garantia_url?: string | null
+          nota_fiscal_servico_url?: string | null
+          numero_os?: string
+          numero_serie?: string | null
+          observacoes?: string | null
+          produto_descricao?: string | null
+          proximo_envio_cobranca?: string | null
+          status?: string
+          tipo_retorno?: string | null
+          total_cobrancas_enviadas?: number | null
+          updated_at?: string
+          valor_ressarcimento?: number | null
+        }
+        Relationships: []
+      }
+      warranty_claims_history: {
+        Row: {
+          action: string
+          claim_id: string
+          comment: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          new_status: string | null
+          old_status: string | null
+        }
+        Insert: {
+          action: string
+          claim_id: string
+          comment?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          new_status?: string | null
+          old_status?: string | null
+        }
+        Update: {
+          action?: string
+          claim_id?: string
+          comment?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          new_status?: string | null
+          old_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warranty_claims_history_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "warranty_claims"
             referencedColumns: ["id"]
           },
         ]
