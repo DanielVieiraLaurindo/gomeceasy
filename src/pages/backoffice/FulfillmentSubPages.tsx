@@ -193,15 +193,42 @@ export function CentralEstoquePage() {
 
 export function PedidosComprasPage() {
   const { data: purchases = [], isLoading } = usePurchasesFull();
+  const { data: brands = [] } = useBrands();
+  const { data: allBuyerBrands = [] } = useAllBuyerBrands();
+  const { data: profiles = [] } = useQuery({
+    queryKey: ['profiles-buyers'],
+    queryFn: async () => {
+      const { data } = await supabase.from('profiles').select('id, nome');
+      return data || [];
+    },
+    staleTime: 120_000,
+  });
+  const { data: products = [] } = useProducts();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [buyerFilter, setBuyerFilter] = useState('all');
   const [editDialog, setEditDialog] = useState<any | null>(null);
   const [newDialog, setNewDialog] = useState(false);
   const [form, setForm] = useState<any>({});
   const [viewMode, setViewMode] = useState<'table' | 'kanban'>('table');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const profileMap = useMemo(() => new Map((profiles as any[]).map((p: any) => [p.id, p.nome])), [profiles]);
+
+  // Get distinct buyers that have brands assigned
+  const buyerOptions = useMemo(() => {
+    const ids = [...new Set(allBuyerBrands.map(ub => ub.user_id))];
+    return ids.map(id => ({ id, nome: profileMap.get(id) || 'Desconhecido' })).sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [allBuyerBrands, profileMap]);
+
+  /** Given a SKU, find the brand and then the assigned buyer */
+  const findBuyerBySku = useCallback((sku: string): string | null => {
+    const product = (products as any[]).find((p: any) => p.sku.toLowerCase() === sku.toLowerCase());
+    if (!product?.fornecedor_id) return null;
+    return findBuyerForBrand(allBuyerBrands as any[], product.fornecedor_id);
+  }, [products, allBuyerBrands]);
 
   const updatePurchase = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: any }) => {
@@ -213,6 +240,11 @@ export function PedidosComprasPage() {
 
   const createPurchase = useMutation({
     mutationFn: async (data: any) => {
+      // Auto-assign buyer based on SKU → brand → buyer
+      if (!data.comprador_atribuido) {
+        const buyer = findBuyerBySku(data.sku);
+        if (buyer) data.comprador_atribuido = buyer;
+      }
       const { error } = await (supabase as any).from('purchases_full').insert(data);
       if (error) throw error;
     },
@@ -232,9 +264,10 @@ export function PedidosComprasPage() {
     return purchases.filter((p: any) => {
       const matchSearch = !s || p.sku.toLowerCase().includes(s) || p.fornecedor.toLowerCase().includes(s);
       const matchStatus = statusFilter === 'all' || p.status === statusFilter;
-      return matchSearch && matchStatus;
+      const matchBuyer = buyerFilter === 'all' || (buyerFilter === 'unassigned' ? !p.comprador_atribuido : p.comprador_atribuido === buyerFilter);
+      return matchSearch && matchStatus && matchBuyer;
     });
-  }, [purchases, search, statusFilter]);
+  }, [purchases, search, statusFilter, buyerFilter]);
 
   const statusCounts = useMemo(() => ({
     'Iniciar': purchases.filter((p: any) => p.status === 'Iniciar').length,
@@ -242,6 +275,8 @@ export function PedidosComprasPage() {
     'Em Falta': purchases.filter((p: any) => p.status === 'Em Falta').length,
     'Concluída': purchases.filter((p: any) => p.status === 'Concluída').length,
   }), [purchases]);
+
+  const unassignedCount = useMemo(() => purchases.filter((p: any) => !p.comprador_atribuido).length, [purchases]);
 
   const openNew = () => { setForm({ sku: '', fornecedor: '', custo: 0, quantidade: 1, observacoes: '', status: 'Iniciar', previsao_entrega: '' }); setNewDialog(true); };
 
