@@ -28,6 +28,7 @@ const GEFinanceiroTab = React.lazy(() => import("@/pages/garantia/ge/GEFinanceir
 const GEGaleriaTab = React.lazy(() => import("@/pages/garantia/ge/GEGaleriaTab"));
 const GERelatoriosTab = React.lazy(() => import("@/pages/garantia/ge/GERelatoriosTab"));
 // GEConfiguracoesTab removed
+const GEWarrantyMOPage = React.lazy(() => import("@/pages/garantia/ge/GEWarrantyMOPage"));
 const FinanceiroDashboard = React.lazy(() => import("@/pages/financeiro/FinanceiroDashboard"));
 const ComprasDashboard = React.lazy(() => import("@/pages/compras/ComprasDashboard"));
 const DivergenciasDashboard = React.lazy(() => import("@/pages/compras/DivergenciasDashboard"));
@@ -58,6 +59,7 @@ const PedidosSitePage = React.lazy(() => import("@/pages/backoffice/PedidosSiteP
 const AnaliseCnpjPage = React.lazy(() => import("@/pages/backoffice/AnaliseCnpjPage"));
 const NovaRupturaPage = React.lazy(() => import("@/pages/backoffice/NovaRupturaPage"));
 const ConferenciaPedidosFlexPage = React.lazy(() => import("@/pages/pos-vendas/ConferenciaPedidosFlexPage"));
+const MinhasMarcasPage = React.lazy(() => import("@/pages/backoffice/MinhasMarcasPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -150,6 +152,7 @@ const App = () => (
                   <Route path="/garantia-ecommerce" element={<GarantiaEcommerceDashboard />} />
                   <Route path="/garantia-ecommerce/backoffice" element={<GEBackofficeTab />} />
                   <Route path="/garantia-ecommerce/pos-vendas" element={<GEPosVendasTab />} />
+                  <Route path="/garantia-ecommerce/warranty-mo" element={<GEWarrantyMOPage />} />
                   <Route path="/garantia-ecommerce/ressarcimentos" element={<GEFinanceiroTab />} />
                   <Route path="/garantia-ecommerce/galeria" element={<GEGaleriaTab />} />
                   <Route path="/garantia-ecommerce/relatorios" element={<GERelatoriosTab />} />
@@ -186,6 +189,7 @@ const App = () => (
                   <Route path="/compras/precificacao" element={<PrecificacaoPage />} />
                   {/* marcas removed - use marcas-fornecedores */}
                   <Route path="/compras/marcas-fornecedores" element={<MarcasFornecedoresPage />} />
+                  <Route path="/compras/minhas-marcas" element={<MinhasMarcasPage />} />
                   <Route path="/compras/follow-up" element={<PlaceholderPage title="Follow - Up" description="Acompanhamento de pedidos e fornecedores" />} />
                   <Route path="/compras/contratos" element={<PlaceholderPage title="Contratos" description="Gestão de contratos com fornecedores" />} />
                   <Route path="/compras/avaliacao-fornecedores" element={<PlaceholderPage title="Avaliação de Fornecedores" description="Avaliação e classificação de fornecedores" />} />

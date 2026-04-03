@@ -38,6 +38,7 @@ export const SIDEBAR_ITEMS: Record<AppSetor, SidebarItem[]> = {
     { path: '/garantia-ecommerce', label: 'Dashboard Garantia Ecom.', icon: LayoutDashboard },
     { path: '/garantia-ecommerce/backoffice', label: 'Recursos', icon: Headphones },
     { path: '/garantia-ecommerce/pos-vendas', label: 'Garantias', icon: Headset },
+    { path: '/garantia-ecommerce/warranty-mo', label: 'Casos de M.O.', icon: Briefcase },
     { path: '/garantia-ecommerce/ressarcimentos', label: 'Ressarcimentos', icon: DollarSign },
     { path: '/garantia-ecommerce/galeria', label: 'Galeria Garantia', icon: Camera },
     { path: '/garantia-ecommerce/relatorios', label: 'Relatórios Garantia', icon: BarChart2 },
@@ -83,6 +84,7 @@ export const SIDEBAR_ITEMS: Record<AppSetor, SidebarItem[]> = {
     { path: '/compras/rebate', label: 'Rebate', icon: DollarSign },
     { path: '/compras/registro-ocorrencias', label: 'Registro de Ocorrências (Amarração)', icon: ClipboardList },
     { path: '/compras/transferencia-lojas', label: 'Transferência entre Lojas', icon: ArrowRightLeft },
+    { path: '/compras/minhas-marcas', label: 'Minhas Marcas', icon: UserCheck },
     { path: '/compras/uso-consumo', label: 'Uso e Consumo', icon: ClipboardList },
   ],
   pre_vendas: [
