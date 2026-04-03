@@ -278,8 +278,7 @@ export default function GEWarrantyMOPage() {
                               <ActionIcon className="w-3 h-3 mr-1" />{actions[0].label}
                             </Button>
                           );
-                        })()
-                        )}
+                        })()}
                       </CardContent>
                     </Card>
                   );
