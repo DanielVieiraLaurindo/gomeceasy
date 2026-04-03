@@ -337,9 +337,22 @@ export function PedidosComprasPage() {
             {status}: <strong className="ml-1">{count}</strong>
           </Badge>
         ))}
+        <Badge className={`cursor-pointer px-3 py-1.5 ${buyerFilter === 'unassigned' ? 'bg-destructive/10 text-destructive ring-1 ring-destructive/30' : 'bg-muted text-muted-foreground'}`} onClick={() => setBuyerFilter(buyerFilter === 'unassigned' ? 'all' : 'unassigned')}>
+          Sem Atribuição: <strong className="ml-1">{unassignedCount}</strong>
+        </Badge>
       </div>
       {selectedIds.size > 0 && <div className="flex items-center gap-2 p-2 bg-destructive/5 rounded-lg"><span className="text-sm">{selectedIds.size} selecionados</span><Button variant="destructive" size="sm" onClick={handleBulkDelete}><Trash2 className="w-4 h-4 mr-1" />Excluir</Button></div>}
-      <div className="flex gap-3"><div className="relative max-w-sm flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Buscar SKU ou fornecedor..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} /></div></div>
+      <div className="flex gap-3">
+        <div className="relative max-w-sm flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><Input placeholder="Buscar SKU ou fornecedor..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} /></div>
+        <Select value={buyerFilter} onValueChange={setBuyerFilter}>
+          <SelectTrigger className="w-[200px]"><User className="w-4 h-4 mr-2" /><SelectValue placeholder="Comprador" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os compradores</SelectItem>
+            <SelectItem value="unassigned">Sem Atribuição</SelectItem>
+            {buyerOptions.map(b => <SelectItem key={b.id} value={b.id}>{b.nome}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
 
       {viewMode === 'kanban' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
