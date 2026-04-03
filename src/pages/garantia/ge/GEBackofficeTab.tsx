@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Search, X, Store, Building2, Zap, MoreHorizontal, Eye, DollarSign, CheckSquare, Headphones, Plus, Download, Upload, ArrowRight, ListChecks, Trash2, LayoutGrid, List, Pencil, GripVertical } from 'lucide-react';
+import { Search, X, Store, Building2, Zap, MoreHorizontal, Eye, DollarSign, CheckSquare, Headphones, Plus, Download, Upload, ArrowRight, ListChecks, Trash2, LayoutGrid, List, Pencil, GripVertical, FileDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -253,21 +253,60 @@ export default function GEBackofficeTab() {
         let skipped = 0;
         const seenSales = new Set<string>();
 
+        const STATUS_IMPORT_MAP: Record<string, string> = {
+          'Aguardando Antecipação': 'aguardando_analise',
+          'Em Análise': 'em_analise',
+          'Antecipado': 'antecipado',
+          'Aguardando Backoffice': 'aguardando_backoffice',
+          'Em Mediação': 'em_mediacao',
+          'Finalizado': 'finalizado',
+          'Arquivado': 'arquivado',
+        };
+        const TYPE_IMPORT_MAP: Record<string, string> = {
+          'Garantia': 'GARANTIA', 'Devolução': 'DEVOLUCAO', 'Descarte': 'DESCARTE',
+        };
+
         for (const row of json) {
-          const saleNumber = String(row['N.º de venda'] || row['Venda'] || row['sale_number'] || '').trim();
+          const saleNumber = String(row['Nº Venda'] || row['N.º de venda'] || row['Venda'] || row['sale_number'] || '').trim();
           if (!saleNumber) continue;
           if (existingSet.has(saleNumber) || seenSales.has(saleNumber)) { skipped++; continue; }
           seenSales.add(saleNumber);
 
-          const cpf = row['CPF'] || '';
-          const { marketplace, marketplace_account } = detectMarketplace(saleNumber);
-          const business_unit = detectBusinessUnit(cpf);
+          const statusLabel = String(row['Status'] || '').trim();
+          const isFull = String(row['Full'] || '').trim() === 'Sim';
+          let dbStatus = STATUS_IMPORT_MAP[statusLabel] || 'aguardando_analise';
+          if (statusLabel === 'Antecipado' && isFull) dbStatus = 'aguardando_backoffice';
+
+          const caseType = TYPE_IMPORT_MAP[row['Tipo'] || ''] || 'DEVOLUCAO';
+          const cpf = String(row['Documento'] || row['CPF'] || '').trim();
+          const mp = row['Marketplace'] || '';
+          const { marketplace: detectedMp, marketplace_account } = detectMarketplace(saleNumber);
+          const business_unit = row['Unidade'] ? String(row['Unidade']).replace(/ /g, '_').toUpperCase() : detectBusinessUnit(cpf);
+
+          const codesRaw = String(row['Códigos Produto'] || '');
+          const product_codes = codesRaw ? codesRaw.split(',').map((c: string) => c.trim()).filter(Boolean) : [];
 
           batchInsert.push({
-            client_name: row['Comprador'] || row['Cliente'] || '-', client_document: cpf,
-            sale_number: saleNumber, product_sku: row['SKU'] || '', fullfilment_tracking: row['Rastreio'] || '',
-            marketplace, marketplace_account, business_unit, case_type: row['Tipo'] || 'DEVOLUCAO',
-            status: 'antecipado', is_full: true, entry_date: new Date().toISOString().split('T')[0],
+            client_name: row['Cliente'] || row['Comprador'] || '-',
+            client_document: cpf,
+            sale_number: saleNumber,
+            product_sku: row['SKU'] || '',
+            product_codes,
+            fullfilment_tracking: row['Rastreio Fullfilment'] || row['Rastreio'] || '',
+            marketplace: mp || detectedMp, marketplace_account,
+            business_unit, case_type: caseType,
+            status: dbStatus, is_full: isFull,
+            entry_date: row['Data Entrada'] || new Date().toISOString().split('T')[0],
+            analyst_name: row['Analista'] || '',
+            item_condition: row['Condição'] || '',
+            analysis_reason: row['Motivo'] || '',
+            protocol_number: row['Protocolo'] || null,
+            mediator_name: row['Mediador'] || null,
+            reimbursed: String(row['Reembolsado'] || '') === 'Sim',
+            reimbursement_value: parseFloat(row['Valor Reembolso']) || 0,
+            nf_requested: String(row['NF Solicitada'] || '') === 'Sim',
+            nf_notes: row['Obs NF'] || null,
+            not_found_erp: String(row['Sem Antecipação'] || '') === 'Sim',
             created_by: user?.id, sent_to_backoffice: true, origem: 'backoffice',
           } as any);
         }
@@ -347,6 +386,25 @@ export default function GEBackofficeTab() {
     });
   };
 
+  const handleDownloadTemplate = () => {
+    const templateHeaders = [
+      'Status', 'Cliente', 'Documento', 'Nº Venda', 'Unidade', 'Marketplace',
+      'Tipo', 'Data Entrada', 'Analista', 'Condição', 'Motivo', 'Códigos Produto',
+      'Protocolo', 'Mediador', 'Reembolsado', 'Valor Reembolso', 'Full',
+      'Rastreio Fullfilment', 'NF Solicitada', 'Obs NF', 'Sem Antecipação'
+    ];
+    const exampleRow = [
+      'Antecipado', 'Nome do Cliente', '00000000000', '2000012345678', 'GAP',
+      'Mercado Livre', 'Devolução', '2026-01-01', 'Analista', 'Bom estado', 'Arrependimento',
+      'SKU001', '', '', 'Não', '0', 'Sim', '', 'Não', '', 'Não'
+    ];
+    const wsData = [templateHeaders, exampleRow];
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Modelo');
+    XLSX.writeFile(wb, 'modelo_importacao_backoffice.xlsx');
+  };
+
   const clearFilters = () => { setSearchInput(''); setFilters({ origemFilter: 'backoffice' }); };
   const hasFilters = Object.entries(filters).some(([k, v]) => k !== 'origemFilter' && v !== undefined && v !== '');
 
@@ -376,6 +434,7 @@ export default function GEBackofficeTab() {
           </div>
           <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImportCases} />
           <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}><Upload className="w-4 h-4 mr-1" />Importar</Button>
+          <Button variant="ghost" size="sm" onClick={handleDownloadTemplate}><FileDown className="w-4 h-4 mr-1" />Modelo</Button>
           <Button variant="outline" size="sm" onClick={handleExportCases}><Download className="w-4 h-4 mr-1" />Exportar</Button>
           <Button onClick={() => setIsNewCaseOpen(true)}><Plus className="w-4 h-4 mr-1" />Novo Caso</Button>
         </div>
