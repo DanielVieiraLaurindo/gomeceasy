@@ -395,12 +395,13 @@ export function PedidosComprasPage() {
             </TableRow></TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Nenhuma compra encontrada</TableCell></TableRow>
+                <TableRow><TableCell colSpan={11} className="text-center py-8 text-muted-foreground">Nenhuma compra encontrada</TableCell></TableRow>
               ) : filtered.map((p: any) => (
                 <TableRow key={p.id} className="hover:bg-muted/30">
                   <TableCell><Checkbox checked={selectedIds.has(p.id)} onCheckedChange={() => setSelectedIds(prev => { const n = new Set(prev); n.has(p.id) ? n.delete(p.id) : n.add(p.id); return n; })} /></TableCell>
                   <TableCell className="font-mono font-medium">{p.sku}</TableCell>
                   <TableCell>{p.fornecedor}</TableCell>
+                  <TableCell className="text-sm">{p.comprador_atribuido ? profileMap.get(p.comprador_atribuido) || '—' : <span className="text-muted-foreground italic">Sem atribuição</span>}</TableCell>
                   <TableCell className="text-right font-mono">R$ {Number(p.custo || 0).toFixed(2)}</TableCell>
                   <TableCell className="text-center">{p.quantidade}</TableCell>
                   <TableCell className="text-right font-mono font-medium">R$ {(Number(p.custo || 0) * (p.quantidade || 1)).toFixed(2)}</TableCell>
