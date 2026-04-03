@@ -268,13 +268,17 @@ export default function GEWarrantyMOPage() {
                           <span>{claim.nota_fiscal_servico_url ? '✅' : '❌'} NF</span>
                           <span>{claim.laudo_url ? '✅' : '❌'} Laudo</span>
                         </div>
-                        {actions.length > 0 && (
-                          <Button
-                            size="sm" variant="outline" className="w-full text-xs h-7 mt-1"
-                            onClick={e => { e.stopPropagation(); changeStatus(claim, actions[0].nextStatus); }}
-                          >
-                            <actions[0].icon className="w-3 h-3 mr-1" />{actions[0].label}
-                          </Button>
+                        {actions.length > 0 && (() => {
+                          const ActionIcon = actions[0].icon;
+                          return (
+                            <Button
+                              size="sm" variant="outline" className="w-full text-xs h-7 mt-1"
+                              onClick={e => { e.stopPropagation(); changeStatus(claim, actions[0].nextStatus); }}
+                            >
+                              <ActionIcon className="w-3 h-3 mr-1" />{actions[0].label}
+                            </Button>
+                          );
+                        })()
                         )}
                       </CardContent>
                     </Card>
