@@ -150,6 +150,7 @@ const App = () => (
                   <Route path="/garantia-ecommerce" element={<GarantiaEcommerceDashboard />} />
                   <Route path="/garantia-ecommerce/backoffice" element={<GEBackofficeTab />} />
                   <Route path="/garantia-ecommerce/pos-vendas" element={<GEPosVendasTab />} />
+                  <Route path="/garantia-ecommerce/warranty-mo" element={<GEWarrantyMOPage />} />
                   <Route path="/garantia-ecommerce/ressarcimentos" element={<GEFinanceiroTab />} />
                   <Route path="/garantia-ecommerce/galeria" element={<GEGaleriaTab />} />
                   <Route path="/garantia-ecommerce/relatorios" element={<GERelatoriosTab />} />

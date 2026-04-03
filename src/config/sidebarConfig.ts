@@ -38,6 +38,7 @@ export const SIDEBAR_ITEMS: Record<AppSetor, SidebarItem[]> = {
     { path: '/garantia-ecommerce', label: 'Dashboard Garantia Ecom.', icon: LayoutDashboard },
     { path: '/garantia-ecommerce/backoffice', label: 'Recursos', icon: Headphones },
     { path: '/garantia-ecommerce/pos-vendas', label: 'Garantias', icon: Headset },
+    { path: '/garantia-ecommerce/warranty-mo', label: 'Casos de M.O.', icon: Briefcase },
     { path: '/garantia-ecommerce/ressarcimentos', label: 'Ressarcimentos', icon: DollarSign },
     { path: '/garantia-ecommerce/galeria', label: 'Galeria Garantia', icon: Camera },
     { path: '/garantia-ecommerce/relatorios', label: 'Relatórios Garantia', icon: BarChart2 },
