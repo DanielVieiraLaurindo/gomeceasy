@@ -3,15 +3,6 @@ import { cn } from '@/lib/utils';
 import { LayoutDashboard, Warehouse, ShoppingCart, Truck, FileText, MapPin, Package, Plus, Trash2, Tag } from 'lucide-react';
 import { FulfillmentDashboard, CentralEstoquePage, PedidosComprasPage, DadosFiscaisPage, CadastroProdutosPage } from './FulfillmentSubPages';
 import EnviosFullPage from './EnviosFullPage';
-import MinhasMarcasPage from './MinhasMarcasPage';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-
 const MENU_ITEMS = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { key: 'estoque', label: 'Central de Estoque', icon: Warehouse },
@@ -20,7 +11,6 @@ const MENU_ITEMS = [
   { key: 'fiscal', label: 'Dados Fiscais', icon: FileText },
   { key: 'cds', label: 'Centro de Distribuição', icon: MapPin },
   { key: 'produtos', label: 'Cadastro de Produtos', icon: Package },
-  { key: 'marcas', label: 'Minhas Marcas', icon: Tag },
 ];
 
 function CentrosDistribuicaoPage() {
