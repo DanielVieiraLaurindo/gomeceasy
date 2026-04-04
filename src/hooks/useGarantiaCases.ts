@@ -155,12 +155,14 @@ export const useDeleteGarantiaCase = () => {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('return_cases').delete().eq('id', id);
+      const { error, count } = await supabase.from('return_cases').delete({ count: 'exact' }).eq('id', id);
       if (error) throw error;
+      if (count === 0) throw new Error('Sem permissão para excluir este caso.');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['garantia-cases'] });
       queryClient.invalidateQueries({ queryKey: ['garantia-case-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['return_cases'] });
       toast.success('Caso excluído');
     },
     onError: (error: any) => toast.error(error.message),
