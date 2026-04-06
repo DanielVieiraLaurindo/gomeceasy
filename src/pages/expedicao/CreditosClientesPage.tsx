@@ -192,7 +192,7 @@ export default function CreditosClientesPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <MetricCard
               title="Saldo Devedor"
-              value={formatCurrency(saldo ?? 0)}
+              value={formatCurrency(saldoDevedorDisplay)}
               icon={TrendingDown}
               variant={(saldo ?? 0) > 0 ? 'danger' : 'default'}
               delay={0}
