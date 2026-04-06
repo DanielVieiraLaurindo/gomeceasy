@@ -100,7 +100,7 @@ function usePagePermissions(): Permissions {
   const isComercial = isInGroup('comercial') && !isInGroup('supervisor');
   const isSupervisor = isInGroup('supervisor');
   const isFinanceiro = isInGroup('financeiro') || setor === 'financeiro';
-  const isExpedicao = isInGroup('expedicao') || setor === 'expedicao' || setor === 'expedicao-loja';
+  const isExpedicao = isInGroup('expedicao') || setor === 'expedicao_loja' || setor === 'expedicao_ecommerce';
 
   return {
     canCreate: isMaster || isComercial || isSupervisor || isFinanceiro,
