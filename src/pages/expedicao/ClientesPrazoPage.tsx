@@ -100,12 +100,13 @@ function usePagePermissions(): Permissions {
   const isComercial = isInGroup('comercial') && !isInGroup('supervisor');
   const isSupervisor = isInGroup('supervisor');
   const isFinanceiro = isInGroup('financeiro') || setor === 'financeiro';
+  const isExpedicao = isInGroup('expedicao') || setor === 'expedicao' || setor === 'expedicao-loja';
 
   return {
     canCreate: isMaster || isComercial || isSupervisor || isFinanceiro,
     canInsertLink: isMaster || isFinanceiro || isComercial,
     canDelete: isMaster, // only master deletes
-    canAuthorize: isMaster || isSupervisor,
+    canAuthorize: isMaster || isSupervisor || isExpedicao,
     canEdit: isMaster || isSupervisor,
     canRegisterPayment: isMaster || isFinanceiro,
     onlyOwnRequisitions: isComercial, // comercial sees only own
@@ -436,14 +437,7 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissio
           </div>
 
           {needsAuth && permissions.canAuthorize && (
-            <div className="flex gap-2">
-              <Button className="flex-1 gap-2" variant="default" onClick={() => onAuthorize(item.id)}>
-                <ShieldCheck className="w-4 h-4" /> Autorizar
-              </Button>
-              <Button className="flex-1 gap-2" variant="destructive" onClick={() => onDeny(item.id)}>
-                Não Autorizar
-              </Button>
-            </div>
+            <AuthorizationActions itemId={item.id} onAuthorize={onAuthorize} onDeny={onDeny} />
           )}
           {needsAuth && !permissions.canAuthorize && (
             <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3 text-sm text-orange-600">
