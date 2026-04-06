@@ -66,6 +66,7 @@ Deno.serve(async (req) => {
     });
 
     const rawText = await response.text();
+    console.log(`Jacsys [${endpoint}] ids=${validIds.join(',')} status=${response.status} len=${rawText.length}`);
 
     if (!response.ok) {
       throw new Error(`Jacsys API error [${response.status}]: ${rawText}`);
