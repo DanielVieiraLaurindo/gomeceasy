@@ -40,7 +40,10 @@ Deno.serve(async (req) => {
         email_confirm: true,
         user_metadata: { nome, setor },
       })
-      if (error) return new Response(JSON.stringify({ error: 'Erro ao criar usuário' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      if (error) {
+        console.error('createUser error:', JSON.stringify(error))
+        return new Response(JSON.stringify({ error: `Erro ao criar usuário: ${error.message}` }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
 
       // Update profile role and login_username
       if (data.user) {
