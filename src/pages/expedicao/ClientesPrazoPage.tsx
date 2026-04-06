@@ -426,7 +426,11 @@ function AuthorizationActions({ itemId, onAuthorize, onDeny }: {
 // ================================================================
 function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissions, onUpdateLink, onAddPayment, onMarkPaid }: {
   item: any; open: boolean; onOpenChange: (v: boolean) => void;
-  onAuthorize: (id: string) => void; onDeny: (id: string) => void; permissions: Permissions;
+  onAuthorize: (id: string, obs: string) => void; onDeny: (id: string, obs: string) => void; permissions: Permissions;
+  onUpdateLink: (id: string, link: string) => void;
+  onAddPayment: (clientePrazoId: string, valor: number, obs: string) => void;
+  onMarkPaid: (id: string) => void;
+}) {
   onUpdateLink: (id: string, link: string) => void;
   onAddPayment: (clientePrazoId: string, valor: number, obs: string) => void;
   onMarkPaid: (id: string) => void;
