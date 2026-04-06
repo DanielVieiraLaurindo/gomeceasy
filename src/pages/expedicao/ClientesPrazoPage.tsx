@@ -754,14 +754,14 @@ export default function ClientesPrazoPage() {
   const concluidos = filtered.filter((r: any) => r.status === 'concluido').length;
   const saldoDevedor = filtered.filter((r: any) => r.status !== 'concluido').reduce((acc: number, r: any) => acc + ((r.valor || 0) - (r.valor_pago || 0)), 0);
 
-  const handleAuthorize = (id: string) => {
-    update.mutate({ id, status: 'autorizado', autorizado_por: profile?.nome || 'Supervisor' }, {
+  const handleAuthorize = (id: string, obs: string) => {
+    update.mutate({ id, status: 'autorizado', autorizado_por: profile?.nome || 'Supervisor', observacao: obs }, {
       onSuccess: () => { toast.success('Requisição autorizada'); setSelectedItem(null); },
     });
   };
 
-  const handleDeny = (id: string) => {
-    update.mutate({ id, status: 'nao_autorizado', autorizado_por: profile?.nome || 'Supervisor' }, {
+  const handleDeny = (id: string, obs: string) => {
+    update.mutate({ id, status: 'nao_autorizado', autorizado_por: profile?.nome || 'Supervisor', observacao: obs }, {
       onSuccess: () => { toast.success('Pagamento posterior não autorizado'); setSelectedItem(null); },
     });
   };
