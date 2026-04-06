@@ -1,7 +1,7 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { MetricCard } from '@/components/MetricCard';
-import { Clock, DollarSign, AlertTriangle, CheckCircle, Plus, Link2, ShieldCheck, Trash2, Upload, FileText, CreditCard, Star } from 'lucide-react';
+import { Clock, DollarSign, AlertTriangle, CheckCircle, Plus, Link2, ShieldCheck, Trash2, Upload, FileText, CreditCard, Star, Send } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -647,7 +647,100 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissio
 }
 
 // ================================================================
-// MAIN PAGE
+// WHATSAPP CONTACT SELECTION DIALOG
+// ================================================================
+const WHATSAPP_CONTACTS = [
+  { name: 'Gisele', phone: '5511954112425' },
+  { name: 'Michael', phone: '5511960539998' },
+  { name: 'Renato', phone: '5511962327172' },
+  { name: 'Michelle', phone: '5511918515357' },
+];
+
+function WhatsAppContactDialog({ open, onOpenChange, data }: {
+  open: boolean; onOpenChange: (v: boolean) => void;
+  data: { requisicao: string; nomeCliente: string; nomeVendedor: string } | null;
+}) {
+  const [selected, setSelected] = useState<Set<string>>(new Set(WHATSAPP_CONTACTS.map(c => c.phone)));
+
+  const toggle = (phone: string) => {
+    setSelected(prev => {
+      const n = new Set(prev);
+      n.has(phone) ? n.delete(phone) : n.add(phone);
+      return n;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selected.size === WHATSAPP_CONTACTS.length) setSelected(new Set());
+    else setSelected(new Set(WHATSAPP_CONTACTS.map(c => c.phone)));
+  };
+
+  const handleSend = () => {
+    if (!data || selected.size === 0) {
+      toast.error('Selecione ao menos um contato');
+      return;
+    }
+    const contacts = WHATSAPP_CONTACTS.filter(c => selected.has(c.phone));
+    contacts.forEach((c, i) => {
+      const msg = `Olá ${c.name}\n\nA requisição ${data.requisicao} do cliente ${data.nomeCliente} aguarda sua aprovação, por gentileza aprovar no sistema.\n\nObrigado ${data.nomeVendedor}`;
+      setTimeout(() => {
+        window.open(`https://wa.me/${c.phone}?text=${encodeURIComponent(msg)}`, '_blank');
+      }, i * 1500);
+    });
+    toast.success(`Enviando para ${contacts.length} contato(s)...`);
+    onOpenChange(false);
+  };
+
+  if (!data) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="font-barlow flex items-center gap-2">
+            <Send className="w-5 h-5 text-success" /> Notificar Gestores via WhatsApp
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 mt-2">
+          <div className="bg-muted/50 rounded-lg p-3 text-sm space-y-1">
+            <p><strong>Requisição:</strong> {data.requisicao}</p>
+            <p><strong>Cliente:</strong> {data.nomeCliente}</p>
+            <p><strong>Vendedor:</strong> {data.nomeVendedor}</p>
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-bold uppercase text-muted-foreground">Selecione os contatos</Label>
+              <Button variant="ghost" size="sm" className="text-xs h-6" onClick={toggleAll}>
+                {selected.size === WHATSAPP_CONTACTS.length ? 'Desmarcar todos' : 'Selecionar todos'}
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {WHATSAPP_CONTACTS.map(c => (
+                <label key={c.phone} className="flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors">
+                  <Checkbox checked={selected.has(c.phone)} onCheckedChange={() => toggle(c.phone)} />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{c.name}</p>
+                    <p className="text-xs text-muted-foreground font-mono">{c.phone.replace(/^55(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3')}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>Cancelar</Button>
+            <Button className="flex-1 gap-2" onClick={handleSend} disabled={selected.size === 0}>
+              <Send className="w-4 h-4" /> Enviar ({selected.size})
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
 // ================================================================
 export default function ClientesPrazoPage() {
   const { user, profile } = useAuth();
@@ -662,7 +755,7 @@ export default function ClientesPrazoPage() {
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [clientScores, setClientScores] = useState<any[]>([]);
-
+  const [whatsappData, setWhatsappData] = useState<{ requisicao: string; nomeCliente: string; nomeVendedor: string } | null>(null);
   // Fetch client scores
   useEffect(() => {
     (supabase as any).from('cliente_scores').select('*').order('score_estrelas', { ascending: true }).then(({ data }: any) => {
@@ -963,7 +1056,6 @@ export default function ClientesPrazoPage() {
       </div>
 
       <NovaRequisicaoDialog open={novaOpen} onOpenChange={setNovaOpen} onCreate={(data) => {
-        // Block duplicate: same requisição + same valor
         const isDuplicate = requisicoes.some((r: any) =>
           r.requisicao === data.requisicao && Number(r.valor) === Number(data.valor)
         );
@@ -973,26 +1065,21 @@ export default function ClientesPrazoPage() {
         }
         create.mutate({ ...data, created_by: user?.id }, {
           onSuccess: () => {
-            // If pagar_posteriormente, send WhatsApp to managers
             if (data.ocorrencia === 'pagar_posteriormente') {
-              const contacts = [
-                { name: 'Gisele', phone: '5511954112425' },
-                { name: 'Michael', phone: '5511960539998' },
-                { name: 'Renato', phone: '5511962327172' },
-                { name: 'Michelle', phone: '5511918515357' },
-              ];
-              const vendedor = data.nome_vendedor || profile?.nome || 'Vendedor';
-              contacts.forEach((c, i) => {
-                const msg = `Olá ${c.name}\n\nA requisição ${data.requisicao} do cliente ${data.nome_cliente} aguarda sua aprovação, por gentileza aprovar no sistema.\n\nObrigado ${vendedor}`;
-                setTimeout(() => {
-                  window.open(`https://wa.me/${c.phone}?text=${encodeURIComponent(msg)}`, '_blank');
-                }, i * 1500);
+              setWhatsappData({
+                requisicao: data.requisicao,
+                nomeCliente: data.nome_cliente,
+                nomeVendedor: data.nome_vendedor || profile?.nome || 'Vendedor',
               });
-              toast.info('Abrindo WhatsApp para notificar os gestores...');
             }
           }
         });
       }} permissions={permissions} />
+      <WhatsAppContactDialog
+        open={!!whatsappData}
+        onOpenChange={(v) => { if (!v) setWhatsappData(null); }}
+        data={whatsappData}
+      />
       <DetalheSheet
         item={selectedItem}
         open={!!selectedItem}
