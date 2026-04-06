@@ -963,7 +963,6 @@ export default function ClientesPrazoPage() {
       </div>
 
       <NovaRequisicaoDialog open={novaOpen} onOpenChange={setNovaOpen} onCreate={(data) => {
-        // Block duplicate: same requisição + same valor
         const isDuplicate = requisicoes.some((r: any) =>
           r.requisicao === data.requisicao && Number(r.valor) === Number(data.valor)
         );
@@ -973,26 +972,21 @@ export default function ClientesPrazoPage() {
         }
         create.mutate({ ...data, created_by: user?.id }, {
           onSuccess: () => {
-            // If pagar_posteriormente, send WhatsApp to managers
             if (data.ocorrencia === 'pagar_posteriormente') {
-              const contacts = [
-                { name: 'Gisele', phone: '5511954112425' },
-                { name: 'Michael', phone: '5511960539998' },
-                { name: 'Renato', phone: '5511962327172' },
-                { name: 'Michelle', phone: '5511918515357' },
-              ];
-              const vendedor = data.nome_vendedor || profile?.nome || 'Vendedor';
-              contacts.forEach((c, i) => {
-                const msg = `Olá ${c.name}\n\nA requisição ${data.requisicao} do cliente ${data.nome_cliente} aguarda sua aprovação, por gentileza aprovar no sistema.\n\nObrigado ${vendedor}`;
-                setTimeout(() => {
-                  window.open(`https://wa.me/${c.phone}?text=${encodeURIComponent(msg)}`, '_blank');
-                }, i * 1500);
+              setWhatsappData({
+                requisicao: data.requisicao,
+                nomeCliente: data.nome_cliente,
+                nomeVendedor: data.nome_vendedor || profile?.nome || 'Vendedor',
               });
-              toast.info('Abrindo WhatsApp para notificar os gestores...');
             }
           }
         });
       }} permissions={permissions} />
+      <WhatsAppContactDialog
+        open={!!whatsappData}
+        onOpenChange={(v) => { if (!v) setWhatsappData(null); }}
+        data={whatsappData}
+      />
       <DetalheSheet
         item={selectedItem}
         open={!!selectedItem}
