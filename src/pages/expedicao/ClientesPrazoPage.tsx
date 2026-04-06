@@ -962,7 +962,37 @@ export default function ClientesPrazoPage() {
         </div>
       </div>
 
-      <NovaRequisicaoDialog open={novaOpen} onOpenChange={setNovaOpen} onCreate={(data) => create.mutate({ ...data, created_by: user?.id })} permissions={permissions} />
+      <NovaRequisicaoDialog open={novaOpen} onOpenChange={setNovaOpen} onCreate={(data) => {
+        // Block duplicate: same requisição + same valor
+        const isDuplicate = requisicoes.some((r: any) =>
+          r.requisicao === data.requisicao && Number(r.valor) === Number(data.valor)
+        );
+        if (isDuplicate) {
+          toast.error('Requisição duplicada! Já existe uma requisição com o mesmo número e valor.');
+          return;
+        }
+        create.mutate({ ...data, created_by: user?.id }, {
+          onSuccess: () => {
+            // If pagar_posteriormente, send WhatsApp to managers
+            if (data.ocorrencia === 'pagar_posteriormente') {
+              const contacts = [
+                { name: 'Gisele', phone: '5511954112425' },
+                { name: 'Michael', phone: '5511960539998' },
+                { name: 'Renato', phone: '5511962327172' },
+                { name: 'Michelle', phone: '5511918515357' },
+              ];
+              const vendedor = data.nome_vendedor || profile?.nome || 'Vendedor';
+              contacts.forEach((c, i) => {
+                const msg = `Olá ${c.name}\n\nA requisição ${data.requisicao} do cliente ${data.nome_cliente} aguarda sua aprovação, por gentileza aprovar no sistema.\n\nObrigado ${vendedor}`;
+                setTimeout(() => {
+                  window.open(`https://wa.me/${c.phone}?text=${encodeURIComponent(msg)}`, '_blank');
+                }, i * 1500);
+              });
+              toast.info('Abrindo WhatsApp para notificar os gestores...');
+            }
+          }
+        });
+      }} permissions={permissions} />
       <DetalheSheet
         item={selectedItem}
         open={!!selectedItem}

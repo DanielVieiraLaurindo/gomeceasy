@@ -49,6 +49,7 @@ export default function CreditosClientesPage() {
   const [telefoneVendedor, setTelefoneVendedor] = useState('');
 
   const balance = (credito ?? 0) - (saldo ?? 0);
+  const saldoDevedorDisplay = (saldo ?? 0) > 0 ? -(saldo ?? 0) : (saldo ?? 0);
 
   const fetchClientData = useCallback(async () => {
     const code = codigoCliente.trim().padStart(6, '0');
