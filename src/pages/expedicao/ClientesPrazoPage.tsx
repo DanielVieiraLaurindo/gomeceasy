@@ -100,12 +100,13 @@ function usePagePermissions(): Permissions {
   const isComercial = isInGroup('comercial') && !isInGroup('supervisor');
   const isSupervisor = isInGroup('supervisor');
   const isFinanceiro = isInGroup('financeiro') || setor === 'financeiro';
+  const isExpedicao = isInGroup('expedicao') || setor === 'expedicao_loja' || setor === 'expedicao_ecommerce';
 
   return {
     canCreate: isMaster || isComercial || isSupervisor || isFinanceiro,
     canInsertLink: isMaster || isFinanceiro || isComercial,
     canDelete: isMaster, // only master deletes
-    canAuthorize: isMaster || isSupervisor,
+    canAuthorize: isMaster || isSupervisor || isExpedicao,
     canEdit: isMaster || isSupervisor,
     canRegisterPayment: isMaster || isFinanceiro,
     onlyOwnRequisitions: isComercial, // comercial sees only own
@@ -376,11 +377,56 @@ function ClientScoreDialog({ open, onOpenChange, scores }: {
 }
 
 // ================================================================
+// AUTHORIZATION ACTIONS (with required observation)
+// ================================================================
+function AuthorizationActions({ itemId, onAuthorize, onDeny }: {
+  itemId: string; onAuthorize: (id: string, obs: string) => void; onDeny: (id: string, obs: string) => void;
+}) {
+  const [obs, setObs] = useState('');
+  const [error, setError] = useState(false);
+
+  const handleAction = (action: 'authorize' | 'deny') => {
+    if (!obs.trim()) {
+      setError(true);
+      toast.error('A observação é obrigatória para autorizar/recusar');
+      return;
+    }
+    if (action === 'authorize') onAuthorize(itemId, obs.trim());
+    else onDeny(itemId, obs.trim());
+  };
+
+  return (
+    <div className="space-y-3 bg-muted/30 rounded-lg p-4 border">
+      <p className="text-xs text-muted-foreground uppercase font-bold">Decisão de Autorização</p>
+      <div className="space-y-1.5">
+        <Label className="text-xs font-bold uppercase text-muted-foreground">Observação *</Label>
+        <Textarea
+          rows={2}
+          value={obs}
+          onChange={e => { setObs(e.target.value); setError(false); }}
+          placeholder="Motivo da autorização ou recusa..."
+          className={cn(error && 'border-destructive')}
+        />
+        {error && <p className="text-xs text-destructive">Campo obrigatório</p>}
+      </div>
+      <div className="flex gap-2">
+        <Button className="flex-1 gap-2" variant="default" onClick={() => handleAction('authorize')}>
+          <ShieldCheck className="w-4 h-4" /> Autorizar
+        </Button>
+        <Button className="flex-1 gap-2" variant="destructive" onClick={() => handleAction('deny')}>
+          Não Autorizar
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ================================================================
 // DETALHE SHEET
 // ================================================================
 function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissions, onUpdateLink, onAddPayment, onMarkPaid }: {
   item: any; open: boolean; onOpenChange: (v: boolean) => void;
-  onAuthorize: (id: string) => void; onDeny: (id: string) => void; permissions: Permissions;
+  onAuthorize: (id: string, obs: string) => void; onDeny: (id: string, obs: string) => void; permissions: Permissions;
   onUpdateLink: (id: string, link: string) => void;
   onAddPayment: (clientePrazoId: string, valor: number, obs: string) => void;
   onMarkPaid: (id: string) => void;
@@ -436,14 +482,7 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissio
           </div>
 
           {needsAuth && permissions.canAuthorize && (
-            <div className="flex gap-2">
-              <Button className="flex-1 gap-2" variant="default" onClick={() => onAuthorize(item.id)}>
-                <ShieldCheck className="w-4 h-4" /> Autorizar
-              </Button>
-              <Button className="flex-1 gap-2" variant="destructive" onClick={() => onDeny(item.id)}>
-                Não Autorizar
-              </Button>
-            </div>
+            <AuthorizationActions itemId={item.id} onAuthorize={onAuthorize} onDeny={onDeny} />
           )}
           {needsAuth && !permissions.canAuthorize && (
             <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3 text-sm text-orange-600">
@@ -715,14 +754,14 @@ export default function ClientesPrazoPage() {
   const concluidos = filtered.filter((r: any) => r.status === 'concluido').length;
   const saldoDevedor = filtered.filter((r: any) => r.status !== 'concluido').reduce((acc: number, r: any) => acc + ((r.valor || 0) - (r.valor_pago || 0)), 0);
 
-  const handleAuthorize = (id: string) => {
-    update.mutate({ id, status: 'autorizado', autorizado_por: profile?.nome || 'Supervisor' }, {
+  const handleAuthorize = (id: string, obs: string) => {
+    update.mutate({ id, status: 'autorizado', autorizado_por: profile?.nome || 'Supervisor', observacao: obs }, {
       onSuccess: () => { toast.success('Requisição autorizada'); setSelectedItem(null); },
     });
   };
 
-  const handleDeny = (id: string) => {
-    update.mutate({ id, status: 'nao_autorizado', autorizado_por: profile?.nome || 'Supervisor' }, {
+  const handleDeny = (id: string, obs: string) => {
+    update.mutate({ id, status: 'nao_autorizado', autorizado_por: profile?.nome || 'Supervisor', observacao: obs }, {
       onSuccess: () => { toast.success('Pagamento posterior não autorizado'); setSelectedItem(null); },
     });
   };
@@ -923,7 +962,37 @@ export default function ClientesPrazoPage() {
         </div>
       </div>
 
-      <NovaRequisicaoDialog open={novaOpen} onOpenChange={setNovaOpen} onCreate={(data) => create.mutate({ ...data, created_by: user?.id })} permissions={permissions} />
+      <NovaRequisicaoDialog open={novaOpen} onOpenChange={setNovaOpen} onCreate={(data) => {
+        // Block duplicate: same requisição + same valor
+        const isDuplicate = requisicoes.some((r: any) =>
+          r.requisicao === data.requisicao && Number(r.valor) === Number(data.valor)
+        );
+        if (isDuplicate) {
+          toast.error('Requisição duplicada! Já existe uma requisição com o mesmo número e valor.');
+          return;
+        }
+        create.mutate({ ...data, created_by: user?.id }, {
+          onSuccess: () => {
+            // If pagar_posteriormente, send WhatsApp to managers
+            if (data.ocorrencia === 'pagar_posteriormente') {
+              const contacts = [
+                { name: 'Gisele', phone: '5511954112425' },
+                { name: 'Michael', phone: '5511960539998' },
+                { name: 'Renato', phone: '5511962327172' },
+                { name: 'Michelle', phone: '5511918515357' },
+              ];
+              const vendedor = data.nome_vendedor || profile?.nome || 'Vendedor';
+              contacts.forEach((c, i) => {
+                const msg = `Olá ${c.name}\n\nA requisição ${data.requisicao} do cliente ${data.nome_cliente} aguarda sua aprovação, por gentileza aprovar no sistema.\n\nObrigado ${vendedor}`;
+                setTimeout(() => {
+                  window.open(`https://wa.me/${c.phone}?text=${encodeURIComponent(msg)}`, '_blank');
+                }, i * 1500);
+              });
+              toast.info('Abrindo WhatsApp para notificar os gestores...');
+            }
+          }
+        });
+      }} permissions={permissions} />
       <DetalheSheet
         item={selectedItem}
         open={!!selectedItem}

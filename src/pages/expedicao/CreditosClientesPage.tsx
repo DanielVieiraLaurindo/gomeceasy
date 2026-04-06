@@ -49,6 +49,7 @@ export default function CreditosClientesPage() {
   const [telefoneVendedor, setTelefoneVendedor] = useState('');
 
   const balance = (credito ?? 0) - (saldo ?? 0);
+  const saldoDevedorDisplay = (saldo ?? 0) > 0 ? -(saldo ?? 0) : (saldo ?? 0);
 
   const fetchClientData = useCallback(async () => {
     const code = codigoCliente.trim().padStart(6, '0');
@@ -111,7 +112,7 @@ export default function CreditosClientesPage() {
     const code = codigoCliente.trim().padStart(6, '0');
     let text = `*EXTRATO DO CLIENTE*\n`;
     text += `*Cliente:* ${nomeCliente} (${code})\n`;
-    text += `*Saldo Devedor:* ${formatCurrency(saldo ?? 0)}\n`;
+    text += `*Saldo Devedor:* ${formatCurrency(saldoDevedorDisplay)}\n`;
     text += `*Credito:* ${formatCurrency(credito ?? 0)}\n`;
     text += `*Saldo Final:* ${formatCurrency(balance)}\n\n`;
     text += `--- MOVIMENTACOES ---\n\n`;
@@ -191,7 +192,7 @@ export default function CreditosClientesPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <MetricCard
               title="Saldo Devedor"
-              value={formatCurrency(saldo ?? 0)}
+              value={formatCurrency(saldoDevedorDisplay)}
               icon={TrendingDown}
               variant={(saldo ?? 0) > 0 ? 'danger' : 'default'}
               delay={0}
