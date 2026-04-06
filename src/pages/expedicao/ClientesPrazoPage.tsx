@@ -431,10 +431,6 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissio
   onAddPayment: (clientePrazoId: string, valor: number, obs: string) => void;
   onMarkPaid: (id: string) => void;
 }) {
-  onUpdateLink: (id: string, link: string) => void;
-  onAddPayment: (clientePrazoId: string, valor: number, obs: string) => void;
-  onMarkPaid: (id: string) => void;
-}) {
   const [linkInput, setLinkInput] = useState('');
   const [valorPago, setValorPago] = useState('');
   const [obsPagamento, setObsPagamento] = useState('');
