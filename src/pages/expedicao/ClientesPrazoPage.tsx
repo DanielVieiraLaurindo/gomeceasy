@@ -377,6 +377,51 @@ function ClientScoreDialog({ open, onOpenChange, scores }: {
 }
 
 // ================================================================
+// AUTHORIZATION ACTIONS (with required observation)
+// ================================================================
+function AuthorizationActions({ itemId, onAuthorize, onDeny }: {
+  itemId: string; onAuthorize: (id: string, obs: string) => void; onDeny: (id: string, obs: string) => void;
+}) {
+  const [obs, setObs] = useState('');
+  const [error, setError] = useState(false);
+
+  const handleAction = (action: 'authorize' | 'deny') => {
+    if (!obs.trim()) {
+      setError(true);
+      toast.error('A observação é obrigatória para autorizar/recusar');
+      return;
+    }
+    if (action === 'authorize') onAuthorize(itemId, obs.trim());
+    else onDeny(itemId, obs.trim());
+  };
+
+  return (
+    <div className="space-y-3 bg-muted/30 rounded-lg p-4 border">
+      <p className="text-xs text-muted-foreground uppercase font-bold">Decisão de Autorização</p>
+      <div className="space-y-1.5">
+        <Label className="text-xs font-bold uppercase text-muted-foreground">Observação *</Label>
+        <Textarea
+          rows={2}
+          value={obs}
+          onChange={e => { setObs(e.target.value); setError(false); }}
+          placeholder="Motivo da autorização ou recusa..."
+          className={cn(error && 'border-destructive')}
+        />
+        {error && <p className="text-xs text-destructive">Campo obrigatório</p>}
+      </div>
+      <div className="flex gap-2">
+        <Button className="flex-1 gap-2" variant="default" onClick={() => handleAction('authorize')}>
+          <ShieldCheck className="w-4 h-4" /> Autorizar
+        </Button>
+        <Button className="flex-1 gap-2" variant="destructive" onClick={() => handleAction('deny')}>
+          Não Autorizar
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ================================================================
 // DETALHE SHEET
 // ================================================================
 function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissions, onUpdateLink, onAddPayment, onMarkPaid }: {
