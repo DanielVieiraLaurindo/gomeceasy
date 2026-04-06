@@ -112,7 +112,7 @@ export default function CreditosClientesPage() {
     const code = codigoCliente.trim().padStart(6, '0');
     let text = `*EXTRATO DO CLIENTE*\n`;
     text += `*Cliente:* ${nomeCliente} (${code})\n`;
-    text += `*Saldo Devedor:* ${formatCurrency(saldo ?? 0)}\n`;
+    text += `*Saldo Devedor:* ${formatCurrency(saldoDevedorDisplay)}\n`;
     text += `*Credito:* ${formatCurrency(credito ?? 0)}\n`;
     text += `*Saldo Final:* ${formatCurrency(balance)}\n\n`;
     text += `--- MOVIMENTACOES ---\n\n`;
