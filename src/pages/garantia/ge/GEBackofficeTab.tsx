@@ -76,6 +76,12 @@ export default function GEBackofficeTab() {
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (userEmail && filters.userEmail !== userEmail) {
+      setFilters(f => ({ ...f, userEmail }));
+    }
+  }, [userEmail]);
+
+  useEffect(() => {
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     searchTimeoutRef.current = setTimeout(() => {
       setFilters(f => ({ ...f, search: searchInput || undefined }));
