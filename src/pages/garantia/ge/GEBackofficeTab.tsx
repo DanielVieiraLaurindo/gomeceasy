@@ -654,8 +654,9 @@ export default function GEBackofficeTab() {
                       </TableCell>
                       <TableCell className="font-mono-data font-medium">
                         <span className="flex items-center gap-1">
-                          {c.is_full && activeTab === 'fullfilment' && <Zap className="w-3.5 h-3.5 text-green-500" />}
+                          {c.is_full && <Zap className="w-3.5 h-3.5 text-success" />}
                           {c.case_number}
+                          {c.is_full && <Badge variant="outline" className="text-[9px] border-success/30 text-success ml-1">Full</Badge>}
                         </span>
                       </TableCell>
                       <TableCell>
