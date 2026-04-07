@@ -417,7 +417,7 @@ export default function GEBackofficeTab() {
     XLSX.writeFile(wb, 'modelo_importacao_backoffice.xlsx');
   };
 
-  const clearFilters = () => { setSearchInput(''); setFilters({ origemFilter: 'backoffice' }); };
+  const clearFilters = () => { setSearchInput(''); setFilters({ origemFilter: 'backoffice', userEmail }); };
   const hasFilters = Object.entries(filters).some(([k, v]) => k !== 'origemFilter' && v !== undefined && v !== '');
 
   if (isLoading) {
