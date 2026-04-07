@@ -82,7 +82,7 @@ export function useReembolsos() {
 
   const updateReembolso = useMutation({
     mutationFn: async ({ id, ...updates }: { id: string; [key: string]: any }) => {
-      const { error } = await supabase.from('reembolsos').update(updates).eq('id', id);
+      const { error } = await supabase.from('reembolsos').update(updates as any).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['reembolsos'] }),
