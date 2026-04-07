@@ -707,7 +707,7 @@ export default function GEBackofficeTab() {
 
       {/* New Case Dialog */}
       <Dialog open={isNewCaseOpen} onOpenChange={setIsNewCaseOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Novo Caso</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-3 gap-3">
