@@ -185,3 +185,14 @@ export const MEDIATORS = [
   'Fernando Melo',
   'Guilherme Pinheiro do Carmo',
 ] as const;
+
+// Status específicos da aba Recursos (Backoffice)
+export const RECURSOS_STATUS_OPTIONS: { value: CaseStatus; label: string }[] = [
+  { value: 'aguardando_analise', label: 'Aguardando Antecipação' },
+  { value: 'em_analise', label: 'Em Análise' },
+  { value: 'antecipado', label: 'Antecipado' },
+  { value: 'aguardando_backoffice', label: 'Aguardando Backoffice' },
+  { value: 'em_mediacao', label: 'Em Mediação' },
+  { value: 'finalizado', label: 'Finalizado' },
+  { value: 'arquivado', label: 'Arquivado' },
+];
