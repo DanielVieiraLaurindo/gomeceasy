@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { useGarantiaCases, useUpdateGarantiaCase, useDeleteGarantiaCase, useCreateGarantiaCase, GarantiaCaseFilters } from '@/hooks/useGarantiaCases';
-import { ReturnCase, STATUS_LABELS, STATUS_CLASSES, CASE_TYPE_LABELS, BUSINESS_UNIT_DISPLAY_LABELS, CaseStatus, MARKETPLACE_ACCOUNT_LABELS, BUSINESS_UNIT_CNPJ_LABELS, MarketplaceAccount, CaseType } from '@/types/garantia-ecommerce';
+import { ReturnCase, STATUS_LABELS, STATUS_CLASSES, CASE_TYPE_LABELS, BUSINESS_UNIT_DISPLAY_LABELS, CaseStatus, MARKETPLACE_ACCOUNT_LABELS, BUSINESS_UNIT_CNPJ_LABELS, MarketplaceAccount, CaseType, RECURSOS_STATUS_OPTIONS } from '@/types/garantia-ecommerce';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -456,7 +456,7 @@ export default function GEBackofficeTab() {
           {bulkAction === 'status' && (
             <Select value={bulkValue} onValueChange={setBulkValue}>
               <SelectTrigger className="w-[180px]"><SelectValue placeholder="Selecione status" /></SelectTrigger>
-              <SelectContent>{Object.entries(STATUS_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
+              <SelectContent>{RECURSOS_STATUS_OPTIONS.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
             </Select>
           )}
           {bulkAction === 'type' && (
@@ -493,7 +493,7 @@ export default function GEBackofficeTab() {
             <SelectTrigger className="w-[180px]"><SelectValue placeholder="Todos Status" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos Status</SelectItem>
-              {Object.entries(STATUS_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+              {RECURSOS_STATUS_OPTIONS.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filters.caseType || 'all'} onValueChange={v => setFilters(f => ({ ...f, caseType: v === 'all' ? undefined : v as any }))}>
@@ -642,7 +642,7 @@ export default function GEBackofficeTab() {
                       </TableCell>
                       <TableCell className="font-mono-data font-medium">
                         <span className="flex items-center gap-1">
-                          {c.is_full && <Zap className="w-3.5 h-3.5 text-green-500" />}
+                          {c.is_full && activeTab === 'fullfilment' && <Zap className="w-3.5 h-3.5 text-green-500" />}
                           {c.case_number}
                         </span>
                       </TableCell>
@@ -731,7 +731,7 @@ export default function GEBackofficeTab() {
               <div><Label>Status</Label>
                 <Select value={formData.status} onValueChange={v => setFormData(f => ({ ...f, status: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{Object.entries(STATUS_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
+                  <SelectContent>{RECURSOS_STATUS_OPTIONS.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div><Label>Data de Entrada</Label><Input type="date" value={formData.entry_date} onChange={e => setFormData(f => ({ ...f, entry_date: e.target.value }))} /></div>
@@ -829,7 +829,7 @@ export default function GEBackofficeTab() {
                   <div><Label>Status</Label>
                     <Select value={editFormData.status} onValueChange={v => setEditFormData(f => ({ ...f, status: v }))}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>{Object.entries(STATUS_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
+                      <SelectContent>{RECURSOS_STATUS_OPTIONS.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <div><Label>Analista</Label><Input value={editFormData.analyst_name} onChange={e => setEditFormData(f => ({ ...f, analyst_name: e.target.value }))} /></div>
