@@ -17,6 +17,7 @@ export interface GarantiaCaseFilters {
   onlyFull?: boolean;
   excludeFinalized?: boolean;
   origemFilter?: 'backoffice' | 'pos_vendas';
+  userEmail?: string;
 }
 
 export const useGarantiaCases = (filters?: GarantiaCaseFilters) => {
@@ -58,6 +59,10 @@ export const useGarantiaCases = (filters?: GarantiaCaseFilters) => {
       }
       if (filters?.origemFilter === 'pos_vendas') {
         query = query.eq('origem', 'pos_vendas');
+      }
+      // GAP-ES filter for garantia.es user
+      if (filters?.userEmail === 'garantia.es@gomecautopecas.com.br') {
+        query = query.or('business_unit_cnpj.eq.GAP_ES,business_unit.eq.GAP_ES');
       }
 
       const { data, error } = await query;

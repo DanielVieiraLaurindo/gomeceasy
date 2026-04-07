@@ -42,8 +42,9 @@ const KANBAN_COLUMNS: { key: string; label: string; status: CaseStatus; color: s
 ];
 
 export default function GEBackofficeTab() {
-  const { user } = useAuth();
-  const [filters, setFilters] = useState<GarantiaCaseFilters>({ origemFilter: 'backoffice' });
+  const { user, profile } = useAuth();
+  const userEmail = profile?.email || '';
+  const [filters, setFilters] = useState<GarantiaCaseFilters>({ origemFilter: 'backoffice', userEmail });
   const [activeTab, setActiveTab] = useState('pendentes');
   const [searchInput, setSearchInput] = useState('');
   const [viewingCase, setViewingCase] = useState<ReturnCase | null>(null);
@@ -70,9 +71,16 @@ export default function GEBackofficeTab() {
     client_name: '', client_document: '', case_type: 'DEVOLUCAO' as string,
     analysis_reason: '', entry_date: new Date().toISOString().split('T')[0],
     analyst_name: '', status: 'aguardando_analise' as string,
+    sem_antecipacao: false, is_full: false, itens_retorno: '',
   });
   const [casePhotos, setCasePhotos] = useState<File[]>([]);
   const photoInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (userEmail && filters.userEmail !== userEmail) {
+      setFilters(f => ({ ...f, userEmail }));
+    }
+  }, [userEmail]);
 
   useEffect(() => {
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
@@ -123,6 +131,7 @@ export default function GEBackofficeTab() {
   };
 
   const handleCreateCase = async () => {
+    const statusToUse = formData.sem_antecipacao ? 'em_analise' : formData.status;
     createCase.mutate({
       client_name: formData.client_name || '-',
       client_document: formData.client_document || '-',
@@ -133,7 +142,7 @@ export default function GEBackofficeTab() {
       case_type: formData.case_type as any,
       analysis_reason: formData.analysis_reason,
       entry_date: formData.entry_date,
-      status: formData.status as any,
+      status: statusToUse as any,
       analyst_name: formData.analyst_name || '-',
       item_condition: '-',
       product_codes: [],
@@ -142,6 +151,9 @@ export default function GEBackofficeTab() {
       sent_to_backoffice: true,
       not_found_erp: false,
       origem: 'backoffice',
+      is_full: formData.is_full,
+      sem_antecipacao: formData.sem_antecipacao,
+      itens_retorno: formData.itens_retorno || null,
     } as any, {
       onSuccess: async (data: any) => {
         if (casePhotos.length > 0 && data?.id) {
@@ -159,7 +171,7 @@ export default function GEBackofficeTab() {
         }
         setIsNewCaseOpen(false);
         setCasePhotos([]);
-        setFormData({ sale_number: '', marketplace_account: '', business_unit_cnpj: '', client_name: '', client_document: '', case_type: 'DEVOLUCAO', analysis_reason: '', entry_date: new Date().toISOString().split('T')[0], analyst_name: '', status: 'aguardando_analise' });
+        setFormData({ sale_number: '', marketplace_account: '', business_unit_cnpj: '', client_name: '', client_document: '', case_type: 'DEVOLUCAO', analysis_reason: '', entry_date: new Date().toISOString().split('T')[0], analyst_name: '', status: 'aguardando_analise', sem_antecipacao: false, is_full: false, itens_retorno: '' });
       }
     });
   };
@@ -405,7 +417,7 @@ export default function GEBackofficeTab() {
     XLSX.writeFile(wb, 'modelo_importacao_backoffice.xlsx');
   };
 
-  const clearFilters = () => { setSearchInput(''); setFilters({ origemFilter: 'backoffice' }); };
+  const clearFilters = () => { setSearchInput(''); setFilters({ origemFilter: 'backoffice', userEmail }); };
   const hasFilters = Object.entries(filters).some(([k, v]) => k !== 'origemFilter' && v !== undefined && v !== '');
 
   if (isLoading) {
@@ -642,8 +654,9 @@ export default function GEBackofficeTab() {
                       </TableCell>
                       <TableCell className="font-mono-data font-medium">
                         <span className="flex items-center gap-1">
-                          {c.is_full && activeTab === 'fullfilment' && <Zap className="w-3.5 h-3.5 text-green-500" />}
+                          {c.is_full && <Zap className="w-3.5 h-3.5 text-success" />}
                           {c.case_number}
+                          {c.is_full && <Badge variant="outline" className="text-[9px] border-success/30 text-success ml-1">Full</Badge>}
                         </span>
                       </TableCell>
                       <TableCell>
@@ -695,7 +708,7 @@ export default function GEBackofficeTab() {
 
       {/* New Case Dialog */}
       <Dialog open={isNewCaseOpen} onOpenChange={setIsNewCaseOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Novo Caso</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-3 gap-3">
@@ -737,6 +750,21 @@ export default function GEBackofficeTab() {
               <div><Label>Data de Entrada</Label><Input type="date" value={formData.entry_date} onChange={e => setFormData(f => ({ ...f, entry_date: e.target.value }))} /></div>
             </div>
             <div><Label>Quem Analisou</Label><Input value={formData.analyst_name} onChange={e => setFormData(f => ({ ...f, analyst_name: e.target.value }))} placeholder="Nome do analista" /></div>
+            
+            {/* Flags */}
+            <div className="flex flex-wrap items-center gap-4 p-3 rounded-lg border bg-muted/30">
+              <div className="flex items-center gap-2">
+                <Checkbox id="sem_antecipacao" checked={formData.sem_antecipacao} onCheckedChange={v => setFormData(f => ({ ...f, sem_antecipacao: !!v }))} />
+                <Label htmlFor="sem_antecipacao">Sem Antecipação</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox id="is_full" checked={formData.is_full} onCheckedChange={v => setFormData(f => ({ ...f, is_full: !!v }))} />
+                <Label htmlFor="is_full" className="flex items-center gap-1"><Zap className="w-3.5 h-3.5 text-success" />Full</Label>
+              </div>
+            </div>
+
+            <div><Label>Itens em Retorno</Label><Textarea value={formData.itens_retorno} onChange={e => setFormData(f => ({ ...f, itens_retorno: e.target.value }))} rows={2} placeholder="Descreva os itens que estão retornando..." /></div>
+            
             <div><Label>Observação</Label><Textarea value={formData.analysis_reason} onChange={e => setFormData(f => ({ ...f, analysis_reason: e.target.value }))} rows={3} /></div>
             <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
               <Label className="text-base font-semibold">Fotos do Caso</Label>

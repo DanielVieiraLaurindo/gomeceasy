@@ -2516,6 +2516,7 @@ export type Database = {
           is_company: boolean | null
           is_full: boolean | null
           item_condition: string | null
+          itens_retorno: string | null
           marketplace: string | null
           marketplace_account: string | null
           mediator_name: string | null
@@ -2544,6 +2545,7 @@ export type Database = {
           reimbursed: boolean | null
           reimbursement_value: number | null
           sale_number: string | null
+          sem_antecipacao: boolean | null
           sent_to_backoffice: boolean | null
           sent_to_backoffice_at: string | null
           status: string
@@ -2580,6 +2582,7 @@ export type Database = {
           is_company?: boolean | null
           is_full?: boolean | null
           item_condition?: string | null
+          itens_retorno?: string | null
           marketplace?: string | null
           marketplace_account?: string | null
           mediator_name?: string | null
@@ -2608,6 +2611,7 @@ export type Database = {
           reimbursed?: boolean | null
           reimbursement_value?: number | null
           sale_number?: string | null
+          sem_antecipacao?: boolean | null
           sent_to_backoffice?: boolean | null
           sent_to_backoffice_at?: string | null
           status?: string
@@ -2644,6 +2648,7 @@ export type Database = {
           is_company?: boolean | null
           is_full?: boolean | null
           item_condition?: string | null
+          itens_retorno?: string | null
           marketplace?: string | null
           marketplace_account?: string | null
           mediator_name?: string | null
@@ -2672,6 +2677,7 @@ export type Database = {
           reimbursed?: boolean | null
           reimbursement_value?: number | null
           sale_number?: string | null
+          sem_antecipacao?: boolean | null
           sent_to_backoffice?: boolean | null
           sent_to_backoffice_at?: string | null
           status?: string
