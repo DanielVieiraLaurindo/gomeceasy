@@ -749,6 +749,21 @@ export default function GEBackofficeTab() {
               <div><Label>Data de Entrada</Label><Input type="date" value={formData.entry_date} onChange={e => setFormData(f => ({ ...f, entry_date: e.target.value }))} /></div>
             </div>
             <div><Label>Quem Analisou</Label><Input value={formData.analyst_name} onChange={e => setFormData(f => ({ ...f, analyst_name: e.target.value }))} placeholder="Nome do analista" /></div>
+            
+            {/* Flags */}
+            <div className="flex flex-wrap items-center gap-4 p-3 rounded-lg border bg-muted/30">
+              <div className="flex items-center gap-2">
+                <Checkbox id="sem_antecipacao" checked={formData.sem_antecipacao} onCheckedChange={v => setFormData(f => ({ ...f, sem_antecipacao: !!v }))} />
+                <Label htmlFor="sem_antecipacao">Sem Antecipação</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox id="is_full" checked={formData.is_full} onCheckedChange={v => setFormData(f => ({ ...f, is_full: !!v }))} />
+                <Label htmlFor="is_full" className="flex items-center gap-1"><Zap className="w-3.5 h-3.5 text-success" />Full</Label>
+              </div>
+            </div>
+
+            <div><Label>Itens em Retorno</Label><Textarea value={formData.itens_retorno} onChange={e => setFormData(f => ({ ...f, itens_retorno: e.target.value }))} rows={2} placeholder="Descreva os itens que estão retornando..." /></div>
+            
             <div><Label>Observação</Label><Textarea value={formData.analysis_reason} onChange={e => setFormData(f => ({ ...f, analysis_reason: e.target.value }))} rows={3} /></div>
             <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
               <Label className="text-base font-semibold">Fotos do Caso</Label>
