@@ -31,7 +31,13 @@ export const useGarantiaCases = (filters?: GarantiaCaseFilters) => {
       if (filters?.status) query = query.eq('status', filters.status);
       if (filters?.caseType) query = query.eq('case_type', filters.caseType);
       if (filters?.search) {
-        query = query.or(`client_name.ilike.%${filters.search}%,sale_number.ilike.%${filters.search}%,product_sku.ilike.%${filters.search}%,fullfilment_tracking.ilike.%${filters.search}%`);
+        const searchTerm = filters.search.trim();
+        const isNumeric = /^\d+$/.test(searchTerm);
+        if (isNumeric) {
+          query = query.or(`client_name.ilike.%${searchTerm}%,sale_number.ilike.%${searchTerm}%,product_sku.ilike.%${searchTerm}%,fullfilment_tracking.ilike.%${searchTerm}%,case_number.eq.${searchTerm}`);
+        } else {
+          query = query.or(`client_name.ilike.%${searchTerm}%,sale_number.ilike.%${searchTerm}%,product_sku.ilike.%${searchTerm}%,fullfilment_tracking.ilike.%${searchTerm}%`);
+        }
       }
       if (filters?.dateFrom) query = query.gte('entry_date', filters.dateFrom);
       if (filters?.dateTo) query = query.lte('entry_date', filters.dateTo);
