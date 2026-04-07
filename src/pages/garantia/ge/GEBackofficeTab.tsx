@@ -456,7 +456,7 @@ export default function GEBackofficeTab() {
           {bulkAction === 'status' && (
             <Select value={bulkValue} onValueChange={setBulkValue}>
               <SelectTrigger className="w-[180px]"><SelectValue placeholder="Selecione status" /></SelectTrigger>
-              <SelectContent>{Object.entries(STATUS_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
+              <SelectContent>{RECURSOS_STATUS_OPTIONS.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
             </Select>
           )}
           {bulkAction === 'type' && (
@@ -493,7 +493,7 @@ export default function GEBackofficeTab() {
             <SelectTrigger className="w-[180px]"><SelectValue placeholder="Todos Status" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos Status</SelectItem>
-              {Object.entries(STATUS_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+              {RECURSOS_STATUS_OPTIONS.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={filters.caseType || 'all'} onValueChange={v => setFilters(f => ({ ...f, caseType: v === 'all' ? undefined : v as any }))}>
