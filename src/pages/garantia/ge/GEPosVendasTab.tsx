@@ -516,34 +516,27 @@ export default function GEPosVendasTab() {
                 </div>
                 <div className="flex items-center gap-2 px-3 py-1 rounded border border-warning/40 bg-warning/10">
                   <Checkbox id="antecipado" checked={formData.is_antecipado} onCheckedChange={v => setFormData(f => ({ ...f, is_antecipado: !!v, numero_antecipacao: !!v ? f.numero_antecipacao : '' }))} />
-                  <Label htmlFor="antecipado" className="text-warning font-medium">Antecipado *</Label>
+                  <Label htmlFor="antecipado" className="text-warning font-medium">Antecipado</Label>
                 </div>
                 <div className="flex items-center gap-2 px-3 py-1 rounded border border-success/40 bg-success/10">
                   <Checkbox id="jacsys" checked={formData.is_jacsys} onCheckedChange={v => setFormData(f => ({ ...f, is_jacsys: !!v, numero_cadastro_jacsys: !!v ? f.numero_cadastro_jacsys : '' }))} />
-                  <Label htmlFor="jacsys" className="text-success font-medium">Cadastrado no Jacsys *</Label>
+                  <Label htmlFor="jacsys" className="text-success font-medium">Cadastrado no Jacsys</Label>
                 </div>
               </div>
 
-              <div className="border border-warning/30 rounded-lg p-3 bg-warning/5">
-                <Label className="text-warning font-medium">ID da Antecipação *</Label>
-                <Input value={formData.numero_antecipacao} onChange={e => setFormData(f => ({ ...f, numero_antecipacao: e.target.value }))} placeholder="Informe o ID da antecipação (obrigatório)" className="mt-1" />
-              </div>
+              {formData.is_antecipado && (
+                <div className="border border-warning/30 rounded-lg p-3 bg-warning/5">
+                  <Label className="text-warning font-medium">ID da Antecipação *</Label>
+                  <Input value={formData.numero_antecipacao} onChange={e => setFormData(f => ({ ...f, numero_antecipacao: e.target.value }))} placeholder="Informe o ID da antecipação" className="mt-1" />
+                </div>
+              )}
 
-              <div className="border border-success/30 rounded-lg p-3 bg-success/5">
-                <Label className="text-success font-medium">ID do Cadastro Jacsys *</Label>
-                <Input value={formData.numero_cadastro_jacsys} onChange={e => setFormData(f => ({ ...f, numero_cadastro_jacsys: e.target.value }))} placeholder="Informe o ID do cadastro (obrigatório)" className="mt-1" />
-              </div>
-            </div>
-
-             {/* NF - PDF Upload */}
-            <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
-              <Label className="text-base font-semibold">Nota Fiscal (PDF)</Label>
-              <input ref={nfGarantiaRef} type="file" accept=".pdf" className="hidden"
-                onChange={e => setNfGarantiaFile(e.target.files?.[0] || null)} />
-              <Button type="button" variant="outline" className="w-full" onClick={() => nfGarantiaRef.current?.click()}>
-                <Upload className="w-4 h-4 mr-2" />
-                {nfGarantiaFile ? nfGarantiaFile.name : 'Anexar Nota Fiscal (PDF)'}
-              </Button>
+              {formData.is_jacsys && (
+                <div className="border border-success/30 rounded-lg p-3 bg-success/5">
+                  <Label className="text-success font-medium">ID do Cadastro Jacsys *</Label>
+                  <Input value={formData.numero_cadastro_jacsys} onChange={e => setFormData(f => ({ ...f, numero_cadastro_jacsys: e.target.value }))} placeholder="Informe o ID do cadastro" className="mt-1" />
+                </div>
+              )}
             </div>
 
             {/* Financial Type Selection */}
