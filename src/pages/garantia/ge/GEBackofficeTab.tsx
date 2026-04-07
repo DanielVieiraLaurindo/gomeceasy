@@ -487,7 +487,7 @@ export default function GEBackofficeTab() {
         <div className="flex flex-wrap items-center gap-3 p-4 border rounded-lg bg-card">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input placeholder="Buscar por cliente, venda, SKU, rastreio..." value={searchInput} onChange={e => setSearchInput(e.target.value)} className="pl-9" />
+            <Input placeholder="Buscar por cliente, ID do caso, venda, SKU, rastreio..." value={searchInput} onChange={e => setSearchInput(e.target.value)} className="pl-9" />
           </div>
           <Select value={filters.status || 'all'} onValueChange={v => setFilters(f => ({ ...f, status: v === 'all' ? undefined : v as CaseStatus }))}>
             <SelectTrigger className="w-[180px]"><SelectValue placeholder="Todos Status" /></SelectTrigger>

@@ -76,7 +76,7 @@ export default function UCApprovalActions({ request, items, onUpdate }: Approval
     const updates: Record<string, any> = { current_status: newStatus, ...extraUpdates };
     const { error } = await supabase
       .from("purchase_requests")
-      .update(updates)
+      .update(updates as any)
       .eq("id", request.id);
     if (error) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
