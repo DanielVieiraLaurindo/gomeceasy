@@ -46,7 +46,8 @@ function detectPixKeyType(key: string): string {
 
 export default function GEPosVendasTab() {
   const { user, profile } = useAuth();
-  const [filters, setFilters] = useState<GarantiaCaseFilters>({ origemFilter: 'pos_vendas' });
+  const userEmail = profile?.email || '';
+  const [filters, setFilters] = useState<GarantiaCaseFilters>({ origemFilter: 'pos_vendas', userEmail });
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [viewingCase, setViewingCase] = useState<ReturnCase | null>(null);
   const [editingCase, setEditingCase] = useState<ReturnCase | null>(null);
