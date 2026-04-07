@@ -694,9 +694,11 @@ export default function GEPosVendasTab() {
                 <div><p className="text-muted-foreground text-xs">Rastreio</p><p className="font-mono">{viewingCase.fullfilment_tracking || '—'}</p></div>
                 <div><p className="text-muted-foreground text-xs">Produto</p><p>{viewingCase.product_description || '—'}</p></div>
                 <div><p className="text-muted-foreground text-xs">Nota Fiscal</p>
-                  {(viewingCase as any).nf_saida ? (
-                    <a href={(viewingCase as any).nf_saida} target="_blank" rel="noreferrer" className="text-primary underline text-sm">Ver Nota Fiscal (PDF)</a>
-                  ) : '—'}
+                  {['analise_fiscal', 'financeiro_pagamento', 'pago', 'conferencia_garantia'].includes(viewingCase.status) ? (
+                    (viewingCase as any).nf_saida ? (
+                      <a href={(viewingCase as any).nf_saida} target="_blank" rel="noreferrer" className="text-primary underline text-sm">Ver Nota Fiscal (PDF)</a>
+                    ) : <span className="text-muted-foreground text-sm">Não anexada</span>
+                  ) : <span className="text-xs text-muted-foreground italic">Disponível após definição da garantia</span>}
                 </div>
                 <div><p className="text-muted-foreground text-xs">Nº Requisição</p><p className="font-mono font-bold">{(viewingCase as any).numero_requisicao || '—'}</p></div>
               </div>
