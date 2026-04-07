@@ -42,8 +42,9 @@ const KANBAN_COLUMNS: { key: string; label: string; status: CaseStatus; color: s
 ];
 
 export default function GEBackofficeTab() {
-  const { user } = useAuth();
-  const [filters, setFilters] = useState<GarantiaCaseFilters>({ origemFilter: 'backoffice' });
+  const { user, profile } = useAuth();
+  const userEmail = profile?.email || '';
+  const [filters, setFilters] = useState<GarantiaCaseFilters>({ origemFilter: 'backoffice', userEmail });
   const [activeTab, setActiveTab] = useState('pendentes');
   const [searchInput, setSearchInput] = useState('');
   const [viewingCase, setViewingCase] = useState<ReturnCase | null>(null);
