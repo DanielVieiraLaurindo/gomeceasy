@@ -32,7 +32,7 @@ export function useEnvios() {
 
   const updateEnvio = useMutation({
     mutationFn: async ({ id, ...updates }: { id: string; [key: string]: any }) => {
-      const { error } = await supabase.from('envios').update(updates).eq('id', id);
+      const { error } = await supabase.from('envios').update(updates as any).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['envios'] }),
@@ -69,7 +69,7 @@ export function useVolumeGroups(shipmentId: string | null) {
 
   const updateVolume = useMutation({
     mutationFn: async ({ id, ...updates }: { id: string; [key: string]: any }) => {
-      const { error } = await supabase.from('volume_groups').update(updates).eq('id', id);
+      const { error } = await supabase.from('volume_groups').update(updates as any).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['volume_groups'] }),
