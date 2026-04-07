@@ -145,21 +145,13 @@ export default function GEPosVendasTab() {
   };
 
   const handleCreate = async () => {
-    // REQUIRED: antecipado AND jacsys must be checked
-    if (!formData.is_antecipado) {
-      toast.error('É obrigatório marcar como Antecipado antes de criar o caso');
+    // Validate conditional fields
+    if (formData.is_antecipado && !formData.numero_antecipacao.trim()) {
+      toast.error('ID da Antecipação é obrigatório quando marcado como Antecipado');
       return;
     }
-    if (!formData.numero_antecipacao.trim()) {
-      toast.error('ID da Antecipação é obrigatório');
-      return;
-    }
-    if (!formData.is_jacsys) {
-      toast.error('É obrigatório marcar como Cadastrado no Jacsys antes de criar o caso');
-      return;
-    }
-    if (!formData.numero_cadastro_jacsys.trim()) {
-      toast.error('ID do Cadastro Jacsys é obrigatório');
+    if (formData.is_jacsys && !formData.numero_cadastro_jacsys.trim()) {
+      toast.error('ID do Cadastro Jacsys é obrigatório quando marcado como Cadastrado no Jacsys');
       return;
     }
 
