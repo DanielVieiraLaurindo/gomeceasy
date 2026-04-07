@@ -96,6 +96,12 @@ export default function GEPosVendasTab() {
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (userEmail && filters.userEmail !== userEmail) {
+      setFilters(f => ({ ...f, userEmail }));
+    }
+  }, [userEmail]);
+
+  useEffect(() => {
     const tipo = detectPixKeyType(formData.chave_pix);
     if (tipo !== formData.chave_pix_tipo) {
       setFormData(f => ({ ...f, chave_pix_tipo: tipo }));
