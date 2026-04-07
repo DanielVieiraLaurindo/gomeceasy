@@ -131,6 +131,7 @@ export default function GEBackofficeTab() {
   };
 
   const handleCreateCase = async () => {
+    const statusToUse = formData.sem_antecipacao ? 'em_analise' : formData.status;
     createCase.mutate({
       client_name: formData.client_name || '-',
       client_document: formData.client_document || '-',
@@ -141,7 +142,7 @@ export default function GEBackofficeTab() {
       case_type: formData.case_type as any,
       analysis_reason: formData.analysis_reason,
       entry_date: formData.entry_date,
-      status: formData.status as any,
+      status: statusToUse as any,
       analyst_name: formData.analyst_name || '-',
       item_condition: '-',
       product_codes: [],
@@ -150,6 +151,9 @@ export default function GEBackofficeTab() {
       sent_to_backoffice: true,
       not_found_erp: false,
       origem: 'backoffice',
+      is_full: formData.is_full,
+      sem_antecipacao: formData.sem_antecipacao,
+      itens_retorno: formData.itens_retorno || null,
     } as any, {
       onSuccess: async (data: any) => {
         if (casePhotos.length > 0 && data?.id) {
@@ -167,7 +171,7 @@ export default function GEBackofficeTab() {
         }
         setIsNewCaseOpen(false);
         setCasePhotos([]);
-        setFormData({ sale_number: '', marketplace_account: '', business_unit_cnpj: '', client_name: '', client_document: '', case_type: 'DEVOLUCAO', analysis_reason: '', entry_date: new Date().toISOString().split('T')[0], analyst_name: '', status: 'aguardando_analise' });
+        setFormData({ sale_number: '', marketplace_account: '', business_unit_cnpj: '', client_name: '', client_document: '', case_type: 'DEVOLUCAO', analysis_reason: '', entry_date: new Date().toISOString().split('T')[0], analyst_name: '', status: 'aguardando_analise', sem_antecipacao: false, is_full: false, itens_retorno: '' });
       }
     });
   };
