@@ -82,13 +82,18 @@ function isLinkExpired(prazo: string | null): boolean {
   return isAfter(now, expiryDate);
 }
 
-/** Calculate prazo_cobrar: end of current day BRT (midnight) */
-function getPrazoCobrarMidnight(): string {
-  const now = new Date();
-  // End of today in BRT = start of tomorrow BRT = midnight
-  const brtNow = toZonedTime(now, BRT_TZ);
+/** Calculate prazo_cobrar based on ocorrencia type */
+function getPrazoCobrar(ocorrencia: string): string {
+  if (ocorrencia === 'pagar_posteriormente') {
+    // 24 hours from now
+    const now = new Date();
+    const deadline = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    return format(deadline, "yyyy-MM-dd'T'HH:mm:ss");
+  }
+  // link_pagamento: end of current day BRT (midnight)
+  const brtNow = toZonedTime(new Date(), BRT_TZ);
   const endOfToday = endOfDay(brtNow);
-  return format(endOfToday, 'yyyy-MM-dd');
+  return format(endOfToday, "yyyy-MM-dd'T'HH:mm:ss");
 }
 
 /** Render 5-star rating */
