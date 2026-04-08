@@ -273,7 +273,7 @@ export default function GEPosVendasTab() {
       client_document: c.client_document || '',
       sale_number: c.sale_number || '',
       case_type: c.case_type || 'DEVOLUCAO',
-      status: c.status || 'aguardando_analise',
+      status: c.status || 'aguardando_postagem',
       analyst_name: c.analyst_name || '',
       analysis_reason: c.analysis_reason || '',
       marketplace_account: c.marketplace_account || '',
@@ -282,6 +282,21 @@ export default function GEPosVendasTab() {
       product_description: c.product_description || '',
       numero_antecipacao: (c as any).numero_antecipacao || '',
       numero_cadastro_jacsys: (c as any).numero_cadastro_jacsys || '',
+      // Financial fields
+      financial_type: (c as any).metodo_pagamento || '',
+      chave_pix: c.chave_pix_valor || '',
+      chave_pix_tipo: c.chave_pix_tipo || '',
+      reimbursement_value: c.reimbursement_value || 0,
+      titular_nome: (c as any).dados_bancarios_json?.titular_nome || '',
+      instituicao: (c as any).dados_bancarios_json?.instituicao || '',
+      valor_total: (c as any).dados_bancarios_json?.valor_total || '',
+      valor_com_descontos: (c as any).dados_bancarios_json?.valor_com_descontos || '',
+      conta: (c as any).dados_bancarios_json?.conta || '',
+      alegacao: (c as any).dados_bancarios_json?.alegacao || '',
+      motivo: (c as any).dados_bancarios_json?.motivo || '',
+      sku_produto: c.product_sku || '',
+      peca_retornou: (c as any).dados_bancarios_json?.peca_retornou || 'nao',
+      numero_pedido_fin: c.numero_pedido || '',
     });
     setEditNfGarantiaFile(null);
     setEditingCase(c);
