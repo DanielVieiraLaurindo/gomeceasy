@@ -293,11 +293,11 @@ function NovaRequisicaoDialog({ open, onOpenChange, onCreate, permissions }: {
                   </div>
                 )}
               </div>
-              <p className="text-[10px] text-muted-foreground">Dados buscados automaticamente</p>
+              <p className="text-[10px] text-muted-foreground">Ao sair do campo, busca dados automaticamente</p>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-bold uppercase text-muted-foreground">Código Loja</Label>
-              <Input value={form.codigo_loja} readOnly className="bg-muted" />
+              <Input value={form.codigo_loja} onChange={e => update('codigo_loja', e.target.value)} placeholder="Código da loja" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-bold uppercase text-muted-foreground">Data/Hora Lançamento</Label>
@@ -308,11 +308,11 @@ function NovaRequisicaoDialog({ open, onOpenChange, onCreate, permissions }: {
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-1.5">
               <Label className="text-xs font-bold uppercase text-muted-foreground">Valor (R$) *</Label>
-              <Input type="number" step="0.01" value={form.valor} onChange={e => update('valor', e.target.value)} />
+              <Input type="number" step="0.01" value={form.valor} onChange={e => update('valor', e.target.value)} placeholder="0.00" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-bold uppercase text-muted-foreground">Prazo para Cobrar</Label>
-              <Input value="Até 00:00 do dia corrente" readOnly className="bg-muted" />
+              <Input value={form.ocorrencia === 'pagar_posteriormente' ? '24 horas após criação' : 'Até 00:00 do dia corrente'} readOnly className="bg-muted" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-bold uppercase text-muted-foreground">Link de Pagamento</Label>
@@ -323,22 +323,22 @@ function NovaRequisicaoDialog({ open, onOpenChange, onCreate, permissions }: {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label className="text-xs font-bold uppercase text-muted-foreground">Código do Cliente</Label>
-              <Input value={form.codigo_cliente} readOnly className="bg-muted" />
+              <Input value={form.codigo_cliente} onChange={e => update('codigo_cliente', e.target.value)} placeholder="Código do cliente" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-bold uppercase text-muted-foreground">Nome do Cliente *</Label>
-              <Input value={form.nome_cliente} readOnly className="bg-muted" />
+              <Input value={form.nome_cliente} onChange={e => update('nome_cliente', e.target.value)} placeholder="Nome do cliente" />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label className="text-xs font-bold uppercase text-muted-foreground">Cód. Vendedor</Label>
-              <Input value={form.cod_vendedor} readOnly className="bg-muted" />
+              <Input value={form.cod_vendedor} onChange={e => update('cod_vendedor', e.target.value)} placeholder="Código vendedor" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-bold uppercase text-muted-foreground">Nome Vendedor</Label>
-              <Input value={form.nome_vendedor} readOnly className="bg-muted" />
+              <Input value={form.nome_vendedor} onChange={e => update('nome_vendedor', e.target.value)} placeholder="Nome do vendedor" />
             </div>
           </div>
 
