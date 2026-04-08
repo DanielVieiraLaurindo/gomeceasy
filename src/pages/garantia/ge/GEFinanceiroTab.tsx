@@ -321,6 +321,28 @@ export default function GEFinanceiroTab() {
   const handleSaveEdit = async () => {
     if (!editingCase) return;
     const extra: Record<string, any> = { ...editFormData };
+    // Build dados_bancarios_json from edit fields
+    extra.metodo_pagamento = editFormData.metodo_pagamento;
+    extra.dados_bancarios_json = {
+      ...(editingCase.dados_bancarios_json || {}),
+      titular_nome: editFormData.titular_nome,
+      instituicao: editFormData.instituicao,
+      valor_total: editFormData.valor_total,
+      valor_com_descontos: editFormData.valor_com_descontos,
+      conta: editFormData.conta,
+      alegacao: editFormData.alegacao,
+      motivo: editFormData.motivo,
+      peca_retornou: editFormData.peca_retornou,
+    };
+    // Clean up edit-only fields that aren't DB columns
+    delete extra.titular_nome;
+    delete extra.instituicao;
+    delete extra.valor_total;
+    delete extra.valor_com_descontos;
+    delete extra.conta;
+    delete extra.alegacao;
+    delete extra.motivo;
+    delete extra.peca_retornou;
     if (nfDevFile) {
       try {
         const url = await uploadNfDevolucao(editingCase.id, nfDevFile);
