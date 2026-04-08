@@ -198,7 +198,7 @@ export default function GEPosVendasTab() {
       case_type: formData.case_type as any,
       analysis_reason: formData.analysis_reason,
       entry_date: formData.entry_date,
-      status: formData.financial_type ? 'aguardando_conferencia' : 'aguardando_analise' as any,
+      status: formData.financial_type ? 'aguardando_conferencia' : 'aguardando_postagem' as any,
       analyst_name: formData.analyst_name || '-',
       item_condition: '-',
       product_codes: [],
@@ -489,6 +489,10 @@ export default function GEPosVendasTab() {
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Nome do Cliente *</Label><Input value={formData.client_name} onChange={e => setFormData(f => ({ ...f, client_name: e.target.value }))} placeholder="Nome completo" /></div>
               <div><Label>CPF (somente números)</Label><Input value={formData.client_document} onChange={e => setFormData(f => ({ ...f, client_document: e.target.value }))} placeholder="00000000000" /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Nº da Venda</Label><Input value={formData.sale_number} onChange={e => setFormData(f => ({ ...f, sale_number: e.target.value }))} placeholder="Número da venda" /></div>
+              <div><Label>Data de Entrada</Label><Input type="date" value={formData.entry_date} onChange={e => setFormData(f => ({ ...f, entry_date: e.target.value }))} /></div>
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div><Label>Tipo</Label>
