@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { MetricCard } from '@/components/MetricCard';
-import { Clock, DollarSign, AlertTriangle, CheckCircle, Plus, Link2, ShieldCheck, Trash2, Upload, FileText, CreditCard, Star, Send } from 'lucide-react';
+import { Clock, DollarSign, AlertTriangle, CheckCircle, Plus, Link2, ShieldCheck, Trash2, Upload, FileText, CreditCard, Star, Send, Bell } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,21 @@ import { useClientesPrazo, useClientesPrazoPagamentos } from '@/hooks/useCliente
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserGroups } from '@/hooks/useUserGroups';
 import { TableToolbar } from '@/components/TableToolbar';
-import { format, addHours, differenceInDays } from 'date-fns';
+import { format, differenceInDays, startOfDay, endOfDay, isAfter, isBefore } from 'date-fns';
+import { toZonedTime, formatInTimeZone } from 'date-fns-tz';
+
+// ================================================================
+// TIMEZONE HELPER – always BRT (UTC-3)
+// ================================================================
+const BRT_TZ = 'America/Sao_Paulo';
+
+function nowBRT(): Date {
+  return toZonedTime(new Date(), BRT_TZ);
+}
+
+function formatBRT(date: string | Date, fmt: string): string {
+  return formatInTimeZone(typeof date === 'string' ? new Date(date) : date, BRT_TZ, fmt);
+}
 
 // ================================================================
 // CONSTANTS & HELPERS
@@ -30,6 +44,7 @@ const statusLabels: Record<string, string> = {
   aguardando_link: 'Aguardando Link',
   aguardando_autorizacao: 'Aguardando Autorização',
   aguardando_pagamento: 'Aguardando Pagamento',
+  pago: 'Pago',
   autorizado: 'Autorizado',
   nao_autorizado: 'Não Autorizado',
   em_atraso: 'Em Atraso',
@@ -40,6 +55,7 @@ const statusColors: Record<string, string> = {
   aguardando_link: 'bg-warning/20 text-warning border-warning/30',
   aguardando_autorizacao: 'bg-orange-500/20 text-orange-600 border-orange-500/30',
   aguardando_pagamento: 'bg-info/20 text-info border-info/30',
+  pago: 'bg-blue-500/20 text-blue-600 border-blue-500/30',
   autorizado: 'bg-primary/20 text-primary border-primary/30',
   nao_autorizado: 'bg-destructive/20 text-destructive border-destructive/30',
   em_atraso: 'bg-destructive/20 text-destructive border-destructive/30',
@@ -53,9 +69,26 @@ const ocorrenciaLabels: Record<string, string> = {
 
 /** Calculate overdue days. Returns 0 if not overdue. */
 function diasAtraso(prazo: string | null, status: string): number {
-  if (!prazo || status === 'concluido' || status === 'nao_autorizado') return 0;
+  if (!prazo || status === 'concluido' || status === 'nao_autorizado' || status === 'pago') return 0;
   const diff = differenceInDays(new Date(), new Date(prazo));
   return diff > 0 ? diff : 0;
+}
+
+/** Check if the link has expired – expires at midnight BRT of the day it was created */
+function isLinkExpired(prazo: string | null): boolean {
+  if (!prazo) return false;
+  const now = new Date();
+  const expiryDate = new Date(prazo);
+  return isAfter(now, expiryDate);
+}
+
+/** Calculate prazo_cobrar: end of current day BRT (midnight) */
+function getPrazoCobrarMidnight(): string {
+  const now = new Date();
+  // End of today in BRT = start of tomorrow BRT = midnight
+  const brtNow = toZonedTime(now, BRT_TZ);
+  const endOfToday = endOfDay(brtNow);
+  return format(endOfToday, 'yyyy-MM-dd');
 }
 
 /** Render 5-star rating */
@@ -77,6 +110,22 @@ function StarRating({ rating }: { rating: number }) {
 }
 
 // ================================================================
+// BROWSER NOTIFICATION HELPER
+// ================================================================
+function sendBrowserNotification(title: string, body: string) {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'granted') {
+    new Notification(title, { body, icon: '/favicon.ico' });
+  } else if (Notification.permission !== 'denied') {
+    Notification.requestPermission().then(perm => {
+      if (perm === 'granted') {
+        new Notification(title, { body, icon: '/favicon.ico' });
+      }
+    });
+  }
+}
+
+// ================================================================
 // PERMISSIONS HELPER
 // ================================================================
 interface Permissions {
@@ -89,8 +138,9 @@ interface Permissions {
   onlyOwnRequisitions: boolean;
   requireObservation: boolean;
   canSelectPosterior: boolean;
-  /** For link_pagamento: just click "Pago" without entering value */
   linkPagoSimple: boolean;
+  isFinanceiro: boolean;
+  isComercial: boolean;
 }
 
 function usePagePermissions(): Permissions {
@@ -105,14 +155,16 @@ function usePagePermissions(): Permissions {
   return {
     canCreate: isMaster || isComercial || isSupervisor || isFinanceiro,
     canInsertLink: isMaster || isFinanceiro || isComercial,
-    canDelete: isMaster, // only master deletes
+    canDelete: isMaster,
     canAuthorize: isMaster || isSupervisor || isExpedicao,
     canEdit: isMaster || isSupervisor,
     canRegisterPayment: isMaster || isFinanceiro,
-    onlyOwnRequisitions: isComercial, // comercial sees only own
-    requireObservation: isComercial, // comercial must fill observation
+    onlyOwnRequisitions: isComercial,
+    requireObservation: isComercial,
     canSelectPosterior: isMaster || isSupervisor || isFinanceiro || isComercial,
-    linkPagoSimple: true, // when link_pagamento, just click "Pago"
+    linkPagoSimple: true,
+    isFinanceiro: isMaster || isFinanceiro,
+    isComercial,
   };
 }
 
@@ -122,8 +174,8 @@ function usePagePermissions(): Permissions {
 function NovaRequisicaoDialog({ open, onOpenChange, onCreate, permissions }: {
   open: boolean; onOpenChange: (v: boolean) => void; onCreate: (data: any) => void; permissions: Permissions;
 }) {
-  const now = new Date();
-  const prazo24h = addHours(now, 24);
+  const now = nowBRT();
+  const prazoMidnight = getPrazoCobrarMidnight();
 
   const [form, setForm] = useState({
     ocorrencia: 'link_pagamento',
@@ -184,7 +236,7 @@ function NovaRequisicaoDialog({ open, onOpenChange, onCreate, permissions }: {
       requisicao: form.requisicao,
       valor: parseFloat(form.valor),
       ocorrencia: form.ocorrencia,
-      prazo_cobrar: format(prazo24h, 'yyyy-MM-dd'),
+      prazo_cobrar: prazoMidnight,
       codigo_loja: form.codigo_loja || null,
       codigo_cliente: form.codigo_cliente || null,
       nome_cliente: form.nome_cliente,
@@ -245,7 +297,7 @@ function NovaRequisicaoDialog({ open, onOpenChange, onCreate, permissions }: {
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-bold uppercase text-muted-foreground">Data/Hora Lançamento</Label>
-              <Input value={format(now, 'dd/MM/yyyy HH:mm')} readOnly className="bg-muted" />
+              <Input value={formatBRT(new Date(), 'dd/MM/yyyy HH:mm')} readOnly className="bg-muted" />
             </div>
           </div>
 
@@ -256,7 +308,7 @@ function NovaRequisicaoDialog({ open, onOpenChange, onCreate, permissions }: {
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-bold uppercase text-muted-foreground">Prazo para Cobrar</Label>
-              <Input value={format(prazo24h, 'dd/MM/yyyy HH:mm')} readOnly className="bg-muted" />
+              <Input value="Até 00:00 do dia corrente" readOnly className="bg-muted" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-bold uppercase text-muted-foreground">Link de Pagamento</Label>
@@ -424,18 +476,22 @@ function AuthorizationActions({ itemId, onAuthorize, onDeny }: {
 // ================================================================
 // DETALHE SHEET
 // ================================================================
-function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissions, onUpdateLink, onAddPayment, onMarkPaid }: {
+function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissions, onUpdateLink, onAddPayment, onMarkPaid, onUploadComprovante, onMarkPagoPosterior }: {
   item: any; open: boolean; onOpenChange: (v: boolean) => void;
   onAuthorize: (id: string, obs: string) => void; onDeny: (id: string, obs: string) => void; permissions: Permissions;
   onUpdateLink: (id: string, link: string) => void;
   onAddPayment: (clientePrazoId: string, valor: number, obs: string) => void;
   onMarkPaid: (id: string) => void;
+  onUploadComprovante: (id: string, file: File) => void;
+  onMarkPagoPosterior: (id: string) => void;
 }) {
   const [linkInput, setLinkInput] = useState('');
   const [valorPago, setValorPago] = useState('');
   const [obsPagamento, setObsPagamento] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [uploadingComprovante, setUploadingComprovante] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const comprovanteInputRef = useRef<HTMLInputElement>(null);
 
   if (!item) return null;
   const saldo = (item.valor || 0) - (item.valor_pago || 0);
@@ -443,6 +499,7 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissio
   const isLink = item.ocorrencia === 'link_pagamento';
   const needsAuth = isPosterior && item.status === 'aguardando_autorizacao';
   const isConcluido = item.status === 'concluido';
+  const isPago = item.status === 'pago';
   const overdueDays = diasAtraso(item.prazo_cobrar, item.status);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -456,6 +513,14 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissio
     await (supabase as any).from('clientes_prazo').update({ foto_requisicao_url: urlData.publicUrl, updated_at: new Date().toISOString() }).eq('id', item.id);
     toast.success('Requisição assinada enviada');
     setUploading(false);
+  };
+
+  const handleComprovanteUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingComprovante(true);
+    onUploadComprovante(item.id, file);
+    setUploadingComprovante(false);
   };
 
   const handlePaymentSubmit = () => {
@@ -515,6 +580,28 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissio
 
           <Separator />
 
+          {/* Data de criação */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs text-muted-foreground uppercase font-bold">Criado em</p>
+              <p className="text-sm">{item.created_at ? formatBRT(item.created_at, 'dd/MM/yyyy HH:mm:ss') : '—'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground uppercase font-bold">Data Lançamento</p>
+              <p className="text-sm">{item.data_hora_lancamento ? formatBRT(item.data_hora_lancamento, 'dd/MM/yyyy HH:mm') : '—'}</p>
+            </div>
+          </div>
+
+          {/* Link criado por */}
+          {item.link_criado_por && (
+            <div>
+              <p className="text-xs text-muted-foreground uppercase font-bold">Link criado por</p>
+              <p className="text-sm font-medium">{item.link_criado_por}</p>
+            </div>
+          )}
+
+          <Separator />
+
           <div className="grid grid-cols-3 gap-4">
             <div>
               <p className="text-xs text-muted-foreground uppercase font-bold">Valor Total</p>
@@ -537,11 +624,7 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissio
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-xs text-muted-foreground uppercase font-bold">Prazo para Cobrar</p>
-              <p className="text-sm">{item.prazo_cobrar ? format(new Date(item.prazo_cobrar), 'dd/MM/yyyy') : '—'}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground uppercase font-bold">Data Lançamento</p>
-              <p className="text-sm">{item.data_hora_lancamento ? format(new Date(item.data_hora_lancamento), 'dd/MM/yyyy HH:mm') : '—'}</p>
+              <p className="text-sm">{item.prazo_cobrar ? formatBRT(item.prazo_cobrar, 'dd/MM/yyyy') + ' às 00:00' : '—'}</p>
             </div>
           </div>
 
@@ -550,7 +633,7 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissio
             <div className="space-y-1.5">
               <p className="text-xs text-muted-foreground uppercase font-bold">Link de Pagamento</p>
               {(() => {
-                const linkExpired = item.link_pagamento && item.prazo_cobrar && new Date(item.prazo_cobrar) < new Date();
+                const linkExpired = item.link_pagamento && isLinkExpired(item.prazo_cobrar);
                 const canInsertLink = !item.link_pagamento || linkExpired;
                 const showLinkInput = canInsertLink && (item.status === 'aguardando_link' || item.status === 'aberto' || item.status === 'aguardando_pagamento' || item.status === 'em_atraso');
 
@@ -561,7 +644,7 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissio
                     )}
                     {item.link_pagamento && linkExpired && (
                       <div className="bg-warning/10 border border-warning/30 rounded p-2 mb-2">
-                        <p className="text-xs text-warning font-medium">Link expirado</p>
+                        <p className="text-xs text-warning font-medium">Link expirado (venceu à 00:00)</p>
                         <p className="text-xs text-muted-foreground break-all line-through">{item.link_pagamento}</p>
                       </div>
                     )}
@@ -603,17 +686,44 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissio
 
           <Separator />
 
-          {/* Ações de pagamento */}
-          {!isConcluido && permissions.canRegisterPayment && (item.status === 'aguardando_pagamento' || item.status === 'autorizado' || item.status === 'em_atraso') && (
+          {/* Comprovante de pagamento – vendedor pode enviar para "pagar_posteriormente" */}
+          {isPosterior && (item.status === 'autorizado' || item.status === 'aguardando_pagamento' || item.status === 'em_atraso' || item.status === 'pago') && (
+            <div className="space-y-2 bg-muted/30 rounded-lg p-4 border">
+              <p className="text-xs text-muted-foreground uppercase font-bold">Comprovante de Pagamento</p>
+              {item.comprovante_pagamento_url ? (
+                <a href={item.comprovante_pagamento_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary underline">
+                  <FileText className="w-4 h-4" /> Ver comprovante
+                </a>
+              ) : (
+                <p className="text-xs text-muted-foreground">Nenhum comprovante enviado</p>
+              )}
+              {item.status !== 'concluido' && (
+                <>
+                  <input type="file" ref={comprovanteInputRef} className="hidden" accept=".pdf,.jpg,.jpeg,.png" onChange={handleComprovanteUpload} />
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" className="gap-2" onClick={() => comprovanteInputRef.current?.click()} disabled={uploadingComprovante}>
+                      <Upload className="w-4 h-4" /> {uploadingComprovante ? 'Enviando...' : 'Enviar Comprovante'}
+                    </Button>
+                    {item.comprovante_pagamento_url && item.status !== 'pago' && (
+                      <Button size="sm" className="gap-2" onClick={() => onMarkPagoPosterior(item.id)}>
+                        <CheckCircle className="w-4 h-4" /> Marcar como Pago
+                      </Button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Ações de pagamento – Financeiro */}
+          {!isConcluido && !isPago && permissions.canRegisterPayment && (item.status === 'aguardando_pagamento' || item.status === 'autorizado' || item.status === 'em_atraso' || item.status === 'pago') && (
             <div className="space-y-3 bg-muted/30 rounded-lg p-4 border">
               <p className="text-xs text-muted-foreground uppercase font-bold">Ações do Financeiro</p>
               {isLink ? (
-                /* Link de pagamento → botão simples "Pago" */
                 <Button className="w-full gap-2" onClick={() => onMarkPaid(item.id)}>
                   <CheckCircle className="w-4 h-4" /> Marcar como Pago
                 </Button>
               ) : (
-                /* Pagar posteriormente → informar valor */
                 <div className="space-y-2">
                   <p className="text-xs font-semibold">Registrar Pagamento</p>
                   <div className="flex gap-2">
@@ -625,6 +735,21 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissio
                   <Input placeholder="Observação (opcional)" value={obsPagamento} onChange={e => setObsPagamento(e.target.value)} className="text-sm" />
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Financeiro confirma pagamento do status "pago" (vendedor marcou) */}
+          {isPago && permissions.canRegisterPayment && (
+            <div className="space-y-3 bg-blue-500/10 rounded-lg p-4 border border-blue-500/30">
+              <p className="text-xs text-blue-600 uppercase font-bold">Vendedor marcou como Pago — Confirme o recebimento</p>
+              {item.comprovante_pagamento_url && (
+                <a href={item.comprovante_pagamento_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary underline">
+                  <FileText className="w-4 h-4" /> Ver comprovante enviado
+                </a>
+              )}
+              <Button className="w-full gap-2" onClick={() => onMarkPaid(item.id)}>
+                <CheckCircle className="w-4 h-4" /> Confirmar Pagamento Recebido
+              </Button>
             </div>
           )}
 
@@ -745,7 +870,6 @@ function WhatsAppContactDialog({ open, onOpenChange, data }: {
 export default function ClientesPrazoPage() {
   const { user, profile } = useAuth();
   const permissions = usePagePermissions();
-  // Comercial users: filter at DB level to avoid flicker
   const filterUserId = permissions.onlyOwnRequisitions ? user?.id : null;
   const { data: requisicoes = [], isLoading, create, update, remove } = useClientesPrazo(filterUserId);
   const [search, setSearch] = useState('');
@@ -756,6 +880,56 @@ export default function ClientesPrazoPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [clientScores, setClientScores] = useState<any[]>([]);
   const [whatsappData, setWhatsappData] = useState<{ requisicao: string; nomeCliente: string; nomeVendedor: string } | null>(null);
+
+  // Request notification permission on mount for financeiro
+  useEffect(() => {
+    if (permissions.isFinanceiro && 'Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, [permissions.isFinanceiro]);
+
+  // Realtime: listen for new insertions for browser notifications
+  useEffect(() => {
+    if (!permissions.isFinanceiro) return;
+    const channel = supabase
+      .channel('clientes-prazo-notifications')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'clientes_prazo' },
+        (payload: any) => {
+          const row = payload.new;
+          sendBrowserNotification(
+            '📋 Nova Solicitação de Prazo',
+            `Requisição ${row.requisicao} — Cliente: ${row.nome_cliente} — R$ ${Number(row.valor || 0).toFixed(2)}`
+          );
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'clientes_prazo' },
+        (payload: any) => {
+          const row = payload.new;
+          const old = payload.old;
+          // Notify when link is generated
+          if (row.link_pagamento && !old.link_pagamento) {
+            sendBrowserNotification(
+              '🔗 Link de Pagamento Gerado',
+              `Requisição ${row.requisicao} — Cliente: ${row.nome_cliente}`
+            );
+          }
+          // Notify when vendor marks as "pago"
+          if (row.status === 'pago' && old.status !== 'pago') {
+            sendBrowserNotification(
+              '💰 Pagamento Informado pelo Vendedor',
+              `Requisição ${row.requisicao} — Cliente: ${row.nome_cliente} — Confirme o recebimento`
+            );
+          }
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [permissions.isFinanceiro]);
+
   // Fetch client scores
   useEffect(() => {
     (supabase as any).from('cliente_scores').select('*').order('score_estrelas', { ascending: true }).then(({ data }: any) => {
@@ -767,7 +941,7 @@ export default function ClientesPrazoPage() {
   useEffect(() => {
     if (!requisicoes.length) return;
     const overdueItems = requisicoes.filter((r: any) =>
-      r.status !== 'concluido' && r.status !== 'nao_autorizado' && r.status !== 'em_atraso' &&
+      r.status !== 'concluido' && r.status !== 'nao_autorizado' && r.status !== 'em_atraso' && r.status !== 'pago' &&
       r.prazo_cobrar && differenceInDays(new Date(), new Date(r.prazo_cobrar)) > 0
     );
     overdueItems.forEach((r: any) => {
@@ -775,7 +949,7 @@ export default function ClientesPrazoPage() {
     });
   }, [requisicoes]);
 
-  // Recalculate client scores whenever requisicoes change
+  // Recalculate client scores
   useEffect(() => {
     if (!requisicoes.length) return;
     const clientMap = new Map<string, { nome: string; total: number; emDia: number; atrasadas: number; diasAtrasoTotal: number; valorTotal: number }>();
@@ -800,14 +974,12 @@ export default function ClientesPrazoPage() {
       }
     });
 
-    // Upsert scores
     clientMap.forEach(async (data, codigoCliente) => {
       const punctualityRate = data.total > 0 ? data.emDia / data.total : 1;
       const avgDelay = data.atrasadas > 0 ? data.diasAtrasoTotal / data.atrasadas : 0;
-      // Score formula: base 5, -1 per 20% late, -0.5 per 5 avg delay days
       let score = 5;
-      score -= (1 - punctualityRate) * 5; // full penalty if always late
-      score -= Math.min(avgDelay / 10, 1.5); // max -1.5 for avg delay
+      score -= (1 - punctualityRate) * 5;
+      score -= Math.min(avgDelay / 10, 1.5);
       score = Math.max(1, Math.min(5, Math.round(score * 10) / 10));
 
       await (supabase as any).from('cliente_scores').upsert({
@@ -823,7 +995,6 @@ export default function ClientesPrazoPage() {
       }, { onConflict: 'codigo_cliente' });
     });
 
-    // Refresh scores
     (supabase as any).from('cliente_scores').select('*').order('score_estrelas', { ascending: true }).then(({ data }: any) => {
       if (data) setClientScores(data);
     });
@@ -863,19 +1034,27 @@ export default function ClientesPrazoPage() {
     const nomeCliente = item.nome_cliente || 'Cliente';
     const requisicao = item.requisicao || '';
     if (isRenewal) {
-      return `Olá, ${nomeCliente}! Tudo bem?\n\nO link de pagamento anterior do seu pedido ${requisicao} expirou. Segue abaixo o novo link:\n\n🔗 *Novo link:* ${link}\n\n⚠️ Válido por *24 horas*.\n\n*Gomec Autopeças*`;
+      return `Olá, ${nomeCliente}! Tudo bem?\n\nO link de pagamento anterior do seu pedido ${requisicao} expirou. Segue abaixo o novo link:\n\n🔗 *Novo link:* ${link}\n\n⚠️ Válido até 00:00 de hoje.\n\n*Gomec Autopeças*`;
     }
-    return `Olá ${nomeCliente}! Tudo bem?\n\nLink de pagamento do pedido ${requisicao}:\n\n🔗 ${link}\n\n⚠️ Válido por *24 horas*.\n\n*Gomec Autopeças*`;
+    return `Olá ${nomeCliente}! Tudo bem?\n\nLink de pagamento do pedido ${requisicao}:\n\n🔗 ${link}\n\n⚠️ Válido até 00:00 de hoje.\n\n*Gomec Autopeças*`;
   };
 
   const handleUpdateLink = (id: string, link: string) => {
     const item = requisicoes.find((r: any) => r.id === id);
     const isRenewal = !!(item as any)?.link_pagamento;
-    update.mutate({ id, link_pagamento: link, status: 'aguardando_pagamento', prazo_cobrar: format(addHours(new Date(), 24), 'yyyy-MM-dd') }, {
+    update.mutate({
+      id,
+      link_pagamento: link,
+      status: 'aguardando_pagamento',
+      prazo_cobrar: getPrazoCobrarMidnight(),
+      link_criado_por: profile?.nome || 'Financeiro',
+    }, {
       onSuccess: () => {
         const msg = generateWhatsAppMessage(item, link, isRenewal);
         window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
         toast.success(isRenewal ? 'Link renovado' : 'Link salvo');
+        // Browser notification for the link creation
+        sendBrowserNotification('🔗 Link de Pagamento Criado', `Requisição ${(item as any)?.requisicao} — Link gerado com sucesso`);
         setSelectedItem(null);
       },
     });
@@ -895,12 +1074,29 @@ export default function ClientesPrazoPage() {
     });
   };
 
-  /** For link_pagamento: mark as fully paid with single click */
   const handleMarkPaid = (id: string) => {
     const item = requisicoes.find((r: any) => r.id === id);
     if (!item) return;
     update.mutate({ id, valor_pago: (item as any).valor || 0, status: 'concluido', updated_at: new Date().toISOString() }, {
       onSuccess: () => { toast.success('Pagamento confirmado!'); setSelectedItem(null); },
+    });
+  };
+
+  /** Vendedor uploads comprovante and marks as "pago" */
+  const handleUploadComprovante = async (id: string, file: File) => {
+    const path = `comprovantes/${id}/${Date.now()}-${file.name}`;
+    const { error } = await supabase.storage.from('requisicoes-prazo').upload(path, file);
+    if (error) { toast.error('Erro no upload do comprovante'); return; }
+    const { data: urlData } = supabase.storage.from('requisicoes-prazo').getPublicUrl(path);
+    update.mutate({ id, comprovante_pagamento_url: urlData.publicUrl, updated_at: new Date().toISOString() }, {
+      onSuccess: () => toast.success('Comprovante enviado'),
+    });
+  };
+
+  /** Vendedor marks posterior as Pago */
+  const handleMarkPagoPosterior = (id: string) => {
+    update.mutate({ id, status: 'pago', updated_at: new Date().toISOString() }, {
+      onSuccess: () => { toast.success('Status alterado para Pago — Aguardando confirmação do financeiro'); setSelectedItem(null); },
     });
   };
 
@@ -926,9 +1122,23 @@ export default function ClientesPrazoPage() {
           <h1 className="text-2xl font-barlow font-bold">Controle de Clientes — Pagamento Posterior</h1>
           <p className="text-muted-foreground text-sm">Link de pagamento e autorizações de pagamento posterior</p>
         </div>
-        <Button variant="outline" size="sm" className="gap-2" onClick={() => setScoreOpen(true)}>
-          <Star className="w-4 h-4 text-warning" /> Score de Clientes
-        </Button>
+        <div className="flex items-center gap-2">
+          {permissions.isFinanceiro && (
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => {
+              if ('Notification' in window) {
+                Notification.requestPermission().then(p => {
+                  if (p === 'granted') toast.success('Notificações ativadas!');
+                  else toast.info('Permissão de notificação negada');
+                });
+              }
+            }}>
+              <Bell className="w-4 h-4" /> Ativar Notificações
+            </Button>
+          )}
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => setScoreOpen(true)}>
+            <Star className="w-4 h-4 text-warning" /> Score de Clientes
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -987,6 +1197,7 @@ export default function ClientesPrazoPage() {
                 <TableHead>VENDEDOR</TableHead>
                 <TableHead className="text-right">VALOR</TableHead>
                 <TableHead className="text-right">SALDO</TableHead>
+                <TableHead>CRIADO EM</TableHead>
                 <TableHead>COBRAR EM</TableHead>
                 <TableHead className="text-center">DIAS ATRASO</TableHead>
                 <TableHead>STATUS</TableHead>
@@ -995,7 +1206,7 @@ export default function ClientesPrazoPage() {
             </TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={permissions.canDelete ? 11 : 9} className="text-center py-12 text-muted-foreground">Nenhuma requisição encontrada</TableCell></TableRow>
+                <TableRow><TableCell colSpan={permissions.canDelete ? 12 : 10} className="text-center py-12 text-muted-foreground">Nenhuma requisição encontrada</TableCell></TableRow>
               ) : (
                 filtered.map((req: any, i: number) => {
                   const saldoRow = (req.valor || 0) - (req.valor_pago || 0);
@@ -1028,7 +1239,8 @@ export default function ClientesPrazoPage() {
                           <span className="text-success font-bold">+ R$ {Math.abs(saldoRow).toFixed(2)}</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{req.prazo_cobrar ? format(new Date(req.prazo_cobrar), 'dd/MM/yyyy') : '—'}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{req.created_at ? formatBRT(req.created_at, 'dd/MM HH:mm') : '—'}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{req.prazo_cobrar ? formatBRT(req.prazo_cobrar, 'dd/MM/yyyy') : '—'}</TableCell>
                       <TableCell className="text-center">
                         {overdue > 0 ? (
                           <Badge className="bg-destructive/20 text-destructive text-xs font-bold">{overdue}d</Badge>
@@ -1065,6 +1277,8 @@ export default function ClientesPrazoPage() {
         }
         create.mutate({ ...data, created_by: user?.id }, {
           onSuccess: () => {
+            // Browser notification for financeiro
+            sendBrowserNotification('📋 Nova Solicitação Criada', `Requisição ${data.requisicao} — ${data.nome_cliente}`);
             if (data.ocorrencia === 'pagar_posteriormente') {
               setWhatsappData({
                 requisicao: data.requisicao,
@@ -1090,6 +1304,8 @@ export default function ClientesPrazoPage() {
         onUpdateLink={handleUpdateLink}
         onAddPayment={handleAddPayment}
         onMarkPaid={handleMarkPaid}
+        onUploadComprovante={handleUploadComprovante}
+        onMarkPagoPosterior={handleMarkPagoPosterior}
       />
       <ClientScoreDialog open={scoreOpen} onOpenChange={setScoreOpen} scores={clientScores} />
     </div>
