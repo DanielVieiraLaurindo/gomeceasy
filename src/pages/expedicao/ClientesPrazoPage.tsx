@@ -180,7 +180,7 @@ function NovaRequisicaoDialog({ open, onOpenChange, onCreate, permissions }: {
   open: boolean; onOpenChange: (v: boolean) => void; onCreate: (data: any) => void; permissions: Permissions;
 }) {
   const now = nowBRT();
-  const prazoMidnight = getPrazoCobrarMidnight();
+  const prazoLabel = form.ocorrencia === 'pagar_posteriormente' ? '24 horas após criação' : 'Até 00:00 do dia corrente';
 
   const [form, setForm] = useState({
     ocorrencia: 'link_pagamento',
@@ -241,7 +241,7 @@ function NovaRequisicaoDialog({ open, onOpenChange, onCreate, permissions }: {
       requisicao: form.requisicao,
       valor: parseFloat(form.valor),
       ocorrencia: form.ocorrencia,
-      prazo_cobrar: prazoMidnight,
+      prazo_cobrar: getPrazoCobrar(form.ocorrencia),
       codigo_loja: form.codigo_loja || null,
       codigo_cliente: form.codigo_cliente || null,
       nome_cliente: form.nome_cliente,
@@ -1051,7 +1051,7 @@ export default function ClientesPrazoPage() {
       id,
       link_pagamento: link,
       status: 'aguardando_pagamento',
-      prazo_cobrar: getPrazoCobrarMidnight(),
+      prazo_cobrar: getPrazoCobrar('link_pagamento'),
       link_criado_por: profile?.nome || 'Financeiro',
     }, {
       onSuccess: () => {
