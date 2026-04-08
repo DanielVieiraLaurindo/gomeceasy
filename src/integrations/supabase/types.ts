@@ -667,11 +667,13 @@ export type Database = {
           cod_vendedor: string | null
           codigo_cliente: string | null
           codigo_loja: string | null
+          comprovante_pagamento_url: string | null
           created_at: string
           created_by: string | null
           data_hora_lancamento: string
           foto_requisicao_url: string | null
           id: string
+          link_criado_por: string | null
           link_pagamento: string | null
           motivo_prazo: string | null
           nome_cliente: string
@@ -691,11 +693,13 @@ export type Database = {
           cod_vendedor?: string | null
           codigo_cliente?: string | null
           codigo_loja?: string | null
+          comprovante_pagamento_url?: string | null
           created_at?: string
           created_by?: string | null
           data_hora_lancamento?: string
           foto_requisicao_url?: string | null
           id?: string
+          link_criado_por?: string | null
           link_pagamento?: string | null
           motivo_prazo?: string | null
           nome_cliente: string
@@ -715,11 +719,13 @@ export type Database = {
           cod_vendedor?: string | null
           codigo_cliente?: string | null
           codigo_loja?: string | null
+          comprovante_pagamento_url?: string | null
           created_at?: string
           created_by?: string | null
           data_hora_lancamento?: string
           foto_requisicao_url?: string | null
           id?: string
+          link_criado_por?: string | null
           link_pagamento?: string | null
           motivo_prazo?: string | null
           nome_cliente?: string
