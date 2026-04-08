@@ -311,7 +311,7 @@ export function CentralEstoquePage() {
         </CardContent>
       </Card>
 
-
+      <Card><CardContent className="p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold">Anúncios ({anuncios.length})</h3>
           <div className="flex items-center gap-3">
