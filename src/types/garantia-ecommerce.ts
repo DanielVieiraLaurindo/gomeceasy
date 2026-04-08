@@ -1,7 +1,7 @@
 export type BusinessUnit = 'GAP' | 'GAP_VIRTUAL' | 'GAP_ES' | 'GOMEC' | 'SP' | 'ES';
 export type MarketplaceAccount = 'MELI_GAP' | 'MELI_GOMEC' | 'MELI_ES' | 'SHOPEE_SP' | 'SHOPEE_ES' | 'MAGALU_SP' | 'MAGALU_ES' | 'SITE';
 export type CaseType = 'GARANTIA' | 'DEVOLUCAO' | 'DESCARTE';
-export type CaseStatus = 'aguardando_analise' | 'em_analise' | 'antecipado' | 'aguardando_backoffice' | 'finalizado' | 'arquivado' | 'em_mediacao' | 'aguardando_conferencia' | 'conferencia_garantia' | 'analise_lider' | 'analise_fiscal' | 'financeiro_pagamento' | 'pago' | 'correcao_solicitada' | 'reprovado_gestor' | 'reprovado_fiscal';
+export type CaseStatus = 'aguardando_postagem' | 'aguardando_analise' | 'em_analise' | 'antecipado' | 'aguardando_backoffice' | 'finalizado' | 'arquivado' | 'em_mediacao' | 'aguardando_conferencia' | 'conferencia_garantia' | 'analise_lider' | 'analise_fiscal' | 'financeiro_pagamento' | 'pago' | 'correcao_solicitada' | 'reprovado_gestor' | 'reprovado_fiscal';
 export type BackofficeActionType = 'mediacao' | 'recurso_apelacao' | 'contestacao' | 'aguardando_plataforma' | 'aguardando_cliente' | 'finalizado';
 export type BackofficeResult = 'reembolso_cliente' | 'reembolso_empresa' | 'pendente';
 export type BusinessUnitCNPJ = 'GAP' | 'GAP_VIRTUAL' | 'GAP_ES';
@@ -96,6 +96,7 @@ export interface CasePhoto {
 }
 
 export const STATUS_LABELS: Record<CaseStatus, string> = {
+  aguardando_postagem: 'Aguardando Postagem',
   aguardando_analise: 'Aguardando Antecipação',
   em_analise: 'Em Análise',
   antecipado: 'Antecipado',
@@ -115,6 +116,7 @@ export const STATUS_LABELS: Record<CaseStatus, string> = {
 };
 
 export const STATUS_CLASSES: Record<CaseStatus, string> = {
+  aguardando_postagem: 'bg-amber-500/15 text-amber-600 border-amber-500/30',
   aguardando_analise: 'bg-warning/15 text-warning border-warning/30',
   em_analise: 'bg-info/15 text-info border-info/30',
   antecipado: 'bg-purple-500/15 text-purple-600 border-purple-500/30',
