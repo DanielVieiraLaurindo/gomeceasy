@@ -180,7 +180,6 @@ function NovaRequisicaoDialog({ open, onOpenChange, onCreate, permissions }: {
   open: boolean; onOpenChange: (v: boolean) => void; onCreate: (data: any) => void; permissions: Permissions;
 }) {
   const now = nowBRT();
-  const prazoLabel = form.ocorrencia === 'pagar_posteriormente' ? '24 horas após criação' : 'Até 00:00 do dia corrente';
 
   const [form, setForm] = useState({
     ocorrencia: 'link_pagamento',
