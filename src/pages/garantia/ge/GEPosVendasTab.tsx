@@ -198,7 +198,7 @@ export default function GEPosVendasTab() {
       case_type: formData.case_type as any,
       analysis_reason: formData.analysis_reason,
       entry_date: formData.entry_date,
-      status: formData.financial_type ? 'aguardando_conferencia' : 'aguardando_analise' as any,
+      status: formData.financial_type ? 'aguardando_conferencia' : 'aguardando_postagem' as any,
       analyst_name: formData.analyst_name || '-',
       item_condition: '-',
       product_codes: [],
@@ -273,7 +273,7 @@ export default function GEPosVendasTab() {
       client_document: c.client_document || '',
       sale_number: c.sale_number || '',
       case_type: c.case_type || 'DEVOLUCAO',
-      status: c.status || 'aguardando_analise',
+      status: c.status || 'aguardando_postagem',
       analyst_name: c.analyst_name || '',
       analysis_reason: c.analysis_reason || '',
       marketplace_account: c.marketplace_account || '',
@@ -282,6 +282,21 @@ export default function GEPosVendasTab() {
       product_description: c.product_description || '',
       numero_antecipacao: (c as any).numero_antecipacao || '',
       numero_cadastro_jacsys: (c as any).numero_cadastro_jacsys || '',
+      // Financial fields
+      financial_type: (c as any).metodo_pagamento || '',
+      chave_pix: c.chave_pix_valor || '',
+      chave_pix_tipo: c.chave_pix_tipo || '',
+      reimbursement_value: c.reimbursement_value || 0,
+      titular_nome: (c as any).dados_bancarios_json?.titular_nome || '',
+      instituicao: (c as any).dados_bancarios_json?.instituicao || '',
+      valor_total: (c as any).dados_bancarios_json?.valor_total || '',
+      valor_com_descontos: (c as any).dados_bancarios_json?.valor_com_descontos || '',
+      conta: (c as any).dados_bancarios_json?.conta || '',
+      alegacao: (c as any).dados_bancarios_json?.alegacao || '',
+      motivo: (c as any).dados_bancarios_json?.motivo || '',
+      sku_produto: c.product_sku || '',
+      peca_retornou: (c as any).dados_bancarios_json?.peca_retornou || 'nao',
+      numero_pedido_fin: c.numero_pedido || '',
     });
     setEditNfGarantiaFile(null);
     setEditingCase(c);
@@ -313,6 +328,31 @@ export default function GEPosVendasTab() {
         return;
       }
     }
+    // Build financial data if financial_type is set
+    const financialData: Record<string, any> = {};
+    if (editFormData.financial_type) {
+      financialData.metodo_pagamento = editFormData.financial_type;
+      financialData.chave_pix_valor = editFormData.chave_pix;
+      financialData.chave_pix_tipo = editFormData.chave_pix_tipo || detectPixKeyType(editFormData.chave_pix);
+      financialData.reimbursement_value = parseFloat(editFormData.valor_com_descontos || editFormData.valor_total) || editFormData.reimbursement_value || 0;
+      financialData.product_sku = editFormData.sku_produto;
+      financialData.numero_pedido = editFormData.numero_pedido_fin;
+      financialData.dados_bancarios_json = {
+        titular_nome: editFormData.titular_nome,
+        instituicao: editFormData.instituicao,
+        valor_total: editFormData.valor_total,
+        valor_com_descontos: editFormData.valor_com_descontos,
+        conta: editFormData.conta,
+        alegacao: editFormData.alegacao,
+        motivo: editFormData.motivo,
+        sku_produto: editFormData.sku_produto,
+        peca_retornou: editFormData.peca_retornou,
+        numero_pedido: editFormData.numero_pedido_fin,
+      };
+    } else {
+      // Clear financial data if type removed
+      financialData.metodo_pagamento = null;
+    }
     updateCase.mutate({
       id: editingCase.id,
       client_name: editFormData.client_name,
@@ -328,6 +368,7 @@ export default function GEPosVendasTab() {
       product_description: editFormData.product_description,
       numero_antecipacao: editFormData.numero_antecipacao,
       numero_cadastro_jacsys: editFormData.numero_cadastro_jacsys,
+      ...financialData,
       ...extra,
     }, {
       onSuccess: () => { setViewingCase(null); setEditingCase(null); setEditNfGarantiaFile(null); toast.success('Caso atualizado'); },
@@ -489,6 +530,10 @@ export default function GEPosVendasTab() {
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Nome do Cliente *</Label><Input value={formData.client_name} onChange={e => setFormData(f => ({ ...f, client_name: e.target.value }))} placeholder="Nome completo" /></div>
               <div><Label>CPF (somente números)</Label><Input value={formData.client_document} onChange={e => setFormData(f => ({ ...f, client_document: e.target.value }))} placeholder="00000000000" /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Nº da Venda</Label><Input value={formData.sale_number} onChange={e => setFormData(f => ({ ...f, sale_number: e.target.value }))} placeholder="Número da venda" /></div>
+              <div><Label>Data de Entrada</Label><Input type="date" value={formData.entry_date} onChange={e => setFormData(f => ({ ...f, entry_date: e.target.value }))} /></div>
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div><Label>Tipo</Label>
@@ -771,6 +816,85 @@ export default function GEPosVendasTab() {
                   <div><Label>ID Antecipação</Label><Input value={editFormData.numero_antecipacao} onChange={e => setEditFormData(f => ({ ...f, numero_antecipacao: e.target.value }))} /></div>
                   <div><Label>ID Cadastro Jacsys</Label><Input value={editFormData.numero_cadastro_jacsys} onChange={e => setEditFormData(f => ({ ...f, numero_cadastro_jacsys: e.target.value }))} /></div>
                 </div>
+
+                {/* Financial Type Selection in Edit */}
+                <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
+                  <Label className="text-base font-semibold">Dados Financeiros</Label>
+                  <div className="flex gap-3">
+                    <Button type="button" variant={editFormData.financial_type === 'reembolso' ? 'default' : 'outline'} size="sm"
+                      onClick={() => setEditFormData(f => ({ ...f, financial_type: f.financial_type === 'reembolso' ? '' : 'reembolso' }))}>
+                      Reembolso
+                    </Button>
+                    <Button type="button" variant={editFormData.financial_type === 'ressarcimento_mo' ? 'default' : 'outline'} size="sm"
+                      onClick={() => setEditFormData(f => ({ ...f, financial_type: f.financial_type === 'ressarcimento_mo' ? '' : 'ressarcimento_mo' }))}>
+                      Ressarcimento M.O.
+                    </Button>
+                  </div>
+                  {editFormData.financial_type && (
+                    <div className="space-y-3 pt-2 border-t">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div><Label>Chave Pix</Label><Input value={editFormData.chave_pix} onChange={e => setEditFormData(f => ({ ...f, chave_pix: e.target.value, chave_pix_tipo: detectPixKeyType(e.target.value) }))} /></div>
+                        <div><Label>Tipo da Chave</Label><Input value={editFormData.chave_pix_tipo || detectPixKeyType(editFormData.chave_pix)} readOnly className="bg-muted" /></div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div><Label>Nome do Titular</Label><Input value={editFormData.titular_nome} onChange={e => setEditFormData(f => ({ ...f, titular_nome: e.target.value }))} /></div>
+                        <div><Label>Instituição</Label>
+                          <Select value={editFormData.instituicao} onValueChange={v => setEditFormData(f => ({ ...f, instituicao: v }))}>
+                            <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                            <SelectContent>
+                              {['Banco do Brasil', 'Bradesco', 'Itau', 'Santander', 'Caixa Economica', 'Nubank', 'Inter', 'C6 Bank', 'PagBank', 'Mercado Pago', 'Sicoob', 'Sicredi', 'Banrisul', 'Original', 'BTG Pactual', 'Safra', 'Neon', 'PicPay', 'Ame Digital', 'Outro'].map(b => (
+                                <SelectItem key={b} value={b}>{b}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div><Label>Valor Total</Label><Input type="number" step="0.01" value={editFormData.valor_total} onChange={e => setEditFormData(f => ({ ...f, valor_total: e.target.value }))} /></div>
+                        <div><Label>Valor c/ Descontos</Label><Input type="number" step="0.01" value={editFormData.valor_com_descontos} onChange={e => setEditFormData(f => ({ ...f, valor_com_descontos: e.target.value }))} /></div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div><Label>N. Venda</Label><Input value={editFormData.numero_pedido_fin} onChange={e => setEditFormData(f => ({ ...f, numero_pedido_fin: e.target.value }))} /></div>
+                        <div><Label>Conta</Label>
+                          <Select value={editFormData.conta} onValueChange={v => setEditFormData(f => ({ ...f, conta: v }))}>
+                            <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                            <SelectContent>
+                              {['Mercado Livre ES', 'Mercado Livre GAP', 'Mercado Livre Go!Mec', 'Shopee ES', 'Shopee SP', 'Magalu ES', 'Magalu SP', 'Site'].map(c => (
+                                <SelectItem key={c} value={c}>{c}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div><Label>Alegação</Label><Input value={editFormData.alegacao} onChange={e => setEditFormData(f => ({ ...f, alegacao: e.target.value }))} /></div>
+                        <div><Label>Motivo</Label>
+                          <Select value={editFormData.motivo} onValueChange={v => setEditFormData(f => ({ ...f, motivo: v }))}>
+                            <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                            <SelectContent>
+                              {['Defeito de fabrica', 'Produto diferente do anuncio', 'Produto danificado no transporte', 'Produto incompleto', 'Arrependimento', 'Nao funciona', 'Peca errada', 'Garantia expirada', 'Problema na instalacao', 'Outro'].map(m => (
+                                <SelectItem key={m} value={m}>{m}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div><Label>SKU Produto</Label><Input value={editFormData.sku_produto} onChange={e => setEditFormData(f => ({ ...f, sku_produto: e.target.value }))} /></div>
+                        <div><Label>Peça Retornou?</Label>
+                          <Select value={editFormData.peca_retornou} onValueChange={v => setEditFormData(f => ({ ...f, peca_retornou: v }))}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="sim">Sim</SelectItem>
+                              <SelectItem value="nao">Não</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* NF Garantia Upload in Edit */}
                 <div>
                   <Label>Nota Fiscal (PDF)</Label>
