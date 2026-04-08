@@ -328,6 +328,31 @@ export default function GEPosVendasTab() {
         return;
       }
     }
+    // Build financial data if financial_type is set
+    const financialData: Record<string, any> = {};
+    if (editFormData.financial_type) {
+      financialData.metodo_pagamento = editFormData.financial_type;
+      financialData.chave_pix_valor = editFormData.chave_pix;
+      financialData.chave_pix_tipo = editFormData.chave_pix_tipo || detectPixKeyType(editFormData.chave_pix);
+      financialData.reimbursement_value = parseFloat(editFormData.valor_com_descontos || editFormData.valor_total) || editFormData.reimbursement_value || 0;
+      financialData.product_sku = editFormData.sku_produto;
+      financialData.numero_pedido = editFormData.numero_pedido_fin;
+      financialData.dados_bancarios_json = {
+        titular_nome: editFormData.titular_nome,
+        instituicao: editFormData.instituicao,
+        valor_total: editFormData.valor_total,
+        valor_com_descontos: editFormData.valor_com_descontos,
+        conta: editFormData.conta,
+        alegacao: editFormData.alegacao,
+        motivo: editFormData.motivo,
+        sku_produto: editFormData.sku_produto,
+        peca_retornou: editFormData.peca_retornou,
+        numero_pedido: editFormData.numero_pedido_fin,
+      };
+    } else {
+      // Clear financial data if type removed
+      financialData.metodo_pagamento = null;
+    }
     updateCase.mutate({
       id: editingCase.id,
       client_name: editFormData.client_name,
@@ -343,6 +368,7 @@ export default function GEPosVendasTab() {
       product_description: editFormData.product_description,
       numero_antecipacao: editFormData.numero_antecipacao,
       numero_cadastro_jacsys: editFormData.numero_cadastro_jacsys,
+      ...financialData,
       ...extra,
     }, {
       onSuccess: () => { setViewingCase(null); setEditingCase(null); setEditNfGarantiaFile(null); toast.success('Caso atualizado'); },
