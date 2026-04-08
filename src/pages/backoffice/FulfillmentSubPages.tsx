@@ -274,7 +274,44 @@ export function CentralEstoquePage() {
         </div>
       </div>
 
-      <Card><CardContent className="p-4">
+      {/* Webhook API Key Configuration */}
+      <Card className="border-dashed border-2 border-primary/20">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-warning/10 rounded-lg"><Link2 className="h-5 w-5 text-warning" /></div>
+              <div>
+                <h3 className="font-semibold text-sm">Configuração do Webhook</h3>
+                <p className="text-xs text-muted-foreground">Cole aqui o código de API para integração de estoque</p>
+              </div>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => setShowWebhookConfig(!showWebhookConfig)}>
+              {showWebhookConfig ? 'Fechar' : 'Configurar'}
+            </Button>
+          </div>
+          {showWebhookConfig && (
+            <div className="mt-4 space-y-3 pt-3 border-t">
+              <div>
+                <Label className="text-sm">Código de API / Token</Label>
+                <div className="flex gap-2 mt-1">
+                  <Input value={webhookApiKey} onChange={e => setWebhookApiKey(e.target.value)} placeholder="Cole aqui o código de API..." className="font-mono text-sm" />
+                  <Button size="sm" onClick={() => { if (!webhookApiKey.trim()) { toast.error('Informe o código de API'); return; } localStorage.setItem('webhook_api_key_estoque', webhookApiKey); toast.success('Código de API salvo!'); }}>Salvar</Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Este código será usado para autenticação nas chamadas do webhook.</p>
+              </div>
+              <div>
+                <Label className="text-sm">URL do Webhook</Label>
+                <div className="flex gap-2 mt-1">
+                  <Input value="https://zlpwomncbzdjwyymdlzo.supabase.co/functions/v1/ml-inventory-webhook" readOnly className="font-mono text-xs bg-muted" />
+                  <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText('https://zlpwomncbzdjwyymdlzo.supabase.co/functions/v1/ml-inventory-webhook'); toast.success('URL copiada!'); }}>Copiar</Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold">Anúncios ({anuncios.length})</h3>
           <div className="flex items-center gap-3">
