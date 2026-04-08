@@ -721,6 +721,20 @@ export default function GEFinanceiroTab() {
             <>
               <DialogHeader><DialogTitle>Editar - Caso #{editingCase.case_number}</DialogTitle></DialogHeader>
               <div className="space-y-3">
+                {/* Tipo financeiro */}
+                <div>
+                  <Label className="font-semibold">Tipo</Label>
+                  <div className="flex gap-3 mt-1">
+                    <Button type="button" variant={editFormData.metodo_pagamento === 'reembolso' ? 'default' : 'outline'} size="sm"
+                      onClick={() => setEditFormData(p => ({ ...p, metodo_pagamento: 'reembolso' }))}>
+                      Reembolso
+                    </Button>
+                    <Button type="button" variant={editFormData.metodo_pagamento === 'ressarcimento_mo' ? 'default' : 'outline'} size="sm"
+                      onClick={() => setEditFormData(p => ({ ...p, metodo_pagamento: 'ressarcimento_mo' }))}>
+                      Ressarcimento M.O.
+                    </Button>
+                  </div>
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div><Label>Cliente</Label><Input value={editFormData.client_name} onChange={e => setEditFormData(p => ({ ...p, client_name: e.target.value }))} /></div>
                   <div><Label>Venda</Label><Input value={editFormData.sale_number} onChange={e => setEditFormData(p => ({ ...p, sale_number: e.target.value }))} /></div>
@@ -729,6 +743,19 @@ export default function GEFinanceiroTab() {
                   <div><Label>Nº Pedido</Label><Input value={editFormData.numero_pedido} onChange={e => setEditFormData(p => ({ ...p, numero_pedido: e.target.value }))} /></div>
                   <div><Label>SKU</Label><Input value={editFormData.product_sku} onChange={e => setEditFormData(p => ({ ...p, product_sku: e.target.value }))} /></div>
                   <div><Label>Chave PIX</Label><Input value={editFormData.chave_pix_valor} onChange={e => setEditFormData(p => ({ ...p, chave_pix_valor: e.target.value }))} /></div>
+                  <div><Label>Tipo Chave</Label><Input value={editFormData.chave_pix_tipo} readOnly className="bg-muted" /></div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Nome Titular</Label><Input value={editFormData.titular_nome} onChange={e => setEditFormData(p => ({ ...p, titular_nome: e.target.value }))} /></div>
+                  <div><Label>Instituição</Label><Input value={editFormData.instituicao} onChange={e => setEditFormData(p => ({ ...p, instituicao: e.target.value }))} /></div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Valor Total</Label><Input type="number" step="0.01" value={editFormData.valor_total} onChange={e => setEditFormData(p => ({ ...p, valor_total: e.target.value }))} /></div>
+                  <div><Label>Valor c/ Descontos</Label><Input type="number" step="0.01" value={editFormData.valor_com_descontos} onChange={e => setEditFormData(p => ({ ...p, valor_com_descontos: e.target.value }))} /></div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>Conta</Label><Input value={editFormData.conta} onChange={e => setEditFormData(p => ({ ...p, conta: e.target.value }))} /></div>
+                  <div><Label>Alegação</Label><Input value={editFormData.alegacao} onChange={e => setEditFormData(p => ({ ...p, alegacao: e.target.value }))} /></div>
                 </div>
                 <div><Label>Produto</Label><Input value={editFormData.product_description} onChange={e => setEditFormData(p => ({ ...p, product_description: e.target.value }))} /></div>
                 <div><Label>Motivo</Label><Textarea value={editFormData.analysis_reason} onChange={e => setEditFormData(p => ({ ...p, analysis_reason: e.target.value }))} rows={2} /></div>
