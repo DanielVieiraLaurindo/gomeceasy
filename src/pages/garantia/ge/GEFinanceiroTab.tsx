@@ -344,6 +344,16 @@ export default function GEFinanceiroTab() {
       numero_pedido: c.numero_pedido || '',
       analysis_reason: c.analysis_reason || '',
       chave_pix_valor: c.chave_pix_valor || '',
+      metodo_pagamento: c.metodo_pagamento || 'reembolso',
+      chave_pix_tipo: c.chave_pix_tipo || '',
+      titular_nome: c.dados_bancarios_json?.titular_nome || '',
+      instituicao: c.dados_bancarios_json?.instituicao || '',
+      valor_total: c.dados_bancarios_json?.valor_total || '',
+      valor_com_descontos: c.dados_bancarios_json?.valor_com_descontos || '',
+      conta: c.dados_bancarios_json?.conta || '',
+      alegacao: c.dados_bancarios_json?.alegacao || '',
+      motivo: c.dados_bancarios_json?.motivo || '',
+      peca_retornou: c.dados_bancarios_json?.peca_retornou || 'nao',
     });
     setNfDevFile(null);
     setEditingCase(c);
