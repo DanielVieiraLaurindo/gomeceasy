@@ -816,6 +816,85 @@ export default function GEPosVendasTab() {
                   <div><Label>ID Antecipação</Label><Input value={editFormData.numero_antecipacao} onChange={e => setEditFormData(f => ({ ...f, numero_antecipacao: e.target.value }))} /></div>
                   <div><Label>ID Cadastro Jacsys</Label><Input value={editFormData.numero_cadastro_jacsys} onChange={e => setEditFormData(f => ({ ...f, numero_cadastro_jacsys: e.target.value }))} /></div>
                 </div>
+
+                {/* Financial Type Selection in Edit */}
+                <div className="border rounded-lg p-4 space-y-3 bg-muted/30">
+                  <Label className="text-base font-semibold">Dados Financeiros</Label>
+                  <div className="flex gap-3">
+                    <Button type="button" variant={editFormData.financial_type === 'reembolso' ? 'default' : 'outline'} size="sm"
+                      onClick={() => setEditFormData(f => ({ ...f, financial_type: f.financial_type === 'reembolso' ? '' : 'reembolso' }))}>
+                      Reembolso
+                    </Button>
+                    <Button type="button" variant={editFormData.financial_type === 'ressarcimento_mo' ? 'default' : 'outline'} size="sm"
+                      onClick={() => setEditFormData(f => ({ ...f, financial_type: f.financial_type === 'ressarcimento_mo' ? '' : 'ressarcimento_mo' }))}>
+                      Ressarcimento M.O.
+                    </Button>
+                  </div>
+                  {editFormData.financial_type && (
+                    <div className="space-y-3 pt-2 border-t">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div><Label>Chave Pix</Label><Input value={editFormData.chave_pix} onChange={e => setEditFormData(f => ({ ...f, chave_pix: e.target.value, chave_pix_tipo: detectPixKeyType(e.target.value) }))} /></div>
+                        <div><Label>Tipo da Chave</Label><Input value={editFormData.chave_pix_tipo || detectPixKeyType(editFormData.chave_pix)} readOnly className="bg-muted" /></div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div><Label>Nome do Titular</Label><Input value={editFormData.titular_nome} onChange={e => setEditFormData(f => ({ ...f, titular_nome: e.target.value }))} /></div>
+                        <div><Label>Instituição</Label>
+                          <Select value={editFormData.instituicao} onValueChange={v => setEditFormData(f => ({ ...f, instituicao: v }))}>
+                            <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                            <SelectContent>
+                              {['Banco do Brasil', 'Bradesco', 'Itau', 'Santander', 'Caixa Economica', 'Nubank', 'Inter', 'C6 Bank', 'PagBank', 'Mercado Pago', 'Sicoob', 'Sicredi', 'Banrisul', 'Original', 'BTG Pactual', 'Safra', 'Neon', 'PicPay', 'Ame Digital', 'Outro'].map(b => (
+                                <SelectItem key={b} value={b}>{b}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div><Label>Valor Total</Label><Input type="number" step="0.01" value={editFormData.valor_total} onChange={e => setEditFormData(f => ({ ...f, valor_total: e.target.value }))} /></div>
+                        <div><Label>Valor c/ Descontos</Label><Input type="number" step="0.01" value={editFormData.valor_com_descontos} onChange={e => setEditFormData(f => ({ ...f, valor_com_descontos: e.target.value }))} /></div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div><Label>N. Venda</Label><Input value={editFormData.numero_pedido_fin} onChange={e => setEditFormData(f => ({ ...f, numero_pedido_fin: e.target.value }))} /></div>
+                        <div><Label>Conta</Label>
+                          <Select value={editFormData.conta} onValueChange={v => setEditFormData(f => ({ ...f, conta: v }))}>
+                            <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                            <SelectContent>
+                              {['Mercado Livre ES', 'Mercado Livre GAP', 'Mercado Livre Go!Mec', 'Shopee ES', 'Shopee SP', 'Magalu ES', 'Magalu SP', 'Site'].map(c => (
+                                <SelectItem key={c} value={c}>{c}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div><Label>Alegação</Label><Input value={editFormData.alegacao} onChange={e => setEditFormData(f => ({ ...f, alegacao: e.target.value }))} /></div>
+                        <div><Label>Motivo</Label>
+                          <Select value={editFormData.motivo} onValueChange={v => setEditFormData(f => ({ ...f, motivo: v }))}>
+                            <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                            <SelectContent>
+                              {['Defeito de fabrica', 'Produto diferente do anuncio', 'Produto danificado no transporte', 'Produto incompleto', 'Arrependimento', 'Nao funciona', 'Peca errada', 'Garantia expirada', 'Problema na instalacao', 'Outro'].map(m => (
+                                <SelectItem key={m} value={m}>{m}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div><Label>SKU Produto</Label><Input value={editFormData.sku_produto} onChange={e => setEditFormData(f => ({ ...f, sku_produto: e.target.value }))} /></div>
+                        <div><Label>Peça Retornou?</Label>
+                          <Select value={editFormData.peca_retornou} onValueChange={v => setEditFormData(f => ({ ...f, peca_retornou: v }))}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="sim">Sim</SelectItem>
+                              <SelectItem value="nao">Não</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* NF Garantia Upload in Edit */}
                 <div>
                   <Label>Nota Fiscal (PDF)</Label>
