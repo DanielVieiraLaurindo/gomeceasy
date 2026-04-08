@@ -130,6 +130,8 @@ export function CentralEstoquePage() {
   const [form, setForm] = useState<any>({ titulo: '', sku: '', mlb: '', foto_url: '', suitable_for_sale: 0, not_suitable_for_sale: 0, on_the_way: 0, vendas_30_dias: 0 });
   const [filter, setFilter] = useState<string>('all');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [webhookApiKey, setWebhookApiKey] = useState('');
+  const [showWebhookConfig, setShowWebhookConfig] = useState(false);
 
   const createAnuncio = useMutation({
     mutationFn: async (data: any) => { const { error } = await (supabase as any).from('ml_anuncios').insert(data); if (error) throw error; },
