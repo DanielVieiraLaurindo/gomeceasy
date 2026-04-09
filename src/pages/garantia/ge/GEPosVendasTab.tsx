@@ -518,7 +518,7 @@ export default function GEPosVendasTab() {
               <div><Label>Unidade *</Label>
                 <Select value={formData.business_unit} onValueChange={v => setFormData(f => ({ ...f, business_unit: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{UNIDADES.map(u => <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>)}</SelectContent>
+                  <SelectContent>{availableUnidades.map(u => <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div><Label>Atendente *</Label>
@@ -819,7 +819,7 @@ export default function GEPosVendasTab() {
                   <div><Label>Unidade</Label>
                     <Select value={editFormData.business_unit} onValueChange={v => setEditFormData(f => ({ ...f, business_unit: v }))}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>{UNIDADES.map(u => <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>)}</SelectContent>
+                      <SelectContent>{availableUnidades.map(u => <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                 </div>
