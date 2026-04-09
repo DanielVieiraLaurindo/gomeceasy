@@ -74,17 +74,16 @@ function diasAtraso(prazo: string | null, status: string): number {
   return diff > 0 ? diff : 0;
 }
 
-/** Check if the link has expired – expires at midnight BRT of the CREATION day.
- *  We receive data_hora_lancamento (creation timestamp). The link expires at
- *  the start of the NEXT day in BRT, i.e. 00:00 of the day after creation. */
-function isLinkExpired(dataLancamento: string | null): boolean {
-  if (!dataLancamento) return false;
-  const createdBRT = toZonedTime(new Date(dataLancamento), BRT_TZ);
-  // Midnight of the next day in BRT = start of next day
-  const startOfNextDay = startOfDay(createdBRT);
-  startOfNextDay.setDate(startOfNextDay.getDate() + 1);
+/** Check if the link has expired – prazo_cobrar stores the creation date;
+ *  the link expires when midnight BRT of that date passes (i.e. start of next day). */
+function isLinkExpired(prazoCobrar: string | null): boolean {
+  if (!prazoCobrar) return false;
+  // prazo_cobrar is the creation date (e.g. "2026-04-09")
+  // link expires at 00:00 of the NEXT day in BRT
+  const prazoDate = new Date(prazoCobrar + 'T00:00:00');
+  const expiresAt = new Date(prazoDate.getTime() + 24 * 60 * 60 * 1000); // next day 00:00
   const nowBrt = toZonedTime(new Date(), BRT_TZ);
-  return isAfter(nowBrt, startOfNextDay);
+  return isAfter(nowBrt, expiresAt);
 }
 
 /** Calculate prazo_cobrar based on ocorrencia type */
@@ -95,10 +94,9 @@ function getPrazoCobrar(ocorrencia: string): string {
     const deadline = new Date(now.getTime() + 24 * 60 * 60 * 1000);
     return format(deadline, "yyyy-MM-dd'T'HH:mm:ss");
   }
-  // link_pagamento: end of current day BRT (midnight)
+  // link_pagamento: store the creation date itself; expires at 00:00 of next day
   const brtNow = toZonedTime(new Date(), BRT_TZ);
-  const endOfToday = endOfDay(brtNow);
-  return format(endOfToday, "yyyy-MM-dd'T'HH:mm:ss");
+  return format(startOfDay(brtNow), 'yyyy-MM-dd');
 }
 
 /** Render 5-star rating */
@@ -642,7 +640,7 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissio
             <div className="space-y-1.5">
               <p className="text-xs text-muted-foreground uppercase font-bold">Link de Pagamento</p>
               {(() => {
-                const linkExpired = item.link_pagamento && item.ocorrencia === 'link_pagamento' && isLinkExpired(item.data_hora_lancamento);
+                const linkExpired = item.link_pagamento && item.ocorrencia === 'link_pagamento' && isLinkExpired(item.prazo_cobrar);
                 const canInsertLink = !item.link_pagamento || linkExpired;
                 const showLinkInput = canInsertLink && (item.status === 'aguardando_link' || item.status === 'aberto' || item.status === 'aguardando_pagamento' || item.status === 'em_atraso');
 
