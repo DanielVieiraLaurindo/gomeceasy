@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 const ATENDENTES = ['Aline Oliveira', 'Ana Paula dos Santos Menezes', 'Nicolly Frameschi da Silva', 'Victoria Portella', 'Vinicius Santos'];
-const UNIDADES = [{ value: 'GAP', label: 'São Paulo' }, { value: 'GAP_ES', label: 'Espírito Santo' }];
+const UNIDADES = [{ value: 'GAP', label: 'GAP' }, { value: 'GAP_VIRTUAL', label: 'GAP-Virtual' }, { value: 'GAP_ES', label: 'GAP-ES' }];
 const CANAIS_VENDA = [
   { value: 'MELI_GAP', label: 'Mercado Livre GAP' }, { value: 'MELI_GOMEC', label: 'Mercado Livre GOMEC' }, { value: 'MELI_ES', label: 'Mercado Livre ES' },
   { value: 'SHOPEE_SP', label: 'Shopee SP' }, { value: 'SHOPEE_ES', label: 'Shopee ES' },
@@ -47,13 +47,15 @@ function detectPixKeyType(key: string): string {
 export default function GEPosVendasTab() {
   const { user, profile } = useAuth();
   const userEmail = profile?.email || '';
+  const isEsUser = userEmail === 'garantia.es@gomecautopecas.com.br';
+  const availableUnidades = isEsUser ? UNIDADES.filter(u => u.value === 'GAP_ES') : UNIDADES;
   const [filters, setFilters] = useState<GarantiaCaseFilters>({ origemFilter: 'pos_vendas', userEmail });
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [viewingCase, setViewingCase] = useState<ReturnCase | null>(null);
   const [editingCase, setEditingCase] = useState<ReturnCase | null>(null);
   const [deletingCase, setDeletingCase] = useState<ReturnCase | null>(null);
   const [searchInput, setSearchInput] = useState('');
-  const [unitTab, setUnitTab] = useState('SP');
+  const [unitTab, setUnitTab] = useState(isEsUser ? 'ES' : 'SP');
   const [atendenteFilter, setAtendenteFilter] = useState('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -73,7 +75,7 @@ export default function GEPosVendasTab() {
 
   const defaultFormData = {
     client_name: '', client_document: '', sale_number: '',
-    marketplace_account: '' as string, business_unit: 'GAP' as string,
+    marketplace_account: '' as string, business_unit: (isEsUser ? 'GAP_ES' : 'GAP') as string,
     case_type: 'DEVOLUCAO' as string, analysis_reason: '',
     entry_date: new Date().toISOString().split('T')[0],
     analyst_name: '', quantity: '1', fullfilment_tracking: '',
@@ -154,6 +156,11 @@ export default function GEPosVendasTab() {
       toast.error('ID do Cadastro Jacsys é obrigatório quando marcado como Cadastrado no Jacsys');
       return;
     }
+    // When "Peça retornará?" = Não, Jacsys is mandatory
+    if (formData.peca_retornou === 'nao' && (!formData.is_jacsys || !formData.numero_cadastro_jacsys.trim())) {
+      toast.error('Cadastro no Jacsys é obrigatório quando a peça não retornará');
+      return;
+    }
 
     let nfGarantiaUrl = '';
     if (nfGarantiaFile) {
@@ -166,6 +173,10 @@ export default function GEPosVendasTab() {
     }
 
     const financialData: any = {};
+    // Always store peca_retornou
+    if (!financialData.dados_bancarios_json) financialData.dados_bancarios_json = {};
+    financialData.dados_bancarios_json.peca_retornou = formData.peca_retornou;
+
     if (formData.financial_type) {
       financialData.chave_pix_valor = formData.chave_pix;
       financialData.chave_pix_tipo = formData.chave_pix_tipo;
@@ -173,6 +184,7 @@ export default function GEPosVendasTab() {
       financialData.reimbursement_value = parseFloat(formData.valor_com_descontos || formData.valor_total) || 0;
       financialData.data_solicitacao_reembolso = formData.data_solicitacao;
       financialData.dados_bancarios_json = {
+        ...financialData.dados_bancarios_json,
         titular_nome: formData.titular_nome,
         instituicao: formData.instituicao,
         valor_total: formData.valor_total,
@@ -181,11 +193,14 @@ export default function GEPosVendasTab() {
         alegacao: formData.alegacao,
         motivo: formData.motivo,
         sku_produto: formData.sku_produto,
-        peca_retornou: formData.peca_retornou,
         nf_garantia_url: nfGarantiaUrl || undefined,
         numero_pedido: formData.numero_pedido_fin,
       };
       financialData.status = 'aguardando_conferencia';
+    } else if (formData.peca_retornou === 'nao') {
+      // No financial type but piece won't return → set reembolso so it flows through fiscal/financeiro
+      financialData.metodo_pagamento = 'reembolso';
+      financialData.status = 'analise_fiscal';
     }
 
     createCase.mutate({
@@ -198,7 +213,7 @@ export default function GEPosVendasTab() {
       case_type: formData.case_type as any,
       analysis_reason: formData.analysis_reason,
       entry_date: formData.entry_date,
-      status: formData.financial_type ? 'aguardando_conferencia' : 'aguardando_postagem' as any,
+      status: formData.financial_type ? 'aguardando_conferencia' : (formData.peca_retornou === 'nao' ? 'analise_fiscal' : 'aguardando_postagem') as any,
       analyst_name: formData.analyst_name || '-',
       item_condition: '-',
       product_codes: [],
@@ -448,10 +463,12 @@ export default function GEPosVendasTab() {
 
       <Tabs value={unitTab} onValueChange={setUnitTab}>
         <div className="flex items-center gap-4 flex-wrap">
-          <TabsList>
-            <TabsTrigger value="SP">São Paulo</TabsTrigger>
-            <TabsTrigger value="ES">Espírito Santo</TabsTrigger>
-          </TabsList>
+          {!isEsUser && (
+            <TabsList>
+              <TabsTrigger value="SP">São Paulo</TabsTrigger>
+              <TabsTrigger value="ES">Espírito Santo</TabsTrigger>
+            </TabsList>
+          )}
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input placeholder="Buscar cliente, CPF, nº caso, SKU..." className="pl-9" value={searchInput} onChange={e => setSearchInput(e.target.value)} />
@@ -511,7 +528,7 @@ export default function GEPosVendasTab() {
               <div><Label>Unidade *</Label>
                 <Select value={formData.business_unit} onValueChange={v => setFormData(f => ({ ...f, business_unit: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{UNIDADES.map(u => <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>)}</SelectContent>
+                  <SelectContent>{availableUnidades.map(u => <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div><Label>Atendente *</Label>
@@ -548,6 +565,20 @@ export default function GEPosVendasTab() {
               </div>
               <div><Label>Quantidade</Label><Input type="number" value={formData.quantity} onChange={e => setFormData(f => ({ ...f, quantity: e.target.value }))} /></div>
               <div><Label>Código de Rastreio</Label><Input value={formData.fullfilment_tracking} onChange={e => setFormData(f => ({ ...f, fullfilment_tracking: e.target.value }))} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Peça retornará? *</Label>
+                <Select value={formData.peca_retornou} onValueChange={v => setFormData(f => ({ ...f, peca_retornou: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="sim">Sim</SelectItem>
+                    <SelectItem value="nao">Não</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {formData.peca_retornou === 'sim' ? 'Status inicial: Aguardando Postagem' : 'Pula etapas de garantia → Fiscal → Financeiro'}
+                </p>
+              </div>
             </div>
             <div><Label>Descrição do Produto</Label><Input value={formData.product_description} onChange={e => setFormData(f => ({ ...f, product_description: e.target.value }))} placeholder="Descrição do produto" /></div>
 
@@ -654,17 +685,8 @@ export default function GEPosVendasTab() {
                       </Select>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div>
                     <div><Label>SKU Produto</Label><Input value={formData.sku_produto} onChange={e => setFormData(f => ({ ...f, sku_produto: e.target.value }))} /></div>
-                    <div><Label>Peça Retornou?</Label>
-                      <Select value={formData.peca_retornou} onValueChange={v => setFormData(f => ({ ...f, peca_retornou: v }))}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="sim">Sim</SelectItem>
-                          <SelectItem value="nao">Não</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
                   </div>
                   <div><Label>Data Solicitação</Label><Input type="date" value={formData.data_solicitacao} onChange={e => setFormData(f => ({ ...f, data_solicitacao: e.target.value }))} /></div>
                 </div>
@@ -807,7 +829,7 @@ export default function GEPosVendasTab() {
                   <div><Label>Unidade</Label>
                     <Select value={editFormData.business_unit} onValueChange={v => setEditFormData(f => ({ ...f, business_unit: v }))}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>{UNIDADES.map(u => <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>)}</SelectContent>
+                      <SelectContent>{availableUnidades.map(u => <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                 </div>
