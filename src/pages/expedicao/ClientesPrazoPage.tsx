@@ -818,7 +818,7 @@ function WhatsAppContactDialog({ open, onOpenChange, data }: {
     contacts.forEach((c, i) => {
       const msg = `Olá ${c.name}\n\nA requisição ${data.requisicao} do cliente ${data.nomeCliente} aguarda sua aprovação, por gentileza aprovar no sistema.\n\nObrigado ${data.nomeVendedor}`;
       setTimeout(() => {
-        window.open(`https://wa.me/${c.phone}?text=${encodeURIComponent(msg)}`, '_blank');
+        window.open(`https://wa.me/${c.phone}?text=${encodeURIComponent(msg)}`, 'whatsapp');
       }, i * 1500);
     });
     toast.success(`Enviando para ${contacts.length} contato(s)...`);
@@ -1060,7 +1060,7 @@ export default function ClientesPrazoPage() {
     }, {
       onSuccess: () => {
         const msg = generateWhatsAppMessage(item, link, isRenewal);
-        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, 'whatsapp');
         toast.success(isRenewal ? 'Link renovado' : 'Link salvo');
         // Browser notification for the link creation
         sendBrowserNotification('🔗 Link de Pagamento Criado', `Requisição ${(item as any)?.requisicao} — Link gerado com sucesso`);
