@@ -455,10 +455,12 @@ export default function GEPosVendasTab() {
 
       <Tabs value={unitTab} onValueChange={setUnitTab}>
         <div className="flex items-center gap-4 flex-wrap">
-          <TabsList>
-            <TabsTrigger value="SP">São Paulo</TabsTrigger>
-            <TabsTrigger value="ES">Espírito Santo</TabsTrigger>
-          </TabsList>
+          {!isEsUser && (
+            <TabsList>
+              <TabsTrigger value="SP">São Paulo</TabsTrigger>
+              <TabsTrigger value="ES">Espírito Santo</TabsTrigger>
+            </TabsList>
+          )}
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input placeholder="Buscar cliente, CPF, nº caso, SKU..." className="pl-9" value={searchInput} onChange={e => setSearchInput(e.target.value)} />
