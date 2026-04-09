@@ -95,11 +95,11 @@ function getPrazoCobrar(ocorrencia: string): string {
     const deadline = new Date(now.getTime() + 24 * 60 * 60 * 1000);
     return format(deadline, "yyyy-MM-dd'T'HH:mm:ss");
   }
-  // link_pagamento: midnight (00:00) of the NEXT day in BRT
+  // link_pagamento: next day date (expires at 00:00 BRT of next day)
   const brtNow = toZonedTime(new Date(), BRT_TZ);
   const nextDay = startOfDay(brtNow);
   nextDay.setDate(nextDay.getDate() + 1);
-  return format(nextDay, "yyyy-MM-dd'T'HH:mm:ss");
+  return format(nextDay, 'yyyy-MM-dd');
 }
 
 /** Render 5-star rating */
