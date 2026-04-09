@@ -47,13 +47,15 @@ function detectPixKeyType(key: string): string {
 export default function GEPosVendasTab() {
   const { user, profile } = useAuth();
   const userEmail = profile?.email || '';
+  const isEsUser = userEmail === 'garantia.es@gomecautopecas.com.br';
+  const availableUnidades = isEsUser ? UNIDADES.filter(u => u.value === 'GAP_ES') : UNIDADES;
   const [filters, setFilters] = useState<GarantiaCaseFilters>({ origemFilter: 'pos_vendas', userEmail });
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [viewingCase, setViewingCase] = useState<ReturnCase | null>(null);
   const [editingCase, setEditingCase] = useState<ReturnCase | null>(null);
   const [deletingCase, setDeletingCase] = useState<ReturnCase | null>(null);
   const [searchInput, setSearchInput] = useState('');
-  const [unitTab, setUnitTab] = useState('SP');
+  const [unitTab, setUnitTab] = useState(isEsUser ? 'ES' : 'SP');
   const [atendenteFilter, setAtendenteFilter] = useState('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
