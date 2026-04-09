@@ -154,6 +154,11 @@ export default function GEPosVendasTab() {
       toast.error('ID do Cadastro Jacsys é obrigatório quando marcado como Cadastrado no Jacsys');
       return;
     }
+    // When "Peça retornará?" = Não, Jacsys is mandatory
+    if (formData.peca_retornou === 'nao' && (!formData.is_jacsys || !formData.numero_cadastro_jacsys.trim())) {
+      toast.error('Cadastro no Jacsys é obrigatório quando a peça não retornará');
+      return;
+    }
 
     let nfGarantiaUrl = '';
     if (nfGarantiaFile) {
@@ -548,6 +553,20 @@ export default function GEPosVendasTab() {
               </div>
               <div><Label>Quantidade</Label><Input type="number" value={formData.quantity} onChange={e => setFormData(f => ({ ...f, quantity: e.target.value }))} /></div>
               <div><Label>Código de Rastreio</Label><Input value={formData.fullfilment_tracking} onChange={e => setFormData(f => ({ ...f, fullfilment_tracking: e.target.value }))} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Peça retornará? *</Label>
+                <Select value={formData.peca_retornou} onValueChange={v => setFormData(f => ({ ...f, peca_retornou: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="sim">Sim</SelectItem>
+                    <SelectItem value="nao">Não</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {formData.peca_retornou === 'sim' ? 'Status inicial: Aguardando Postagem' : 'Pula etapas de garantia → Fiscal → Financeiro'}
+                </p>
+              </div>
             </div>
             <div><Label>Descrição do Produto</Label><Input value={formData.product_description} onChange={e => setFormData(f => ({ ...f, product_description: e.target.value }))} placeholder="Descrição do produto" /></div>
 
