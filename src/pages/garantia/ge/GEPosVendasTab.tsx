@@ -673,17 +673,8 @@ export default function GEPosVendasTab() {
                       </Select>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div>
                     <div><Label>SKU Produto</Label><Input value={formData.sku_produto} onChange={e => setFormData(f => ({ ...f, sku_produto: e.target.value }))} /></div>
-                    <div><Label>Peça Retornou?</Label>
-                      <Select value={formData.peca_retornou} onValueChange={v => setFormData(f => ({ ...f, peca_retornou: v }))}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="sim">Sim</SelectItem>
-                          <SelectItem value="nao">Não</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
                   </div>
                   <div><Label>Data Solicitação</Label><Input type="date" value={formData.data_solicitacao} onChange={e => setFormData(f => ({ ...f, data_solicitacao: e.target.value }))} /></div>
                 </div>
