@@ -74,17 +74,16 @@ function diasAtraso(prazo: string | null, status: string): number {
   return diff > 0 ? diff : 0;
 }
 
-/** Check if the link has expired – expires at midnight BRT of the CREATION day.
- *  We receive data_hora_lancamento (creation timestamp). The link expires at
- *  the start of the NEXT day in BRT, i.e. 00:00 of the day after creation. */
-function isLinkExpired(dataLancamento: string | null): boolean {
-  if (!dataLancamento) return false;
-  const createdBRT = toZonedTime(new Date(dataLancamento), BRT_TZ);
-  // Midnight of the next day in BRT = start of next day
-  const startOfNextDay = startOfDay(createdBRT);
-  startOfNextDay.setDate(startOfNextDay.getDate() + 1);
+/** Check if the link has expired – prazo_cobrar stores the creation date;
+ *  the link expires when midnight BRT of that date passes (i.e. start of next day). */
+function isLinkExpired(prazoCobrar: string | null): boolean {
+  if (!prazoCobrar) return false;
+  // prazo_cobrar is the creation date (e.g. "2026-04-09")
+  // link expires at 00:00 of the NEXT day in BRT
+  const prazoDate = new Date(prazoCobrar + 'T00:00:00');
+  const expiresAt = new Date(prazoDate.getTime() + 24 * 60 * 60 * 1000); // next day 00:00
   const nowBrt = toZonedTime(new Date(), BRT_TZ);
-  return isAfter(nowBrt, startOfNextDay);
+  return isAfter(nowBrt, expiresAt);
 }
 
 /** Calculate prazo_cobrar based on ocorrencia type */
