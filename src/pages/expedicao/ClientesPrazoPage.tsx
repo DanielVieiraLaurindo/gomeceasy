@@ -74,12 +74,17 @@ function diasAtraso(prazo: string | null, status: string): number {
   return diff > 0 ? diff : 0;
 }
 
-/** Check if the link has expired – expires at midnight BRT of the day it was created */
-function isLinkExpired(prazo: string | null): boolean {
-  if (!prazo) return false;
-  const now = new Date();
-  const expiryDate = new Date(prazo);
-  return isAfter(now, expiryDate);
+/** Check if the link has expired – expires at midnight BRT of the CREATION day.
+ *  We receive data_hora_lancamento (creation timestamp). The link expires at
+ *  the start of the NEXT day in BRT, i.e. 00:00 of the day after creation. */
+function isLinkExpired(dataLancamento: string | null): boolean {
+  if (!dataLancamento) return false;
+  const createdBRT = toZonedTime(new Date(dataLancamento), BRT_TZ);
+  // Midnight of the next day in BRT = start of next day
+  const startOfNextDay = startOfDay(createdBRT);
+  startOfNextDay.setDate(startOfNextDay.getDate() + 1);
+  const nowBrt = toZonedTime(new Date(), BRT_TZ);
+  return isAfter(nowBrt, startOfNextDay);
 }
 
 /** Calculate prazo_cobrar based on ocorrencia type */
@@ -637,7 +642,7 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissio
             <div className="space-y-1.5">
               <p className="text-xs text-muted-foreground uppercase font-bold">Link de Pagamento</p>
               {(() => {
-                const linkExpired = item.link_pagamento && isLinkExpired(item.prazo_cobrar);
+                const linkExpired = item.link_pagamento && item.ocorrencia === 'link_pagamento' && isLinkExpired(item.data_hora_lancamento);
                 const canInsertLink = !item.link_pagamento || linkExpired;
                 const showLinkInput = canInsertLink && (item.status === 'aguardando_link' || item.status === 'aberto' || item.status === 'aguardando_pagamento' || item.status === 'em_atraso');
 
@@ -1086,14 +1091,14 @@ export default function ClientesPrazoPage() {
     });
   };
 
-  /** Vendedor uploads comprovante and marks as "pago" */
+  /** Vendedor uploads comprovante and auto-marks as "pago" for pagar_posteriormente */
   const handleUploadComprovante = async (id: string, file: File) => {
     const path = `comprovantes/${id}/${Date.now()}-${file.name}`;
     const { error } = await supabase.storage.from('requisicoes-prazo').upload(path, file);
     if (error) { toast.error('Erro no upload do comprovante'); return; }
     const { data: urlData } = supabase.storage.from('requisicoes-prazo').getPublicUrl(path);
-    update.mutate({ id, comprovante_pagamento_url: urlData.publicUrl, updated_at: new Date().toISOString() }, {
-      onSuccess: () => toast.success('Comprovante enviado'),
+    update.mutate({ id, comprovante_pagamento_url: urlData.publicUrl, status: 'pago', updated_at: new Date().toISOString() }, {
+      onSuccess: () => { toast.success('Comprovante enviado — status alterado para Pago'); setSelectedItem(null); },
     });
   };
 
