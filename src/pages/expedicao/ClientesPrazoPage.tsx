@@ -675,21 +675,23 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissio
             </div>
           )}
 
-          {/* Upload de requisição assinada */}
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground uppercase font-bold">Requisição Assinada</p>
-            {item.foto_requisicao_url ? (
-              <a href={item.foto_requisicao_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary underline">
-                <FileText className="w-4 h-4" /> Ver arquivo enviado
-              </a>
-            ) : (
-              <p className="text-xs text-muted-foreground">Nenhum arquivo enviado</p>
-            )}
-            <input type="file" ref={fileInputRef} className="hidden" accept=".pdf,.jpg,.jpeg,.png" onChange={handleUpload} />
-            <Button size="sm" variant="outline" className="gap-2" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-              <Upload className="w-4 h-4" /> {uploading ? 'Enviando...' : 'Upload Requisição'}
-            </Button>
-          </div>
+          {/* Upload de requisição assinada – hidden for comercial users */}
+          {!permissions.isComercial && (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground uppercase font-bold">Requisição Assinada</p>
+              {item.foto_requisicao_url ? (
+                <a href={item.foto_requisicao_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary underline">
+                  <FileText className="w-4 h-4" /> Ver arquivo enviado
+                </a>
+              ) : (
+                <p className="text-xs text-muted-foreground">Nenhum arquivo enviado</p>
+              )}
+              <input type="file" ref={fileInputRef} className="hidden" accept=".pdf,.jpg,.jpeg,.png" onChange={handleUpload} />
+              <Button size="sm" variant="outline" className="gap-2" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                <Upload className="w-4 h-4" /> {uploading ? 'Enviando...' : 'Upload Requisição'}
+              </Button>
+            </div>
+          )}
 
           <Separator />
 
