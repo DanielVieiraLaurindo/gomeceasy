@@ -173,6 +173,10 @@ export default function GEPosVendasTab() {
     }
 
     const financialData: any = {};
+    // Always store peca_retornou
+    if (!financialData.dados_bancarios_json) financialData.dados_bancarios_json = {};
+    financialData.dados_bancarios_json.peca_retornou = formData.peca_retornou;
+
     if (formData.financial_type) {
       financialData.chave_pix_valor = formData.chave_pix;
       financialData.chave_pix_tipo = formData.chave_pix_tipo;
@@ -180,6 +184,7 @@ export default function GEPosVendasTab() {
       financialData.reimbursement_value = parseFloat(formData.valor_com_descontos || formData.valor_total) || 0;
       financialData.data_solicitacao_reembolso = formData.data_solicitacao;
       financialData.dados_bancarios_json = {
+        ...financialData.dados_bancarios_json,
         titular_nome: formData.titular_nome,
         instituicao: formData.instituicao,
         valor_total: formData.valor_total,
@@ -188,11 +193,14 @@ export default function GEPosVendasTab() {
         alegacao: formData.alegacao,
         motivo: formData.motivo,
         sku_produto: formData.sku_produto,
-        peca_retornou: formData.peca_retornou,
         nf_garantia_url: nfGarantiaUrl || undefined,
         numero_pedido: formData.numero_pedido_fin,
       };
       financialData.status = 'aguardando_conferencia';
+    } else if (formData.peca_retornou === 'nao') {
+      // No financial type but piece won't return → set reembolso so it flows through fiscal/financeiro
+      financialData.metodo_pagamento = 'reembolso';
+      financialData.status = 'analise_fiscal';
     }
 
     createCase.mutate({
