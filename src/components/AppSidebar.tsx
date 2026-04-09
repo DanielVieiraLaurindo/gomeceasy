@@ -28,6 +28,7 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { allowedPaths, visibleSetores } = useUserPermissions();
+  const { data: pendingCount = 0 } = useGarantiaPendingCount();
 
   const isMaster = role === 'master';
 
