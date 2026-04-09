@@ -203,7 +203,7 @@ export default function GEPosVendasTab() {
       case_type: formData.case_type as any,
       analysis_reason: formData.analysis_reason,
       entry_date: formData.entry_date,
-      status: formData.financial_type ? 'aguardando_conferencia' : 'aguardando_postagem' as any,
+      status: formData.financial_type ? 'aguardando_conferencia' : (formData.peca_retornou === 'nao' ? 'analise_fiscal' : 'aguardando_postagem') as any,
       analyst_name: formData.analyst_name || '-',
       item_condition: '-',
       product_codes: [],
