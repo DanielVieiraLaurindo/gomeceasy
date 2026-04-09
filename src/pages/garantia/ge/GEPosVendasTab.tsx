@@ -75,7 +75,7 @@ export default function GEPosVendasTab() {
 
   const defaultFormData = {
     client_name: '', client_document: '', sale_number: '',
-    marketplace_account: '' as string, business_unit: 'GAP' as string,
+    marketplace_account: '' as string, business_unit: (isEsUser ? 'GAP_ES' : 'GAP') as string,
     case_type: 'DEVOLUCAO' as string, analysis_reason: '',
     entry_date: new Date().toISOString().split('T')[0],
     analyst_name: '', quantity: '1', fullfilment_tracking: '',
