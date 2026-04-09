@@ -9,6 +9,7 @@ import { SIDEBAR_ITEMS, MASTER_SIDEBAR_GROUPS, ECOMMERCE_SETOR_LABELS, type Side
 import { SETOR_LABELS, type AppSetor } from '@/types';
 import { Input } from '@/components/ui/input';
 import { useUserPermissions } from '@/hooks/useUserPermissions';
+import { useGarantiaPendingCount } from '@/hooks/useGarantiaPendingCount';
 
 const FAVORITES_KEY = 'erp_sidebar_favorites';
 
