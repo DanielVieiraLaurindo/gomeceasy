@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 const ATENDENTES = ['Aline Oliveira', 'Ana Paula dos Santos Menezes', 'Nicolly Frameschi da Silva', 'Victoria Portella', 'Vinicius Santos'];
-const UNIDADES = [{ value: 'GAP', label: 'São Paulo' }, { value: 'GAP_ES', label: 'Espírito Santo' }];
+const UNIDADES = [{ value: 'GAP', label: 'GAP' }, { value: 'GAP_VIRTUAL', label: 'GAP-Virtual' }, { value: 'GAP_ES', label: 'GAP-ES' }];
 const CANAIS_VENDA = [
   { value: 'MELI_GAP', label: 'Mercado Livre GAP' }, { value: 'MELI_GOMEC', label: 'Mercado Livre GOMEC' }, { value: 'MELI_ES', label: 'Mercado Livre ES' },
   { value: 'SHOPEE_SP', label: 'Shopee SP' }, { value: 'SHOPEE_ES', label: 'Shopee ES' },
