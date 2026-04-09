@@ -640,7 +640,7 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissio
             <div className="space-y-1.5">
               <p className="text-xs text-muted-foreground uppercase font-bold">Link de Pagamento</p>
               {(() => {
-                const linkExpired = item.link_pagamento && item.ocorrencia === 'link_pagamento' && isLinkExpired(item.data_hora_lancamento);
+                const linkExpired = item.link_pagamento && item.ocorrencia === 'link_pagamento' && isLinkExpired(item.prazo_cobrar);
                 const canInsertLink = !item.link_pagamento || linkExpired;
                 const showLinkInput = canInsertLink && (item.status === 'aguardando_link' || item.status === 'aberto' || item.status === 'aguardando_pagamento' || item.status === 'em_atraso');
 
