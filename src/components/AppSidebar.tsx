@@ -98,6 +98,9 @@ export function AppSidebar() {
   const renderItem = (item: SidebarItem) => {
     const active = isActive(item.path);
     const isFav = favorites.includes(item.path);
+    const isRessarcimentos = item.path === '/garantia-ecommerce/ressarcimentos';
+    const badgeCount = isRessarcimentos ? pendingCount : (item.badge || 0);
+    const hasPending = isRessarcimentos && pendingCount > 0;
     return (
       <motion.button
         key={item.path}
@@ -109,7 +112,8 @@ export function AppSidebar() {
           'hover:bg-sidebar-accent/10',
           active
             ? 'text-primary bg-[hsl(25_95%_55%/0.15)]'
-            : 'text-sidebar-foreground'
+            : 'text-sidebar-foreground',
+          hasPending && 'font-bold'
         )}
       >
         {active && (
@@ -126,16 +130,18 @@ export function AppSidebar() {
               initial={{ opacity: 0, width: 0 }}
               animate={{ opacity: 1, width: 'auto' }}
               exit={{ opacity: 0, width: 0 }}
-              className="whitespace-nowrap overflow-hidden font-medium text-[13px] flex-1 text-left"
+              className={cn("whitespace-nowrap overflow-hidden text-[13px] flex-1 text-left", hasPending ? "font-bold" : "font-medium")}
             >
               {item.label}
             </motion.span>
           )}
         </AnimatePresence>
         {!collapsed && isFav && <Star className="w-3 h-3 text-warning fill-warning shrink-0" />}
-        {!collapsed && item.badge && item.badge > 0 && (
-          <span className="ml-auto text-xs font-semibold bg-primary text-primary-foreground rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
-            {item.badge}
+        {!collapsed && badgeCount > 0 && (
+          <span className={cn("ml-auto text-xs font-semibold rounded-full px-1.5 py-0.5 min-w-[20px] text-center",
+            hasPending ? "bg-destructive text-destructive-foreground animate-pulse" : "bg-primary text-primary-foreground"
+          )}>
+            {badgeCount}
           </span>
         )}
       </motion.button>
