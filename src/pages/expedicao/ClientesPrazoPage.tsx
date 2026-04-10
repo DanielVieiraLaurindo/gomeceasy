@@ -1010,7 +1010,7 @@ export default function ClientesPrazoPage() {
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [clientScores, setClientScores] = useState<any[]>([]);
-  const [whatsappData, setWhatsappData] = useState<{ requisicao: string; nomeCliente: string; nomeVendedor: string } | null>(null);
+  const [whatsappData, setWhatsappData] = useState<{ requisicao: string; nomeCliente: string; nomeVendedor: string; valor: string } | null>(null);
 
   // Request notification permission on mount for financeiro
   useEffect(() => {
@@ -1440,6 +1440,7 @@ export default function ClientesPrazoPage() {
                 requisicao: data.requisicao,
                 nomeCliente: data.nome_cliente,
                 nomeVendedor: data.nome_vendedor || profile?.nome || 'Vendedor',
+                valor: `R$ ${Number(data.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
               });
             }
           }
