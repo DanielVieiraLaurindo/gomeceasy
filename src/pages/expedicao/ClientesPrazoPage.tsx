@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { MetricCard } from '@/components/MetricCard';
-import { Clock, DollarSign, AlertTriangle, CheckCircle, Plus, Link2, ShieldCheck, Trash2, Upload, FileText, CreditCard, Star, Send, Bell, XCircle } from 'lucide-react';
+import { Clock, DollarSign, AlertTriangle, CheckCircle, Plus, Link2, ShieldCheck, Trash2, Upload, FileText, CreditCard, Star, Send, Bell, XCircle, RotateCcw, Download } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,7 @@ import { useUserGroups } from '@/hooks/useUserGroups';
 import { TableToolbar } from '@/components/TableToolbar';
 import { format, differenceInDays, startOfDay, endOfDay, isAfter, isBefore } from 'date-fns';
 import { toZonedTime, formatInTimeZone } from 'date-fns-tz';
+import { exportToExcel } from '@/lib/export-utils';
 
 // ================================================================
 // TIMEZONE HELPER – always BRT (UTC-3)
@@ -76,8 +77,7 @@ function diasAtraso(prazo: string | null, status: string): number {
   return diff > 0 ? diff : 0;
 }
 
-/** Check if the link has expired – prazo_cobrar stores the creation date;
- *  the link expires when midnight BRT of that date passes (i.e. start of next day). */
+/** Check if the link has expired */
 function isLinkExpired(prazoCobrar: string | null): boolean {
   if (!prazoCobrar) return false;
   const prazoDate = new Date(prazoCobrar + 'T00:00:00');
@@ -150,6 +150,7 @@ interface Permissions {
   isExpedicao: boolean;
   canCancel: boolean;
   canMarkConcluido: boolean;
+  canRevalidate: boolean;
 }
 
 function usePagePermissions(): Permissions {
@@ -177,6 +178,7 @@ function usePagePermissions(): Permissions {
     isExpedicao,
     canCancel: isMaster || isComercial || isExpedicao,
     canMarkConcluido: isMaster || isFinanceiro,
+    canRevalidate: isMaster || isComercial || isExpedicao,
   };
 }
 
@@ -485,9 +487,61 @@ function AuthorizationActions({ itemId, onAuthorize, onDeny }: {
 }
 
 // ================================================================
+// CANCEL DIALOG (with required observation)
+// ================================================================
+function CancelDialog({ open, onOpenChange, onConfirm }: {
+  open: boolean; onOpenChange: (v: boolean) => void; onConfirm: (obs: string) => void;
+}) {
+  const [obs, setObs] = useState('');
+  const [error, setError] = useState(false);
+
+  const handleConfirm = () => {
+    if (!obs.trim()) {
+      setError(true);
+      toast.error('A observação é obrigatória para cancelar');
+      return;
+    }
+    onConfirm(obs.trim());
+    setObs('');
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="font-barlow flex items-center gap-2 text-destructive">
+            <XCircle className="w-5 h-5" /> Cancelar Requisição
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 mt-2">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-bold uppercase text-muted-foreground">Motivo do Cancelamento *</Label>
+            <Textarea
+              rows={3}
+              value={obs}
+              onChange={e => { setObs(e.target.value); setError(false); }}
+              placeholder="Informe o motivo do cancelamento..."
+              className={cn(error && 'border-destructive')}
+            />
+            {error && <p className="text-xs text-destructive">Campo obrigatório</p>}
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>Voltar</Button>
+            <Button variant="destructive" className="flex-1 gap-2" onClick={handleConfirm}>
+              <XCircle className="w-4 h-4" /> Confirmar Cancelamento
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ================================================================
 // DETALHE SHEET
 // ================================================================
-function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissions, onUpdateLink, onAddPayment, onMarkPaid, onUploadComprovante, onMarkPagoPosterior, onMarkConcluido, onCancel }: {
+function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissions, onUpdateLink, onAddPayment, onMarkPaid, onUploadComprovante, onMarkPagoPosterior, onMarkConcluido, onCancel, onRevalidate }: {
   item: any; open: boolean; onOpenChange: (v: boolean) => void;
   onAuthorize: (id: string, obs: string) => void; onDeny: (id: string, obs: string) => void; permissions: Permissions;
   onUpdateLink: (id: string, link: string) => void;
@@ -496,13 +550,15 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissio
   onUploadComprovante: (id: string, file: File) => void;
   onMarkPagoPosterior: (id: string) => void;
   onMarkConcluido: (id: string) => void;
-  onCancel: (id: string) => void;
+  onCancel: (id: string, obs: string) => void;
+  onRevalidate: (id: string) => void;
 }) {
   const [linkInput, setLinkInput] = useState('');
   const [valorPago, setValorPago] = useState('');
   const [obsPagamento, setObsPagamento] = useState('');
   const [uploading, setUploading] = useState(false);
   const [uploadingComprovante, setUploadingComprovante] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const comprovanteInputRef = useRef<HTMLInputElement>(null);
 
@@ -594,7 +650,6 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissio
 
           <Separator />
 
-          {/* Data de criação */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-xs text-muted-foreground uppercase font-bold">Criado em</p>
@@ -606,7 +661,6 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissio
             </div>
           </div>
 
-          {/* Link criado por */}
           {item.link_criado_por && (
             <div>
               <p className="text-xs text-muted-foreground uppercase font-bold">Link criado por</p>
@@ -691,28 +745,8 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissio
             </div>
           )}
 
-          {/* Upload de requisição assinada – hidden for comercial users */}
-          {!permissions.isComercial && (
-            <div className="space-y-2">
-              <p className="text-xs text-muted-foreground uppercase font-bold">Requisição Assinada</p>
-              {item.foto_requisicao_url ? (
-                <a href={item.foto_requisicao_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary underline">
-                  <FileText className="w-4 h-4" /> Ver arquivo enviado
-                </a>
-              ) : (
-                <p className="text-xs text-muted-foreground">Nenhum arquivo enviado</p>
-              )}
-              <input type="file" ref={fileInputRef} className="hidden" accept=".pdf,.jpg,.jpeg,.png" onChange={handleUpload} />
-              <Button size="sm" variant="outline" className="gap-2" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-                <Upload className="w-4 h-4" /> {uploading ? 'Enviando...' : 'Upload Requisição'}
-              </Button>
-            </div>
-          )}
-
-          <Separator />
-
-          {/* Comprovante de pagamento – vendedor pode enviar */}
-          {isPosterior && (item.status === 'autorizado' || item.status === 'aguardando_pagamento' || item.status === 'em_atraso' || item.status === 'pago') && (
+          {/* Comprovante de pagamento – available for link_pagamento AND pagar_posteriormente */}
+          {(!isConcluido || item.comprovante_pagamento_url) && (
             <div className="space-y-2 bg-muted/30 rounded-lg p-4 border">
               <p className="text-xs text-muted-foreground uppercase font-bold">Comprovante de Pagamento</p>
               {item.comprovante_pagamento_url ? (
@@ -734,6 +768,26 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissio
               )}
             </div>
           )}
+
+          {/* Upload de requisição assinada – hidden for comercial users */}
+          {!permissions.isComercial && (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground uppercase font-bold">Requisição Assinada</p>
+              {item.foto_requisicao_url ? (
+                <a href={item.foto_requisicao_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm text-primary underline">
+                  <FileText className="w-4 h-4" /> Ver arquivo enviado
+                </a>
+              ) : (
+                <p className="text-xs text-muted-foreground">Nenhum arquivo enviado</p>
+              )}
+              <input type="file" ref={fileInputRef} className="hidden" accept=".pdf,.jpg,.jpeg,.png" onChange={handleUpload} />
+              <Button size="sm" variant="outline" className="gap-2" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                <Upload className="w-4 h-4" /> {uploading ? 'Enviando...' : 'Upload Requisição'}
+              </Button>
+            </div>
+          )}
+
+          <Separator />
 
           {/* Ações do Financeiro para pagar_posteriormente */}
           {isPosterior && !isConcluido && !isCancelado && permissions.canRegisterPayment && (item.status === 'aguardando_pagamento' || item.status === 'autorizado' || item.status === 'em_atraso') && (
@@ -774,12 +828,25 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissio
           )}
 
           {isCancelado && (
-            <div className="bg-muted border border-muted-foreground/30 rounded-lg p-3 text-sm text-muted-foreground font-medium text-center">
-              ❌ Requisição cancelada
+            <div className="space-y-2">
+              <div className="bg-muted border border-muted-foreground/30 rounded-lg p-3 text-sm text-muted-foreground font-medium text-center">
+                ❌ Requisição cancelada
+              </div>
+              {item.observacao && (
+                <div className="bg-muted/50 rounded p-3">
+                  <p className="text-xs text-muted-foreground uppercase font-bold mb-1">Motivo do cancelamento</p>
+                  <p className="text-sm">{item.observacao}</p>
+                </div>
+              )}
+              {permissions.canRevalidate && (
+                <Button variant="outline" className="w-full gap-2" onClick={() => onRevalidate(item.id)}>
+                  <RotateCcw className="w-4 h-4" /> Revalidar Requisição
+                </Button>
+              )}
             </div>
           )}
 
-          {item.observacao && (
+          {item.observacao && !isCancelado && (
             <div>
               <p className="text-xs text-muted-foreground uppercase font-bold">Observação</p>
               <p className="text-sm bg-muted/50 rounded p-3">{item.observacao}</p>
@@ -789,13 +856,19 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissio
           {/* Cancel button for comercial and expedição */}
           {permissions.canCancel && !isConcluido && !isCancelado && (
             <div className="pt-2">
-              <Button variant="destructive" className="w-full gap-2" onClick={() => onCancel(item.id)}>
+              <Button variant="destructive" className="w-full gap-2" onClick={() => setCancelOpen(true)}>
                 <XCircle className="w-4 h-4" /> Cancelar Requisição
               </Button>
             </div>
           )}
         </div>
       </SheetContent>
+
+      <CancelDialog
+        open={cancelOpen}
+        onOpenChange={setCancelOpen}
+        onConfirm={(obs) => onCancel(item.id, obs)}
+      />
     </Sheet>
   );
 }
@@ -892,6 +965,35 @@ function WhatsAppContactDialog({ open, onOpenChange, data }: {
       </DialogContent>
     </Dialog>
   );
+}
+
+// ================================================================
+// REPORT EXPORT HELPER
+// ================================================================
+function exportReport(data: any[]) {
+  const rows = data.map((r: any) => ({
+    'Requisição': r.requisicao || '',
+    'Ocorrência': ocorrenciaLabels[r.ocorrencia] || r.ocorrencia || '',
+    'Status': statusLabels[r.status] || r.status || '',
+    'Código Loja': r.codigo_loja || '',
+    'Código Cliente': r.codigo_cliente || '',
+    'Nome Cliente': r.nome_cliente || '',
+    'Cód. Vendedor': r.cod_vendedor || '',
+    'Nome Vendedor': r.nome_vendedor || '',
+    'Valor (R$)': r.valor || 0,
+    'Valor Pago (R$)': r.valor_pago || 0,
+    'Saldo (R$)': (r.valor || 0) - (r.valor_pago || 0),
+    'Dias Atraso': diasAtraso(r.prazo_cobrar, r.status),
+    'Prazo Cobrar': r.prazo_cobrar ? formatBRT(r.prazo_cobrar, 'dd/MM/yyyy') : '',
+    'Link de Pagamento': r.link_pagamento || '',
+    'Link Criado Por': r.link_criado_por || '',
+    'Autorizado Por': r.autorizado_por || '',
+    'Observação': r.observacao || '',
+    'Criado Em': r.created_at ? formatBRT(r.created_at, 'dd/MM/yyyy HH:mm:ss') : '',
+    'Data Lançamento': r.data_hora_lancamento ? formatBRT(r.data_hora_lancamento, 'dd/MM/yyyy HH:mm') : '',
+    'Comprovante': r.comprovante_pagamento_url ? 'Sim' : 'Não',
+  }));
+  exportToExcel(rows, 'relatorio-clientes-prazo');
 }
 
 
@@ -1027,6 +1129,7 @@ export default function ClientesPrazoPage() {
     });
   }, [requisicoes]);
 
+  // Filter: hide concluido, cancelado and pago from default view unless specifically filtered
   const filtered = useMemo(() => {
     return requisicoes.filter((r: any) => {
       const matchSearch = !search ||
@@ -1034,7 +1137,8 @@ export default function ClientesPrazoPage() {
         r.nome_cliente?.toLowerCase().includes(search.toLowerCase()) ||
         r.nome_vendedor?.toLowerCase().includes(search.toLowerCase());
       const matchStatus = statusFilter === 'all' || r.status === statusFilter;
-      if (!search && statusFilter === 'all' && (r.status === 'concluido' || r.status === 'cancelado')) return false;
+      // Hide concluido, cancelado and pago from default "all" view (no search, no specific filter)
+      if (!search && statusFilter === 'all' && (r.status === 'concluido' || r.status === 'cancelado' || r.status === 'pago')) return false;
       return matchSearch && matchStatus;
     });
   }, [requisicoes, search, statusFilter]);
@@ -1042,7 +1146,7 @@ export default function ClientesPrazoPage() {
   const aguardandoLink = filtered.filter((r: any) => r.status === 'aguardando_link').length;
   const aguardandoPagamento = filtered.filter((r: any) => r.status === 'aguardando_pagamento' || r.status === 'aguardando_autorizacao').length;
   const emAtraso = filtered.filter((r: any) => r.status === 'em_atraso' || diasAtraso(r.prazo_cobrar, r.status) > 0).length;
-  const concluidos = filtered.filter((r: any) => r.status === 'concluido').length;
+  const concluidos = requisicoes.filter((r: any) => r.status === 'concluido').length;
   const saldoDevedor = filtered.filter((r: any) => r.status !== 'concluido' && r.status !== 'cancelado').reduce((acc: number, r: any) => acc + ((r.valor || 0) - (r.valor_pago || 0)), 0);
 
   const handleAuthorize = (id: string, obs: string) => {
@@ -1100,14 +1204,12 @@ export default function ClientesPrazoPage() {
     });
   };
 
-  /** Financeiro marks as "pago" for link_pagamento */
   const handleMarkPaid = (id: string) => {
     update.mutate({ id, status: 'pago', updated_at: new Date().toISOString() }, {
       onSuccess: () => { toast.success('Status alterado para Pago'); setSelectedItem(null); },
     });
   };
 
-  /** Financeiro marks as "concluído" */
   const handleMarkConcluido = (id: string) => {
     const item = requisicoes.find((r: any) => r.id === id);
     update.mutate({ id, status: 'concluido', valor_pago: (item as any)?.valor || 0, updated_at: new Date().toISOString() }, {
@@ -1115,7 +1217,6 @@ export default function ClientesPrazoPage() {
     });
   };
 
-  /** Comercial/Expedição uploads comprovante → auto status "pago" */
   const handleUploadComprovante = async (id: string, file: File) => {
     const path = `comprovantes/${id}/${Date.now()}-${file.name}`;
     const { error } = await supabase.storage.from('requisicoes-prazo').upload(path, file);
@@ -1126,14 +1227,22 @@ export default function ClientesPrazoPage() {
     });
   };
 
-  /** Cancel a requisição */
-  const handleCancel = (id: string) => {
-    update.mutate({ id, status: 'cancelado', updated_at: new Date().toISOString() }, {
+  const handleCancel = (id: string, obs: string) => {
+    update.mutate({ id, status: 'cancelado', observacao: obs, updated_at: new Date().toISOString() }, {
       onSuccess: () => { toast.success('Requisição cancelada'); setSelectedItem(null); },
     });
   };
 
-  /** Vendedor marks posterior as Pago - no longer needed, comprovante auto-marks */
+  const handleRevalidate = (id: string) => {
+    const item = requisicoes.find((r: any) => r.id === id);
+    if (!item) return;
+    const isPosterior = (item as any).ocorrencia === 'pagar_posteriormente';
+    const newStatus = isPosterior ? 'aguardando_autorizacao' : 'aguardando_link';
+    update.mutate({ id, status: newStatus, observacao: null, updated_at: new Date().toISOString() }, {
+      onSuccess: () => { toast.success('Requisição revalidada'); setSelectedItem(null); },
+    });
+  };
+
   const handleMarkPagoPosterior = (id: string) => {
     update.mutate({ id, status: 'pago', updated_at: new Date().toISOString() }, {
       onSuccess: () => { toast.success('Status alterado para Pago — Aguardando confirmação do financeiro'); setSelectedItem(null); },
@@ -1175,6 +1284,9 @@ export default function ClientesPrazoPage() {
               <Bell className="w-4 h-4" /> Ativar Notificações
             </Button>
           )}
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => exportReport(requisicoes)}>
+            <Download className="w-4 h-4" /> Relatório
+          </Button>
           <Button variant="outline" size="sm" className="gap-2" onClick={() => setScoreOpen(true)}>
             <Star className="w-4 h-4 text-warning" /> Score de Clientes
           </Button>
@@ -1351,6 +1463,7 @@ export default function ClientesPrazoPage() {
         onMarkPagoPosterior={handleMarkPagoPosterior}
         onMarkConcluido={handleMarkConcluido}
         onCancel={handleCancel}
+        onRevalidate={handleRevalidate}
       />
       <ClientScoreDialog open={scoreOpen} onOpenChange={setScoreOpen} scores={clientScores} />
     </div>
