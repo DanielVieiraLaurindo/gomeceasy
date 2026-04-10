@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { MetricCard } from '@/components/MetricCard';
-import { Clock, DollarSign, AlertTriangle, CheckCircle, Plus, Link2, ShieldCheck, Trash2, Upload, FileText, CreditCard, Star, Send, Bell } from 'lucide-react';
+import { Clock, DollarSign, AlertTriangle, CheckCircle, Plus, Link2, ShieldCheck, Trash2, Upload, FileText, CreditCard, Star, Send, Bell, XCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -49,6 +49,7 @@ const statusLabels: Record<string, string> = {
   nao_autorizado: 'Não Autorizado',
   em_atraso: 'Em Atraso',
   concluido: 'Concluído',
+  cancelado: 'Cancelado',
 };
 
 const statusColors: Record<string, string> = {
@@ -60,6 +61,7 @@ const statusColors: Record<string, string> = {
   nao_autorizado: 'bg-destructive/20 text-destructive border-destructive/30',
   em_atraso: 'bg-destructive/20 text-destructive border-destructive/30',
   concluido: 'bg-success/20 text-success border-success/30',
+  cancelado: 'bg-muted text-muted-foreground border-muted-foreground/30',
 };
 
 const ocorrenciaLabels: Record<string, string> = {
@@ -69,7 +71,7 @@ const ocorrenciaLabels: Record<string, string> = {
 
 /** Calculate overdue days. Returns 0 if not overdue. */
 function diasAtraso(prazo: string | null, status: string): number {
-  if (!prazo || status === 'concluido' || status === 'nao_autorizado' || status === 'pago') return 0;
+  if (!prazo || status === 'concluido' || status === 'nao_autorizado' || status === 'pago' || status === 'cancelado') return 0;
   const diff = differenceInDays(new Date(), new Date(prazo));
   return diff > 0 ? diff : 0;
 }
@@ -78,10 +80,8 @@ function diasAtraso(prazo: string | null, status: string): number {
  *  the link expires when midnight BRT of that date passes (i.e. start of next day). */
 function isLinkExpired(prazoCobrar: string | null): boolean {
   if (!prazoCobrar) return false;
-  // prazo_cobrar is the creation date (e.g. "2026-04-09")
-  // link expires at 00:00 of the NEXT day in BRT
   const prazoDate = new Date(prazoCobrar + 'T00:00:00');
-  const expiresAt = new Date(prazoDate.getTime() + 24 * 60 * 60 * 1000); // next day 00:00
+  const expiresAt = new Date(prazoDate.getTime() + 24 * 60 * 60 * 1000);
   const nowBrt = toZonedTime(new Date(), BRT_TZ);
   return isAfter(nowBrt, expiresAt);
 }
@@ -89,12 +89,10 @@ function isLinkExpired(prazoCobrar: string | null): boolean {
 /** Calculate prazo_cobrar based on ocorrencia type */
 function getPrazoCobrar(ocorrencia: string): string {
   if (ocorrencia === 'pagar_posteriormente') {
-    // 24 hours from now
     const now = new Date();
     const deadline = new Date(now.getTime() + 24 * 60 * 60 * 1000);
     return format(deadline, "yyyy-MM-dd'T'HH:mm:ss");
   }
-  // link_pagamento: store the creation date itself; expires at 00:00 of next day
   const brtNow = toZonedTime(new Date(), BRT_TZ);
   return format(startOfDay(brtNow), 'yyyy-MM-dd');
 }
@@ -149,6 +147,9 @@ interface Permissions {
   linkPagoSimple: boolean;
   isFinanceiro: boolean;
   isComercial: boolean;
+  isExpedicao: boolean;
+  canCancel: boolean;
+  canMarkConcluido: boolean;
 }
 
 function usePagePermissions(): Permissions {
@@ -161,7 +162,7 @@ function usePagePermissions(): Permissions {
   const isExpedicao = isInGroup('expedicao') || setor === 'expedicao_loja' || setor === 'expedicao_ecommerce';
 
   return {
-    canCreate: isMaster || isComercial || isSupervisor || isFinanceiro,
+    canCreate: isMaster || isComercial || isSupervisor || isFinanceiro || isExpedicao,
     canInsertLink: isMaster || isFinanceiro || isComercial,
     canDelete: isMaster,
     canAuthorize: isMaster || isSupervisor || isExpedicao,
@@ -169,10 +170,13 @@ function usePagePermissions(): Permissions {
     canRegisterPayment: isMaster || isFinanceiro,
     onlyOwnRequisitions: isComercial,
     requireObservation: isComercial,
-    canSelectPosterior: isMaster || isSupervisor || isFinanceiro || isComercial,
+    canSelectPosterior: isMaster || isSupervisor || isFinanceiro || isComercial || isExpedicao,
     linkPagoSimple: true,
     isFinanceiro: isMaster || isFinanceiro,
     isComercial,
+    isExpedicao,
+    canCancel: isMaster || isComercial || isExpedicao,
+    canMarkConcluido: isMaster || isFinanceiro,
   };
 }
 
@@ -483,7 +487,7 @@ function AuthorizationActions({ itemId, onAuthorize, onDeny }: {
 // ================================================================
 // DETALHE SHEET
 // ================================================================
-function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissions, onUpdateLink, onAddPayment, onMarkPaid, onUploadComprovante, onMarkPagoPosterior }: {
+function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissions, onUpdateLink, onAddPayment, onMarkPaid, onUploadComprovante, onMarkPagoPosterior, onMarkConcluido, onCancel }: {
   item: any; open: boolean; onOpenChange: (v: boolean) => void;
   onAuthorize: (id: string, obs: string) => void; onDeny: (id: string, obs: string) => void; permissions: Permissions;
   onUpdateLink: (id: string, link: string) => void;
@@ -491,6 +495,8 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissio
   onMarkPaid: (id: string) => void;
   onUploadComprovante: (id: string, file: File) => void;
   onMarkPagoPosterior: (id: string) => void;
+  onMarkConcluido: (id: string) => void;
+  onCancel: (id: string) => void;
 }) {
   const [linkInput, setLinkInput] = useState('');
   const [valorPago, setValorPago] = useState('');
@@ -507,6 +513,7 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissio
   const needsAuth = isPosterior && item.status === 'aguardando_autorizacao';
   const isConcluido = item.status === 'concluido';
   const isPago = item.status === 'pago';
+  const isCancelado = item.status === 'cancelado';
   const overdueDays = diasAtraso(item.prazo_cobrar, item.status);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -635,24 +642,23 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissio
             </div>
           </div>
 
-          {/* Link de pagamento */}
-          {permissions.canInsertLink && (
+          {/* Link de pagamento – always clickable even if expired */}
+          {isLink && (
             <div className="space-y-1.5">
               <p className="text-xs text-muted-foreground uppercase font-bold">Link de Pagamento</p>
               {(() => {
-                const linkExpired = item.link_pagamento && item.ocorrencia === 'link_pagamento' && isLinkExpired(item.prazo_cobrar);
-                const canInsertLink = !item.link_pagamento || linkExpired;
+                const linkExpired = item.link_pagamento && isLinkExpired(item.prazo_cobrar);
+                const canInsertLink = permissions.canInsertLink && (!item.link_pagamento || linkExpired);
                 const showLinkInput = canInsertLink && (item.status === 'aguardando_link' || item.status === 'aberto' || item.status === 'aguardando_pagamento' || item.status === 'em_atraso');
 
                 return (
                   <>
-                    {item.link_pagamento && !linkExpired && (
-                      <a href={item.link_pagamento} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline break-all">{item.link_pagamento}</a>
-                    )}
-                    {item.link_pagamento && linkExpired && (
-                      <div className="bg-warning/10 border border-warning/30 rounded p-2 mb-2">
-                        <p className="text-xs text-warning font-medium">Link expirado (venceu à 00:00)</p>
-                        <p className="text-xs text-muted-foreground break-all line-through">{item.link_pagamento}</p>
+                    {item.link_pagamento && (
+                      <div className={linkExpired ? 'bg-warning/10 border border-warning/30 rounded p-2 mb-2' : ''}>
+                        {linkExpired && <p className="text-xs text-warning font-medium mb-1">⚠️ Link expirado (venceu à 00:00)</p>}
+                        <a href={item.link_pagamento} target="_blank" rel="noopener noreferrer" className={cn('text-sm text-primary underline break-all', linkExpired && 'opacity-70')}>
+                          {item.link_pagamento}
+                        </a>
                       </div>
                     )}
                     {showLinkInput && (
@@ -666,12 +672,22 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissio
                   </>
                 );
               })()}
-            </div>
-          )}
-          {!permissions.canInsertLink && item.link_pagamento && (
-            <div className="space-y-1.5">
-              <p className="text-xs text-muted-foreground uppercase font-bold">Link de Pagamento</p>
-              <a href={item.link_pagamento} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline break-all">{item.link_pagamento}</a>
+
+              {/* Financeiro: botão Pago para link de pagamento */}
+              {permissions.isFinanceiro && item.link_pagamento && !isConcluido && !isCancelado && (
+                <div className="flex gap-2 mt-2">
+                  {!isPago && (
+                    <Button size="sm" className="gap-2" onClick={() => onMarkPaid(item.id)}>
+                      <CheckCircle className="w-4 h-4" /> Marcar como Pago
+                    </Button>
+                  )}
+                  {isPago && (
+                    <Button size="sm" className="gap-2 bg-success hover:bg-success/90" onClick={() => onMarkConcluido(item.id)}>
+                      <CheckCircle className="w-4 h-4" /> Concluído
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -695,7 +711,7 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissio
 
           <Separator />
 
-          {/* Comprovante de pagamento – vendedor pode enviar para "pagar_posteriormente" */}
+          {/* Comprovante de pagamento – vendedor pode enviar */}
           {isPosterior && (item.status === 'autorizado' || item.status === 'aguardando_pagamento' || item.status === 'em_atraso' || item.status === 'pago') && (
             <div className="space-y-2 bg-muted/30 rounded-lg p-4 border">
               <p className="text-xs text-muted-foreground uppercase font-bold">Comprovante de Pagamento</p>
@@ -706,49 +722,38 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissio
               ) : (
                 <p className="text-xs text-muted-foreground">Nenhum comprovante enviado</p>
               )}
-              {item.status !== 'concluido' && (
+              {!isConcluido && !isCancelado && (
                 <>
                   <input type="file" ref={comprovanteInputRef} className="hidden" accept=".pdf,.jpg,.jpeg,.png" onChange={handleComprovanteUpload} />
                   <div className="flex gap-2">
                     <Button size="sm" variant="outline" className="gap-2" onClick={() => comprovanteInputRef.current?.click()} disabled={uploadingComprovante}>
                       <Upload className="w-4 h-4" /> {uploadingComprovante ? 'Enviando...' : 'Enviar Comprovante'}
                     </Button>
-                    {item.comprovante_pagamento_url && item.status !== 'pago' && (
-                      <Button size="sm" className="gap-2" onClick={() => onMarkPagoPosterior(item.id)}>
-                        <CheckCircle className="w-4 h-4" /> Marcar como Pago
-                      </Button>
-                    )}
                   </div>
                 </>
               )}
             </div>
           )}
 
-          {/* Ações de pagamento – Financeiro */}
-          {!isConcluido && !isPago && permissions.canRegisterPayment && (item.status === 'aguardando_pagamento' || item.status === 'autorizado' || item.status === 'em_atraso' || item.status === 'pago') && (
+          {/* Ações do Financeiro para pagar_posteriormente */}
+          {isPosterior && !isConcluido && !isCancelado && permissions.canRegisterPayment && (item.status === 'aguardando_pagamento' || item.status === 'autorizado' || item.status === 'em_atraso') && (
             <div className="space-y-3 bg-muted/30 rounded-lg p-4 border">
               <p className="text-xs text-muted-foreground uppercase font-bold">Ações do Financeiro</p>
-              {isLink ? (
-                <Button className="w-full gap-2" onClick={() => onMarkPaid(item.id)}>
-                  <CheckCircle className="w-4 h-4" /> Marcar como Pago
-                </Button>
-              ) : (
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold">Registrar Pagamento</p>
-                  <div className="flex gap-2">
-                    <Input type="number" step="0.01" placeholder="Valor pago (R$)" value={valorPago} onChange={e => setValorPago(e.target.value)} className="text-sm" />
-                    <Button size="sm" onClick={handlePaymentSubmit} className="gap-1">
-                      <CreditCard className="w-3.5 h-3.5" /> Registrar
-                    </Button>
-                  </div>
-                  <Input placeholder="Observação (opcional)" value={obsPagamento} onChange={e => setObsPagamento(e.target.value)} className="text-sm" />
+              <div className="space-y-2">
+                <p className="text-xs font-semibold">Registrar Pagamento</p>
+                <div className="flex gap-2">
+                  <Input type="number" step="0.01" placeholder="Valor pago (R$)" value={valorPago} onChange={e => setValorPago(e.target.value)} className="text-sm" />
+                  <Button size="sm" onClick={handlePaymentSubmit} className="gap-1">
+                    <CreditCard className="w-3.5 h-3.5" /> Registrar
+                  </Button>
                 </div>
-              )}
+                <Input placeholder="Observação (opcional)" value={obsPagamento} onChange={e => setObsPagamento(e.target.value)} className="text-sm" />
+              </div>
             </div>
           )}
 
-          {/* Financeiro confirma pagamento do status "pago" (vendedor marcou) */}
-          {isPago && permissions.canRegisterPayment && (
+          {/* Financeiro confirma pagamento do status "pago" (vendedor marcou) → concluído */}
+          {isPago && permissions.canMarkConcluido && (
             <div className="space-y-3 bg-blue-500/10 rounded-lg p-4 border border-blue-500/30">
               <p className="text-xs text-blue-600 uppercase font-bold">Vendedor marcou como Pago — Confirme o recebimento</p>
               {item.comprovante_pagamento_url && (
@@ -756,8 +761,8 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissio
                   <FileText className="w-4 h-4" /> Ver comprovante enviado
                 </a>
               )}
-              <Button className="w-full gap-2" onClick={() => onMarkPaid(item.id)}>
-                <CheckCircle className="w-4 h-4" /> Confirmar Pagamento Recebido
+              <Button className="w-full gap-2" onClick={() => onMarkConcluido(item.id)}>
+                <CheckCircle className="w-4 h-4" /> Concluído
               </Button>
             </div>
           )}
@@ -768,10 +773,25 @@ function DetalheSheet({ item, open, onOpenChange, onAuthorize, onDeny, permissio
             </div>
           )}
 
+          {isCancelado && (
+            <div className="bg-muted border border-muted-foreground/30 rounded-lg p-3 text-sm text-muted-foreground font-medium text-center">
+              ❌ Requisição cancelada
+            </div>
+          )}
+
           {item.observacao && (
             <div>
               <p className="text-xs text-muted-foreground uppercase font-bold">Observação</p>
               <p className="text-sm bg-muted/50 rounded p-3">{item.observacao}</p>
+            </div>
+          )}
+
+          {/* Cancel button for comercial and expedição */}
+          {permissions.canCancel && !isConcluido && !isCancelado && (
+            <div className="pt-2">
+              <Button variant="destructive" className="w-full gap-2" onClick={() => onCancel(item.id)}>
+                <XCircle className="w-4 h-4" /> Cancelar Requisição
+              </Button>
             </div>
           )}
         </div>
@@ -919,14 +939,12 @@ export default function ClientesPrazoPage() {
         (payload: any) => {
           const row = payload.new;
           const old = payload.old;
-          // Notify when link is generated
           if (row.link_pagamento && !old.link_pagamento) {
             sendBrowserNotification(
               '🔗 Link de Pagamento Gerado',
               `Requisição ${row.requisicao} — Cliente: ${row.nome_cliente}`
             );
           }
-          // Notify when vendor marks as "pago"
           if (row.status === 'pago' && old.status !== 'pago') {
             sendBrowserNotification(
               '💰 Pagamento Informado pelo Vendedor',
@@ -950,7 +968,7 @@ export default function ClientesPrazoPage() {
   useEffect(() => {
     if (!requisicoes.length) return;
     const overdueItems = requisicoes.filter((r: any) =>
-      r.status !== 'concluido' && r.status !== 'nao_autorizado' && r.status !== 'em_atraso' && r.status !== 'pago' &&
+      r.status !== 'concluido' && r.status !== 'nao_autorizado' && r.status !== 'em_atraso' && r.status !== 'pago' && r.status !== 'cancelado' &&
       r.prazo_cobrar && differenceInDays(new Date(), new Date(r.prazo_cobrar)) > 0
     );
     overdueItems.forEach((r: any) => {
@@ -964,7 +982,7 @@ export default function ClientesPrazoPage() {
     const clientMap = new Map<string, { nome: string; total: number; emDia: number; atrasadas: number; diasAtrasoTotal: number; valorTotal: number }>();
 
     requisicoes.forEach((r: any) => {
-      if (!r.codigo_cliente || r.status === 'aguardando_link' || r.status === 'aguardando_autorizacao') return;
+      if (!r.codigo_cliente || r.status === 'aguardando_link' || r.status === 'aguardando_autorizacao' || r.status === 'cancelado') return;
       const key = r.codigo_cliente;
       if (!clientMap.has(key)) {
         clientMap.set(key, { nome: r.nome_cliente, total: 0, emDia: 0, atrasadas: 0, diasAtrasoTotal: 0, valorTotal: 0 });
@@ -1016,7 +1034,7 @@ export default function ClientesPrazoPage() {
         r.nome_cliente?.toLowerCase().includes(search.toLowerCase()) ||
         r.nome_vendedor?.toLowerCase().includes(search.toLowerCase());
       const matchStatus = statusFilter === 'all' || r.status === statusFilter;
-      if (!search && statusFilter === 'all' && r.status === 'concluido') return false;
+      if (!search && statusFilter === 'all' && (r.status === 'concluido' || r.status === 'cancelado')) return false;
       return matchSearch && matchStatus;
     });
   }, [requisicoes, search, statusFilter]);
@@ -1025,7 +1043,7 @@ export default function ClientesPrazoPage() {
   const aguardandoPagamento = filtered.filter((r: any) => r.status === 'aguardando_pagamento' || r.status === 'aguardando_autorizacao').length;
   const emAtraso = filtered.filter((r: any) => r.status === 'em_atraso' || diasAtraso(r.prazo_cobrar, r.status) > 0).length;
   const concluidos = filtered.filter((r: any) => r.status === 'concluido').length;
-  const saldoDevedor = filtered.filter((r: any) => r.status !== 'concluido').reduce((acc: number, r: any) => acc + ((r.valor || 0) - (r.valor_pago || 0)), 0);
+  const saldoDevedor = filtered.filter((r: any) => r.status !== 'concluido' && r.status !== 'cancelado').reduce((acc: number, r: any) => acc + ((r.valor || 0) - (r.valor_pago || 0)), 0);
 
   const handleAuthorize = (id: string, obs: string) => {
     update.mutate({ id, status: 'autorizado', autorizado_por: profile?.nome || 'Supervisor', observacao: obs }, {
@@ -1062,7 +1080,6 @@ export default function ClientesPrazoPage() {
         const msg = generateWhatsAppMessage(item, link, isRenewal);
         window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, 'whatsapp');
         toast.success(isRenewal ? 'Link renovado' : 'Link salvo');
-        // Browser notification for the link creation
         sendBrowserNotification('🔗 Link de Pagamento Criado', `Requisição ${(item as any)?.requisicao} — Link gerado com sucesso`);
         setSelectedItem(null);
       },
@@ -1074,24 +1091,31 @@ export default function ClientesPrazoPage() {
     if (!item) return;
     const newPago = ((item as any).valor_pago || 0) + valor;
     const totalValor = (item as any).valor || 0;
-    const newStatus = newPago >= totalValor ? 'concluido' : 'aguardando_pagamento';
+    const newStatus = newPago >= totalValor ? 'pago' : 'aguardando_pagamento';
     update.mutate({ id: clientePrazoId, valor_pago: newPago, status: newStatus, updated_at: new Date().toISOString() }, {
       onSuccess: () => {
-        toast.success(newStatus === 'concluido' ? 'Requisição concluída!' : `R$ ${valor.toFixed(2)} registrado`);
+        toast.success(newStatus === 'pago' ? 'Pagamento registrado — aguardando conclusão' : `R$ ${valor.toFixed(2)} registrado`);
         setSelectedItem(null);
       },
     });
   };
 
+  /** Financeiro marks as "pago" for link_pagamento */
   const handleMarkPaid = (id: string) => {
-    const item = requisicoes.find((r: any) => r.id === id);
-    if (!item) return;
-    update.mutate({ id, valor_pago: (item as any).valor || 0, status: 'concluido', updated_at: new Date().toISOString() }, {
-      onSuccess: () => { toast.success('Pagamento confirmado!'); setSelectedItem(null); },
+    update.mutate({ id, status: 'pago', updated_at: new Date().toISOString() }, {
+      onSuccess: () => { toast.success('Status alterado para Pago'); setSelectedItem(null); },
     });
   };
 
-  /** Vendedor uploads comprovante and auto-marks as "pago" for pagar_posteriormente */
+  /** Financeiro marks as "concluído" */
+  const handleMarkConcluido = (id: string) => {
+    const item = requisicoes.find((r: any) => r.id === id);
+    update.mutate({ id, status: 'concluido', valor_pago: (item as any)?.valor || 0, updated_at: new Date().toISOString() }, {
+      onSuccess: () => { toast.success('Requisição concluída!'); setSelectedItem(null); },
+    });
+  };
+
+  /** Comercial/Expedição uploads comprovante → auto status "pago" */
   const handleUploadComprovante = async (id: string, file: File) => {
     const path = `comprovantes/${id}/${Date.now()}-${file.name}`;
     const { error } = await supabase.storage.from('requisicoes-prazo').upload(path, file);
@@ -1102,7 +1126,14 @@ export default function ClientesPrazoPage() {
     });
   };
 
-  /** Vendedor marks posterior as Pago */
+  /** Cancel a requisição */
+  const handleCancel = (id: string) => {
+    update.mutate({ id, status: 'cancelado', updated_at: new Date().toISOString() }, {
+      onSuccess: () => { toast.success('Requisição cancelada'); setSelectedItem(null); },
+    });
+  };
+
+  /** Vendedor marks posterior as Pago - no longer needed, comprovante auto-marks */
   const handleMarkPagoPosterior = (id: string) => {
     update.mutate({ id, status: 'pago', updated_at: new Date().toISOString() }, {
       onSuccess: () => { toast.success('Status alterado para Pago — Aguardando confirmação do financeiro'); setSelectedItem(null); },
@@ -1206,6 +1237,7 @@ export default function ClientesPrazoPage() {
                 <TableHead>VENDEDOR</TableHead>
                 <TableHead className="text-right">VALOR</TableHead>
                 <TableHead className="text-right">SALDO</TableHead>
+                <TableHead>OBSERVAÇÃO</TableHead>
                 <TableHead>CRIADO EM</TableHead>
                 <TableHead>COBRAR EM</TableHead>
                 <TableHead className="text-center">DIAS ATRASO</TableHead>
@@ -1215,7 +1247,7 @@ export default function ClientesPrazoPage() {
             </TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={permissions.canDelete ? 12 : 10} className="text-center py-12 text-muted-foreground">Nenhuma requisição encontrada</TableCell></TableRow>
+                <TableRow><TableCell colSpan={permissions.canDelete ? 13 : 12} className="text-center py-12 text-muted-foreground">Nenhuma requisição encontrada</TableCell></TableRow>
               ) : (
                 filtered.map((req: any, i: number) => {
                   const saldoRow = (req.valor || 0) - (req.valor_pago || 0);
@@ -1247,6 +1279,9 @@ export default function ClientesPrazoPage() {
                         ) : (
                           <span className="text-success font-bold">+ R$ {Math.abs(saldoRow).toFixed(2)}</span>
                         )}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground max-w-[150px] truncate" title={req.observacao || ''}>
+                        {req.observacao || '—'}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">{req.created_at ? formatBRT(req.created_at, 'dd/MM HH:mm') : '—'}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{req.prazo_cobrar ? formatBRT(req.prazo_cobrar, 'dd/MM/yyyy') : '—'}</TableCell>
@@ -1286,7 +1321,6 @@ export default function ClientesPrazoPage() {
         }
         create.mutate({ ...data, created_by: user?.id }, {
           onSuccess: () => {
-            // Browser notification for financeiro
             sendBrowserNotification('📋 Nova Solicitação Criada', `Requisição ${data.requisicao} — ${data.nome_cliente}`);
             if (data.ocorrencia === 'pagar_posteriormente') {
               setWhatsappData({
@@ -1315,6 +1349,8 @@ export default function ClientesPrazoPage() {
         onMarkPaid={handleMarkPaid}
         onUploadComprovante={handleUploadComprovante}
         onMarkPagoPosterior={handleMarkPagoPosterior}
+        onMarkConcluido={handleMarkConcluido}
+        onCancel={handleCancel}
       />
       <ClientScoreDialog open={scoreOpen} onOpenChange={setScoreOpen} scores={clientScores} />
     </div>
