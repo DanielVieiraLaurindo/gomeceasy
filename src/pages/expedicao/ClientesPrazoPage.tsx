@@ -885,7 +885,7 @@ const WHATSAPP_CONTACTS = [
 
 function WhatsAppContactDialog({ open, onOpenChange, data }: {
   open: boolean; onOpenChange: (v: boolean) => void;
-  data: { requisicao: string; nomeCliente: string; nomeVendedor: string } | null;
+  data: { requisicao: string; nomeCliente: string; nomeVendedor: string; valor: string } | null;
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set(WHATSAPP_CONTACTS.map(c => c.phone)));
 
@@ -909,7 +909,7 @@ function WhatsAppContactDialog({ open, onOpenChange, data }: {
     }
     const contacts = WHATSAPP_CONTACTS.filter(c => selected.has(c.phone));
     contacts.forEach((c, i) => {
-      const msg = `Olá ${c.name}\n\nA requisição ${data.requisicao} do cliente ${data.nomeCliente} aguarda sua aprovação, por gentileza aprovar no sistema.\n\nObrigado ${data.nomeVendedor}`;
+      const msg = `Olá ${c.name}\n\nA requisição ${data.requisicao} do cliente ${data.nomeCliente} no valor de *${data.valor}* aguarda sua aprovação, por gentileza aprovar no sistema.\n\nObrigado ${data.nomeVendedor}`;
       setTimeout(() => {
         window.open(`https://wa.me/${c.phone}?text=${encodeURIComponent(msg)}`, 'whatsapp');
       }, i * 1500);
@@ -1010,7 +1010,7 @@ export default function ClientesPrazoPage() {
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [clientScores, setClientScores] = useState<any[]>([]);
-  const [whatsappData, setWhatsappData] = useState<{ requisicao: string; nomeCliente: string; nomeVendedor: string } | null>(null);
+  const [whatsappData, setWhatsappData] = useState<{ requisicao: string; nomeCliente: string; nomeVendedor: string; valor: string } | null>(null);
 
   // Request notification permission on mount for financeiro
   useEffect(() => {
@@ -1164,10 +1164,11 @@ export default function ClientesPrazoPage() {
   const generateWhatsAppMessage = (item: any, link: string, isRenewal: boolean) => {
     const nomeCliente = item.nome_cliente || 'Cliente';
     const requisicao = item.requisicao || '';
+    const valor = item.valor ? `R$ ${Number(item.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '';
     if (isRenewal) {
-      return `Olá, ${nomeCliente}! Tudo bem?\n\nO link de pagamento anterior do seu pedido ${requisicao} expirou. Segue abaixo o novo link:\n\n🔗 *Novo link:* ${link}\n\n⚠️ Válido até 00:00 de hoje.\n\n*Gomec Autopeças*`;
+      return `Olá, ${nomeCliente}! Tudo bem?\n\nO link de pagamento anterior do seu pedido ${requisicao} no valor de *${valor}* expirou. Segue abaixo o novo link:\n\n🔗 *Novo link:* ${link}\n\n⚠️ Válido até 00:00 de hoje.\n\n*Gomec Autopeças*`;
     }
-    return `Olá ${nomeCliente}! Tudo bem?\n\nLink de pagamento do pedido ${requisicao}:\n\n🔗 ${link}\n\n⚠️ Válido até 00:00 de hoje.\n\n*Gomec Autopeças*`;
+    return `Olá ${nomeCliente}! Tudo bem?\n\nLink de pagamento do pedido ${requisicao} no valor de *${valor}*:\n\n🔗 ${link}\n\n⚠️ Válido até 00:00 de hoje.\n\n*Gomec Autopeças*`;
   };
 
   const handleUpdateLink = (id: string, link: string) => {
@@ -1284,7 +1285,7 @@ export default function ClientesPrazoPage() {
               <Bell className="w-4 h-4" /> Ativar Notificações
             </Button>
           )}
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => exportReport(requisicoes)}>
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => exportReport(filtered)}>
             <Download className="w-4 h-4" /> Relatório
           </Button>
           <Button variant="outline" size="sm" className="gap-2" onClick={() => setScoreOpen(true)}>
@@ -1439,6 +1440,7 @@ export default function ClientesPrazoPage() {
                 requisicao: data.requisicao,
                 nomeCliente: data.nome_cliente,
                 nomeVendedor: data.nome_vendedor || profile?.nome || 'Vendedor',
+                valor: `R$ ${Number(data.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
               });
             }
           }
