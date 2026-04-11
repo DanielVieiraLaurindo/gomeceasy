@@ -46,7 +46,10 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: `Invalid endpoint: ${endpoint}` }), { status: 400, headers: corsHeaders });
     }
 
-    const validIds = ids.filter((id: string) => /^\d{1,7}$/.test(String(id))).slice(0, endpointConfig.maxIds);
+    const validIds = ids
+      .map((id: string) => String(id).replace(/\D/g, '').padStart(6, '0'))
+      .filter((id: string) => /^\d{6}$/.test(id))
+      .slice(0, endpointConfig.maxIds);
     if (validIds.length === 0) {
       return new Response(JSON.stringify({ error: 'No valid IDs provided' }), { status: 400, headers: corsHeaders });
     }
