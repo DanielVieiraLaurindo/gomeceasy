@@ -204,15 +204,21 @@ function NovaRequisicaoDialog({ open, onOpenChange, onCreate, permissions }: {
   const [loadingApi, setLoadingApi] = useState(false);
 
   const fetchRequisicaoData = async (reqNumber: string) => {
-    const trimmed = reqNumber.trim();
-    if (!/^\d{1,7}$/.test(trimmed)) return;
+    const trimmed = reqNumber.trim().replace(/\D/g, '');
+    if (!trimmed || trimmed.length === 0) return;
+    // Jacsys API only accepts exactly 6-digit IDs; pad shorter ones, skip longer ones
+    const normalizedId = trimmed.padStart(6, '0');
+    if (normalizedId.length > 6) {
+      // ID too long for Jacsys, skip API call silently
+      return;
+    }
     setLoadingApi(true);
     try {
       const res = await supabase.functions.invoke('jacsys-requisicoes', {
-        body: { ids: [trimmed] },
+        body: { ids: [normalizedId] },
       });
       if (res.error) throw res.error;
-      const info = res.data?.[trimmed];
+      const info = res.data?.[normalizedId] || res.data?.[trimmed];
       if (info) {
         setForm(prev => ({
           ...prev,
