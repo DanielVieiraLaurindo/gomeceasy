@@ -206,10 +206,9 @@ function NovaRequisicaoDialog({ open, onOpenChange, onCreate, permissions }: {
   const fetchRequisicaoData = async (reqNumber: string) => {
     const trimmed = reqNumber.trim().replace(/\D/g, '');
     if (!trimmed || trimmed.length === 0) return;
-    // Jacsys API only accepts exactly 6-digit IDs; pad shorter ones, skip longer ones
-    const normalizedId = trimmed.padStart(6, '0');
-    if (normalizedId.length > 6) {
-      // ID too long for Jacsys, skip API call silently
+    // Jacsys requisicoes API accepts exactly 7-digit IDs
+    const normalizedId = trimmed.padStart(7, '0');
+    if (normalizedId.length > 7) {
       return;
     }
     setLoadingApi(true);
