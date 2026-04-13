@@ -218,7 +218,7 @@ function NovaRequisicaoDialog({ open, onOpenChange, onCreate, permissions }: {
         body: { ids: [normalizedId] },
       });
       if (res.error) throw res.error;
-      const info = res.data?.[trimmed];
+      const info = res.data?.[normalizedId] || res.data?.[trimmed];
       if (info) {
         setForm(prev => ({
           ...prev,
