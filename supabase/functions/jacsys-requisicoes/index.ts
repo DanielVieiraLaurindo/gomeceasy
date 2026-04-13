@@ -5,11 +5,11 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const JACSYS_ENDPOINTS: Record<string, { path: string; maxIds: number }> = {
-  requisicoes: { path: '/webhook/jacsys/requisicoes', maxIds: 50 },
-  saldo: { path: '/webhook/jacsys/clientes/saldo', maxIds: 50 },
-  credito: { path: '/webhook/jacsys/clientes/credito', maxIds: 50 },
-  extrato: { path: '/webhook/jacsys/clientes/extrato', maxIds: 1 },
+const JACSYS_ENDPOINTS: Record<string, { path: string; maxIds: number; idLength: number }> = {
+  requisicoes: { path: '/webhook/jacsys/requisicoes', maxIds: 50, idLength: 7 },
+  saldo: { path: '/webhook/jacsys/clientes/saldo', maxIds: 50, idLength: 6 },
+  credito: { path: '/webhook/jacsys/clientes/credito', maxIds: 50, idLength: 6 },
+  extrato: { path: '/webhook/jacsys/clientes/extrato', maxIds: 1, idLength: 6 },
 };
 
 Deno.serve(async (req) => {
@@ -46,9 +46,11 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: `Invalid endpoint: ${endpoint}` }), { status: 400, headers: corsHeaders });
     }
 
+    const idLen = endpointConfig.idLength;
+    const idRegex = new RegExp(`^\\d{${idLen}}$`);
     const validIds = ids
-      .map((id: string) => String(id).replace(/\D/g, '').padStart(6, '0'))
-      .filter((id: string) => /^\d{6}$/.test(id))
+      .map((id: string) => String(id).replace(/\D/g, '').padStart(idLen, '0'))
+      .filter((id: string) => idRegex.test(id))
       .slice(0, endpointConfig.maxIds);
     if (validIds.length === 0) {
       return new Response(JSON.stringify({ error: 'No valid IDs provided' }), { status: 400, headers: corsHeaders });
