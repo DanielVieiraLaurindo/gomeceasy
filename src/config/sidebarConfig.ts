@@ -114,12 +114,7 @@ export const SIDEBAR_ITEMS: Record<AppSetor, SidebarItem[]> = {
     { path: '/ti/logs', label: 'Logs de Atividades', icon: FileText },
   ],
   logistica: [
-    { path: '/logistica', label: 'Dashboard Logística', icon: LayoutDashboard },
-    { path: '/logistica/transferencia', label: 'Transferência', icon: ArrowRightLeft },
-    { path: '/logistica/inventario', label: 'Inventário', icon: ClipboardList },
-    { path: '/logistica/curva-abc', label: 'Curva ABC', icon: BarChart2 },
-    { path: '/logistica/recebimento', label: 'Recebimento de Mercadoria', icon: Boxes },
-    { path: '/logistica/divergencias', label: 'Divergência de Recebimento', icon: AlertTriangle },
+    { path: '/logistica', label: 'Logística', icon: Package },
   ],
 };
 
