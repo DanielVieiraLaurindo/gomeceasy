@@ -222,7 +222,11 @@ const App = () => (
 
                   {/* Logística */}
                   <Route path="/logistica" element={<LogisticaDashboard />} />
-                  <Route path="/logistica/*" element={<LogisticaDashboard />} />
+                  <Route path="/logistica/transferencia" element={<TransferenciaPage />} />
+                  <Route path="/logistica/inventario" element={<InventarioPage />} />
+                  <Route path="/logistica/curva-abc" element={<CurvaAbcPage />} />
+                  <Route path="/logistica/recebimento" element={<RecebimentoPage />} />
+                  <Route path="/logistica/divergencias" element={<DivergenciasListPage />} />
 
                   {/* Settings */}
                   <Route path="/configuracoes" element={<ProfileSettingsPage />} />
