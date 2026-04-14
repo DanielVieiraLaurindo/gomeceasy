@@ -60,6 +60,7 @@ const AnaliseCnpjPage = React.lazy(() => import("@/pages/backoffice/AnaliseCnpjP
 const NovaRupturaPage = React.lazy(() => import("@/pages/backoffice/NovaRupturaPage"));
 const ConferenciaPedidosFlexPage = React.lazy(() => import("@/pages/pos-vendas/ConferenciaPedidosFlexPage"));
 const MinhasMarcasPage = React.lazy(() => import("@/pages/backoffice/MinhasMarcasPage"));
+const LogisticaDashboard = React.lazy(() => import("@/pages/logistica/LogisticaDashboard"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -214,6 +215,10 @@ const App = () => (
                   <Route path="/ti/usuarios" element={<UserManagementPage />} />
                   <Route path="/ti/chamados" element={<ChamadosPage />} />
                   <Route path="/ti/logs" element={<ActivityLogPage />} />
+
+                  {/* Logística */}
+                  <Route path="/logistica" element={<LogisticaDashboard />} />
+                  <Route path="/logistica/*" element={<LogisticaDashboard />} />
 
                   {/* Settings */}
                   <Route path="/configuracoes" element={<ProfileSettingsPage />} />
