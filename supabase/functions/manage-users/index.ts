@@ -2,13 +2,15 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 }
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
+    console.log('manage-users: request received', req.method)
+
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
@@ -17,25 +19,27 @@ Deno.serve(async (req) => {
 
     // Verify caller is master/admin
     const authHeader = req.headers.get('Authorization')
-    console.log('Auth header present:', !!authHeader, authHeader?.substring(0, 20))
+    console.log('Auth header present:', !!authHeader)
     if (!authHeader?.startsWith('Bearer ')) {
-      console.log('No bearer token found')
-      return new Response(JSON.stringify({ error: 'Não autorizado' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      console.log('No bearer token')
+      return new Response(JSON.stringify({ error: 'Não autorizado - sem token' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
     const token = authHeader.replace('Bearer ', '')
-    console.log('Token length:', token.length)
     const { data: { user: caller }, error: authError } = await supabaseAdmin.auth.getUser(token)
-    console.log('getUser result:', caller?.id, 'error:', authError?.message)
-    if (!caller) return new Response(JSON.stringify({ error: 'Não autorizado' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    console.log('getUser:', caller?.id, authError?.message)
+    if (!caller) {
+      return new Response(JSON.stringify({ error: 'Não autorizado - token inválido' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
 
-    const { data: callerProfile, error: profileError } = await supabaseAdmin.from('profiles').select('role').eq('id', caller.id).single()
-    console.log('Profile:', callerProfile, 'error:', profileError?.message)
+    const { data: callerProfile } = await supabaseAdmin.from('profiles').select('role').eq('id', caller.id).single()
+    console.log('callerProfile role:', callerProfile?.role)
     if (!callerProfile || !['master', 'admin'].includes(callerProfile.role)) {
       return new Response(JSON.stringify({ error: 'Apenas master/admin' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
     const body = await req.json()
     const { action } = body
+    console.log('action:', action)
 
     if (action === 'create_user') {
       const { email, password, nome, setor, role, login_username } = body
@@ -50,14 +54,12 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: `Erro ao criar usuário: ${error.message}` }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
       }
 
-      // Update profile role and login_username
       if (data.user) {
         const updates: any = { role: role || 'usuario', setor: setor || 'backoffice' }
         if (login_username) updates.login_username = login_username
         await supabaseAdmin.from('profiles').update(updates).eq('id', data.user.id)
       }
 
-      // Log activity
       await supabaseAdmin.from('activity_log').insert({
         usuario_id: caller.id,
         acao: 'criar_usuario',
@@ -71,7 +73,10 @@ Deno.serve(async (req) => {
     if (action === 'reset_password') {
       const { user_id, new_password } = body
       const { error } = await supabaseAdmin.auth.admin.updateUserById(user_id, { password: new_password })
-      if (error) return new Response(JSON.stringify({ error: 'Erro ao redefinir senha' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      if (error) {
+        console.error('reset_password error:', error.message)
+        return new Response(JSON.stringify({ error: 'Erro ao redefinir senha' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
 
       await supabaseAdmin.from('activity_log').insert({
         usuario_id: caller.id, acao: 'redefinir_senha', tabela: 'profiles',
@@ -85,7 +90,6 @@ Deno.serve(async (req) => {
       const { user_id, ativo } = body
       await supabaseAdmin.from('profiles').update({ ativo }).eq('id', user_id)
       
-      // Also ban/unban in auth
       if (!ativo) {
         await supabaseAdmin.auth.admin.updateUserById(user_id, { ban_duration: '876000h' })
       } else {
