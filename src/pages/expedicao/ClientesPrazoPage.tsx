@@ -1476,11 +1476,12 @@ export default function ClientesPrazoPage() {
       </div>
 
       <NovaRequisicaoDialog open={novaOpen} onOpenChange={setNovaOpen} onCreate={(data) => {
-        const isDuplicate = requisicoes.some((r: any) =>
-          r.requisicao === data.requisicao && Number(r.valor) === Number(data.valor)
-        );
-        if (isDuplicate) {
-          toast.error('Requisição duplicada! Já existe uma requisição com o mesmo número e valor.');
+        // Check duplicates: each individual requisition number against existing ones
+        const newReqs = data.requisicao.split(',').map((r: string) => r.trim()).filter(Boolean);
+        const existingReqs = requisicoes.flatMap((r: any) => (r.requisicao || '').split(',').map((s: string) => s.trim()));
+        const duplicates = newReqs.filter((nr: string) => existingReqs.includes(nr));
+        if (duplicates.length > 0) {
+          toast.error(`Requisição duplicada: ${duplicates.join(', ')} já existe no sistema.`);
           return;
         }
         create.mutate({ ...data, created_by: user?.id }, {
