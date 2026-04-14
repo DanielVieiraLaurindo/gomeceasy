@@ -1,1 +1,4 @@
 project_id = "cfgzwbwrialtuiuxrcme"
+
+[functions.manage-users]
+verify_jwt = false
