@@ -185,6 +185,12 @@ function usePagePermissions(): Permissions {
 // ================================================================
 // NOVA REQUISIÇÃO DIALOG
 // ================================================================
+interface ReqLine {
+  requisicao: string;
+  valor: string;
+  loading: boolean;
+}
+
 function NovaRequisicaoDialog({ open, onOpenChange, onCreate, permissions }: {
   open: boolean; onOpenChange: (v: boolean) => void; onCreate: (data: any) => void; permissions: Permissions;
 }) {
@@ -192,8 +198,6 @@ function NovaRequisicaoDialog({ open, onOpenChange, onCreate, permissions }: {
 
   const [form, setForm] = useState({
     ocorrencia: 'link_pagamento',
-    requisicao: '',
-    valor: '',
     codigo_loja: '',
     codigo_cliente: '',
     nome_cliente: '',
@@ -201,17 +205,17 @@ function NovaRequisicaoDialog({ open, onOpenChange, onCreate, permissions }: {
     nome_vendedor: '',
     observacao: '',
   });
-  const [loadingApi, setLoadingApi] = useState(false);
+  const [lines, setLines] = useState<ReqLine[]>([{ requisicao: '', valor: '', loading: false }]);
 
-  const fetchRequisicaoData = async (reqNumber: string) => {
+  const totalValor = lines.reduce((sum, l) => sum + (parseFloat(l.valor) || 0), 0);
+
+  const fetchRequisicaoData = async (index: number, reqNumber: string) => {
     const trimmed = reqNumber.trim().replace(/\D/g, '');
     if (!trimmed || trimmed.length === 0) return;
-    // Jacsys requisicoes API accepts exactly 7-digit IDs
     const normalizedId = trimmed.padStart(7, '0');
-    if (normalizedId.length > 7) {
-      return;
-    }
-    setLoadingApi(true);
+    if (normalizedId.length > 7) return;
+
+    setLines(prev => prev.map((l, i) => i === index ? { ...l, loading: true } : l));
     try {
       const res = await supabase.functions.invoke('jacsys-requisicoes', {
         body: { ids: [normalizedId] },
@@ -219,30 +223,51 @@ function NovaRequisicaoDialog({ open, onOpenChange, onCreate, permissions }: {
       if (res.error) throw res.error;
       const info = res.data?.[normalizedId] || res.data?.[trimmed];
       if (info) {
-        setForm(prev => ({
-          ...prev,
-          codigo_loja: info.codigo_loja || '',
-          valor: String(info.valor || ''),
-          codigo_cliente: info.codigo_cliente || '',
-          nome_cliente: info.nome_cliente || '',
-          cod_vendedor: info.codigo_vendedor || '',
-          nome_vendedor: info.nome_vendedor || '',
-        }));
+        setLines(prev => prev.map((l, i) => i === index ? { ...l, valor: String(info.valor || l.valor), loading: false } : l));
+        // Fill client data from first successful fetch
+        if (!form.nome_cliente) {
+          setForm(prev => ({
+            ...prev,
+            codigo_loja: info.codigo_loja || prev.codigo_loja,
+            codigo_cliente: info.codigo_cliente || prev.codigo_cliente,
+            nome_cliente: info.nome_cliente || prev.nome_cliente,
+            cod_vendedor: info.codigo_vendedor || prev.cod_vendedor,
+            nome_vendedor: info.nome_vendedor || prev.nome_vendedor,
+          }));
+        }
         toast.success('Dados da requisição carregados');
       } else {
+        setLines(prev => prev.map((l, i) => i === index ? { ...l, loading: false } : l));
         toast.info('Requisição não encontrada na base Jacsys');
       }
     } catch {
+      setLines(prev => prev.map((l, i) => i === index ? { ...l, loading: false } : l));
       toast.error('Erro ao buscar dados da requisição');
-    } finally {
-      setLoadingApi(false);
     }
+  };
+
+  const addLine = () => {
+    setLines(prev => [...prev, { requisicao: '', valor: '', loading: false }]);
+  };
+
+  const removeLine = (index: number) => {
+    if (lines.length <= 1) return;
+    setLines(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const updateLine = (index: number, key: keyof ReqLine, val: string) => {
+    setLines(prev => prev.map((l, i) => i === index ? { ...l, [key]: val } : l));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.requisicao || !form.valor || !form.nome_cliente) {
-      toast.error('Preencha: Nº Requisição, Valor e Nome do Cliente');
+    const validLines = lines.filter(l => l.requisicao.trim());
+    if (validLines.length === 0 || !form.nome_cliente) {
+      toast.error('Preencha ao menos uma requisição e o Nome do Cliente');
+      return;
+    }
+    if (validLines.some(l => !l.valor || parseFloat(l.valor) <= 0)) {
+      toast.error('Todas as requisições precisam ter valor');
       return;
     }
     if (permissions.requireObservation && !form.observacao.trim()) {
@@ -250,9 +275,10 @@ function NovaRequisicaoDialog({ open, onOpenChange, onCreate, permissions }: {
       return;
     }
     const isPosterior = form.ocorrencia === 'pagar_posteriormente';
+    const reqNumbers = validLines.map(l => l.requisicao.trim()).join(', ');
     onCreate({
-      requisicao: form.requisicao,
-      valor: parseFloat(form.valor),
+      requisicao: reqNumbers,
+      valor: totalValor,
       ocorrencia: form.ocorrencia,
       prazo_cobrar: getPrazoCobrar(form.ocorrencia),
       codigo_loja: form.codigo_loja || null,
@@ -265,21 +291,22 @@ function NovaRequisicaoDialog({ open, onOpenChange, onCreate, permissions }: {
       status: isPosterior ? 'aguardando_autorizacao' : 'aguardando_link',
     });
     onOpenChange(false);
-    setForm({ ocorrencia: 'link_pagamento', requisicao: '', valor: '', codigo_loja: '', codigo_cliente: '', nome_cliente: '', cod_vendedor: '', nome_vendedor: '', observacao: '' });
+    setForm({ ocorrencia: 'link_pagamento', codigo_loja: '', codigo_cliente: '', nome_cliente: '', cod_vendedor: '', nome_vendedor: '', observacao: '' });
+    setLines([{ requisicao: '', valor: '', loading: false }]);
   };
 
-  const update = (key: string, val: string) => setForm(prev => ({ ...prev, [key]: val }));
+  const update2 = (key: string, val: string) => setForm(prev => ({ ...prev, [key]: val }));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[700px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[750px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-lg font-barlow">Nova Requisição</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
           <div className="space-y-1.5">
             <Label className="text-xs font-bold uppercase text-muted-foreground">Tipo de Ocorrência *</Label>
-            <Select value={form.ocorrencia} onValueChange={v => update('ocorrencia', v)}>
+            <Select value={form.ocorrencia} onValueChange={v => update2('ocorrencia', v)}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="link_pagamento">Gerar Link de Pagamento</SelectItem>
@@ -290,28 +317,62 @@ function NovaRequisicaoDialog({ open, onOpenChange, onCreate, permissions }: {
             </Select>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold uppercase text-muted-foreground">Nº Requisição *</Label>
-              <div className="relative">
-                <Input
-                  value={form.requisicao}
-                  onChange={e => update('requisicao', e.target.value.replace(/\D/g, '').slice(0, 7))}
-                  onBlur={() => form.requisicao.trim() && fetchRequisicaoData(form.requisicao)}
-                  placeholder="Ex: 2596530"
-                  disabled={loadingApi}
-                />
-                {loadingApi && (
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                    <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          {/* Requisition lines */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-bold uppercase text-muted-foreground">Requisições *</Label>
+              <Button type="button" variant="outline" size="sm" className="gap-1 h-7 text-xs" onClick={addLine}>
+                <Plus className="w-3 h-3" /> Adicionar Requisição
+              </Button>
+            </div>
+            {lines.map((line, idx) => (
+              <div key={idx} className="flex items-end gap-2">
+                <div className="flex-1 space-y-1">
+                  {idx === 0 && <Label className="text-[10px] text-muted-foreground">Nº Requisição</Label>}
+                  <div className="relative">
+                    <Input
+                      value={line.requisicao}
+                      onChange={e => updateLine(idx, 'requisicao', e.target.value.replace(/\D/g, '').slice(0, 7))}
+                      onBlur={() => line.requisicao.trim() && fetchRequisicaoData(idx, line.requisicao)}
+                      placeholder="Ex: 2596530"
+                      disabled={line.loading}
+                    />
+                    {line.loading && (
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                        <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    )}
                   </div>
+                </div>
+                <div className="w-[140px] space-y-1">
+                  {idx === 0 && <Label className="text-[10px] text-muted-foreground">Valor (R$)</Label>}
+                  <Input type="number" step="0.01" value={line.valor} onChange={e => updateLine(idx, 'valor', e.target.value)} placeholder="0.00" />
+                </div>
+                {lines.length > 1 && (
+                  <Button type="button" variant="ghost" size="icon" className="h-9 w-9 text-destructive shrink-0" onClick={() => removeLine(idx)}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
                 )}
               </div>
-              <p className="text-[10px] text-muted-foreground">Ao sair do campo, busca dados automaticamente</p>
-            </div>
+            ))}
+            {lines.length > 1 && (
+              <div className="flex justify-end">
+                <p className="text-sm font-bold font-mono bg-muted/50 px-3 py-1 rounded">
+                  Total: R$ {totalValor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+            )}
+            <p className="text-[10px] text-muted-foreground">Ao sair do campo, busca dados automaticamente. Adicione várias requisições do mesmo cliente.</p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
             <div className="space-y-1.5">
               <Label className="text-xs font-bold uppercase text-muted-foreground">Código Loja</Label>
-              <Input value={form.codigo_loja} onChange={e => update('codigo_loja', e.target.value)} placeholder="Código da loja" />
+              <Input value={form.codigo_loja} onChange={e => update2('codigo_loja', e.target.value)} placeholder="Código da loja" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold uppercase text-muted-foreground">Prazo para Cobrar</Label>
+              <Input value={form.ocorrencia === 'pagar_posteriormente' ? '24 horas após criação' : 'Até 00:00 do dia corrente'} readOnly className="bg-muted" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-bold uppercase text-muted-foreground">Data/Hora Lançamento</Label>
@@ -319,40 +380,25 @@ function NovaRequisicaoDialog({ open, onOpenChange, onCreate, permissions }: {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold uppercase text-muted-foreground">Valor (R$) *</Label>
-              <Input type="number" step="0.01" value={form.valor} onChange={e => update('valor', e.target.value)} placeholder="0.00" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold uppercase text-muted-foreground">Prazo para Cobrar</Label>
-              <Input value={form.ocorrencia === 'pagar_posteriormente' ? '24 horas após criação' : 'Até 00:00 do dia corrente'} readOnly className="bg-muted" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold uppercase text-muted-foreground">Link de Pagamento</Label>
-              <Input value="" readOnly className="bg-muted" placeholder="Preenchido pelo financeiro" />
-            </div>
-          </div>
-
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label className="text-xs font-bold uppercase text-muted-foreground">Código do Cliente</Label>
-              <Input value={form.codigo_cliente} onChange={e => update('codigo_cliente', e.target.value)} placeholder="Código do cliente" />
+              <Input value={form.codigo_cliente} onChange={e => update2('codigo_cliente', e.target.value)} placeholder="Código do cliente" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-bold uppercase text-muted-foreground">Nome do Cliente *</Label>
-              <Input value={form.nome_cliente} onChange={e => update('nome_cliente', e.target.value)} placeholder="Nome do cliente" />
+              <Input value={form.nome_cliente} onChange={e => update2('nome_cliente', e.target.value)} placeholder="Nome do cliente" />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label className="text-xs font-bold uppercase text-muted-foreground">Cód. Vendedor</Label>
-              <Input value={form.cod_vendedor} onChange={e => update('cod_vendedor', e.target.value)} placeholder="Código vendedor" />
+              <Input value={form.cod_vendedor} onChange={e => update2('cod_vendedor', e.target.value)} placeholder="Código vendedor" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-bold uppercase text-muted-foreground">Nome Vendedor</Label>
-              <Input value={form.nome_vendedor} onChange={e => update('nome_vendedor', e.target.value)} placeholder="Nome do vendedor" />
+              <Input value={form.nome_vendedor} onChange={e => update2('nome_vendedor', e.target.value)} placeholder="Nome do vendedor" />
             </div>
           </div>
 
@@ -360,7 +406,7 @@ function NovaRequisicaoDialog({ open, onOpenChange, onCreate, permissions }: {
             <Label className="text-xs font-bold uppercase text-muted-foreground">
               Observação {permissions.requireObservation ? '*' : ''}
             </Label>
-            <Textarea rows={3} value={form.observacao} onChange={e => update('observacao', e.target.value)} />
+            <Textarea rows={3} value={form.observacao} onChange={e => update2('observacao', e.target.value)} />
             {permissions.requireObservation && (
               <p className="text-[10px] text-destructive">Campo obrigatório para seu grupo de acesso</p>
             )}
@@ -368,7 +414,7 @@ function NovaRequisicaoDialog({ open, onOpenChange, onCreate, permissions }: {
 
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="submit" disabled={loadingApi}>Salvar Requisição</Button>
+            <Button type="submit" disabled={lines.some(l => l.loading)}>Salvar Requisição</Button>
           </div>
         </form>
       </DialogContent>
