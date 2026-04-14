@@ -17,15 +17,19 @@ Deno.serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
-    // Verify caller is master/admin
+    // Verify caller is master/admin using a user-context client
     const authHeader = req.headers.get('Authorization')
-    console.log('Auth header present:', !!authHeader)
     if (!authHeader?.startsWith('Bearer ')) {
-      console.log('No bearer token')
       return new Response(JSON.stringify({ error: 'Não autorizado - sem token' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user: caller }, error: authError } = await supabaseAdmin.auth.getUser(token)
+
+    // Create a user-context client to validate the JWT
+    const userClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY')!,
+      { global: { headers: { Authorization: authHeader } }, auth: { autoRefreshToken: false, persistSession: false } }
+    )
+    const { data: { user: caller }, error: authError } = await userClient.auth.getUser()
     console.log('getUser:', caller?.id, authError?.message)
     if (!caller) {
       return new Response(JSON.stringify({ error: 'Não autorizado - token inválido' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
