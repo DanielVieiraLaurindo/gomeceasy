@@ -23,11 +23,13 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Não autorizado - sem token' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // Create a user-context client to validate the JWT
+    // Create a user-context client to validate the JWT  
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY')
+    console.log('anonKey present:', !!anonKey, 'url:', Deno.env.get('SUPABASE_URL')?.substring(0, 30))
     const userClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY')!,
-      { global: { headers: { Authorization: authHeader } }, auth: { autoRefreshToken: false, persistSession: false } }
+      anonKey!,
+      { global: { headers: { Authorization: authHeader } } }
     )
     const { data: { user: caller }, error: authError } = await userClient.auth.getUser()
     console.log('getUser:', caller?.id, authError?.message)
