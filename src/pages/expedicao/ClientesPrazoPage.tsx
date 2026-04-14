@@ -960,7 +960,7 @@ function WhatsAppContactDialog({ open, onOpenChange, data }: {
     }
     const contacts = WHATSAPP_CONTACTS.filter(c => selected.has(c.phone));
     contacts.forEach((c, i) => {
-      const msg = `Olá ${c.name}\n\nA requisição ${data.requisicao} do cliente ${data.nomeCliente} no valor de *${data.valor}* aguarda sua aprovação, por gentileza aprovar no sistema.\n\nObrigado ${data.nomeVendedor}`;
+      const msg = `Olá ${c.name}\n\nA requisição ${data.requisicao} do cliente ${data.nomeCliente} no valor total de *${data.valor}* aguarda sua aprovação, por gentileza aprovar no sistema.\n\nObrigado ${data.nomeVendedor}`;
       setTimeout(() => {
         window.open(`https://wa.me/${c.phone}?text=${encodeURIComponent(msg)}`, 'whatsapp');
       }, i * 1500);
