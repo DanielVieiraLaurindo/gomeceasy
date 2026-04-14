@@ -113,6 +113,14 @@ export const SIDEBAR_ITEMS: Record<AppSetor, SidebarItem[]> = {
     { path: '/ti/chamados', label: 'Chamados', icon: Ticket },
     { path: '/ti/logs', label: 'Logs de Atividades', icon: FileText },
   ],
+  logistica: [
+    { path: '/logistica', label: 'Dashboard Logística', icon: LayoutDashboard },
+    { path: '/logistica/transferencia', label: 'Transferência', icon: ArrowRightLeft },
+    { path: '/logistica/inventario', label: 'Inventário', icon: ClipboardList },
+    { path: '/logistica/curva-abc', label: 'Curva ABC', icon: BarChart2 },
+    { path: '/logistica/recebimento', label: 'Recebimento de Mercadoria', icon: Boxes },
+    { path: '/logistica/divergencias', label: 'Divergência de Recebimento', icon: AlertTriangle },
+  ],
 };
 
 // Master sidebar groups
@@ -131,6 +139,7 @@ export const MASTER_SIDEBAR_GROUPS: MasterSidebarGroup[] = [
   { label: 'Fiscal', setor: 'fiscal' },
   { label: 'Compras', setor: 'compras' },
   { label: 'Comercial', setor: 'comercial' },
+  { label: 'Logística', setor: 'logistica' },
   { label: 'TI', setor: 'ti' },
 ];
 
