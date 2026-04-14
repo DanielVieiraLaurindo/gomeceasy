@@ -1217,9 +1217,9 @@ export default function ClientesPrazoPage() {
     const requisicao = item.requisicao || '';
     const valor = item.valor ? `R$ ${Number(item.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '';
     if (isRenewal) {
-      return `Olá, ${nomeCliente}! Tudo bem?\n\nO link de pagamento anterior do seu pedido ${requisicao} no valor de *${valor}* expirou. Segue abaixo o novo link:\n\n🔗 *Novo link:* ${link}\n\n⚠️ Válido até 00:00 de hoje.\n\n*Gomec Autopeças*`;
+      return `Olá, ${nomeCliente}! Tudo bem?\n\nO link de pagamento anterior do seu pedido ${requisicao} no valor total de *${valor}* expirou. Segue abaixo o novo link:\n\n🔗 *Novo link:* ${link}\n\n⚠️ Válido até 00:00 de hoje.\n\n*Gomec Autopeças*`;
     }
-    return `Olá ${nomeCliente}! Tudo bem?\n\nLink de pagamento do pedido ${requisicao} no valor de *${valor}*:\n\n🔗 ${link}\n\n⚠️ Válido até 00:00 de hoje.\n\n*Gomec Autopeças*`;
+    return `Olá ${nomeCliente}! Tudo bem?\n\nLink de pagamento do pedido ${requisicao} no valor total de *${valor}*:\n\n🔗 ${link}\n\n⚠️ Válido até 00:00 de hoje.\n\n*Gomec Autopeças*`;
   };
 
   const handleUpdateLink = (id: string, link: string) => {
