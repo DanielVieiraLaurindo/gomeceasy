@@ -5,35 +5,39 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 }
 
+function decodeJwtPayload(token: string): any {
+  try {
+    const parts = token.split('.')
+    if (parts.length !== 3) return null
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')))
+    return payload
+  } catch { return null }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY')!
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    )
 
-    const supabaseAdmin = createClient(supabaseUrl, serviceKey, {
-      auth: { autoRefreshToken: false, persistSession: false }
-    })
-
-    // Verify caller using user-context client
+    // Extract user ID from JWT
     const authHeader = req.headers.get('Authorization')
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Não autorizado' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
-
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-      auth: { autoRefreshToken: false, persistSession: false },
-    })
-    const { data: { user: caller }, error: authError } = await userClient.auth.getUser()
-    if (authError || !caller) {
-      console.error('Auth error:', authError?.message)
-      return new Response(JSON.stringify({ error: 'Não autorizado' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    const token = authHeader.replace('Bearer ', '')
+    const payload = decodeJwtPayload(token)
+    const callerId = payload?.sub
+    if (!callerId) {
+      return new Response(JSON.stringify({ error: 'Token inválido' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    const { data: callerProfile } = await supabaseAdmin.from('profiles').select('role').eq('id', caller.id).single()
+    // Verify caller role from profiles
+    const { data: callerProfile } = await supabaseAdmin.from('profiles').select('role').eq('id', callerId).single()
     if (!callerProfile || !['master', 'admin'].includes(callerProfile.role)) {
       return new Response(JSON.stringify({ error: 'Apenas master/admin' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
@@ -55,7 +59,7 @@ Deno.serve(async (req) => {
         await supabaseAdmin.from('profiles').update(updates).eq('id', data.user.id)
       }
       await supabaseAdmin.from('activity_log').insert({
-        usuario_id: caller.id, acao: 'criar_usuario', tabela: 'profiles',
+        usuario_id: callerId, acao: 'criar_usuario', tabela: 'profiles',
         detalhes: { email, nome, setor, role }
       })
       return new Response(JSON.stringify({ success: true, user_id: data.user?.id }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
@@ -66,7 +70,7 @@ Deno.serve(async (req) => {
       const { error } = await supabaseAdmin.auth.admin.updateUserById(user_id, { password: new_password })
       if (error) return new Response(JSON.stringify({ error: 'Erro ao redefinir senha' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
       await supabaseAdmin.from('activity_log').insert({
-        usuario_id: caller.id, acao: 'redefinir_senha', tabela: 'profiles',
+        usuario_id: callerId, acao: 'redefinir_senha', tabela: 'profiles',
         detalhes: { target_user_id: user_id }
       })
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
@@ -78,7 +82,7 @@ Deno.serve(async (req) => {
       if (!ativo) await supabaseAdmin.auth.admin.updateUserById(user_id, { ban_duration: '876000h' })
       else await supabaseAdmin.auth.admin.updateUserById(user_id, { ban_duration: 'none' })
       await supabaseAdmin.from('activity_log').insert({
-        usuario_id: caller.id, acao: ativo ? 'ativar_usuario' : 'desativar_usuario', tabela: 'profiles',
+        usuario_id: callerId, acao: ativo ? 'ativar_usuario' : 'desativar_usuario', tabela: 'profiles',
         detalhes: { target_user_id: user_id, ativo }
       })
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
@@ -92,7 +96,7 @@ Deno.serve(async (req) => {
       if (role) updates.role = role
       await supabaseAdmin.from('profiles').update(updates).eq('id', user_id)
       await supabaseAdmin.from('activity_log').insert({
-        usuario_id: caller.id, acao: 'atualizar_usuario', tabela: 'profiles',
+        usuario_id: callerId, acao: 'atualizar_usuario', tabela: 'profiles',
         detalhes: { target_user_id: user_id, ...updates }
       })
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
