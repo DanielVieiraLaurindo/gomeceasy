@@ -17,25 +17,27 @@ Deno.serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
-    // Verify caller is master/admin using a user-context client
+    // Verify caller via direct auth API call
     const authHeader = req.headers.get('Authorization')
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Não autorizado - sem token' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // Create a user-context client to validate the JWT  
-    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY')
-    console.log('anonKey present:', !!anonKey, 'url:', Deno.env.get('SUPABASE_URL')?.substring(0, 30))
-    const userClient = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      anonKey!,
-      { global: { headers: { Authorization: authHeader } } }
-    )
-    const { data: { user: caller }, error: authError } = await userClient.auth.getUser()
-    console.log('getUser:', caller?.id, authError?.message)
-    if (!caller) {
-      return new Response(JSON.stringify({ error: 'Não autorizado - token inválido' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const authRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: {
+        'Authorization': authHeader,
+        'apikey': Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || '',
+      }
+    })
+    console.log('Auth API status:', authRes.status)
+    if (!authRes.ok) {
+      const errText = await authRes.text()
+      console.log('Auth API error:', errText)
+      return new Response(JSON.stringify({ error: 'Não autorizado' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
+    const caller = await authRes.json()
+    console.log('Caller id:', caller.id)
 
     const { data: callerProfile } = await supabaseAdmin.from('profiles').select('role').eq('id', caller.id).single()
     console.log('callerProfile role:', callerProfile?.role)
