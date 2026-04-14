@@ -17,14 +17,19 @@ Deno.serve(async (req) => {
 
     // Verify caller is master/admin
     const authHeader = req.headers.get('Authorization')
+    console.log('Auth header present:', !!authHeader, authHeader?.substring(0, 20))
     if (!authHeader?.startsWith('Bearer ')) {
+      console.log('No bearer token found')
       return new Response(JSON.stringify({ error: 'Não autorizado' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
     const token = authHeader.replace('Bearer ', '')
-    const { data: { user: caller } } = await supabaseAdmin.auth.getUser(token)
+    console.log('Token length:', token.length)
+    const { data: { user: caller }, error: authError } = await supabaseAdmin.auth.getUser(token)
+    console.log('getUser result:', caller?.id, 'error:', authError?.message)
     if (!caller) return new Response(JSON.stringify({ error: 'Não autorizado' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 
-    const { data: callerProfile } = await supabaseAdmin.from('profiles').select('role').eq('id', caller.id).single()
+    const { data: callerProfile, error: profileError } = await supabaseAdmin.from('profiles').select('role').eq('id', caller.id).single()
+    console.log('Profile:', callerProfile, 'error:', profileError?.message)
     if (!callerProfile || !['master', 'admin'].includes(callerProfile.role)) {
       return new Response(JSON.stringify({ error: 'Apenas master/admin' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
