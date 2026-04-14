@@ -61,6 +61,10 @@ const NovaRupturaPage = React.lazy(() => import("@/pages/backoffice/NovaRupturaP
 const ConferenciaPedidosFlexPage = React.lazy(() => import("@/pages/pos-vendas/ConferenciaPedidosFlexPage"));
 const MinhasMarcasPage = React.lazy(() => import("@/pages/backoffice/MinhasMarcasPage"));
 const LogisticaDashboard = React.lazy(() => import("@/pages/logistica/LogisticaDashboard"));
+const TransferenciaPage = React.lazy(() => import("@/pages/logistica/TransferenciaPage"));
+const InventarioPage = React.lazy(() => import("@/pages/logistica/InventarioPage"));
+const CurvaAbcPage = React.lazy(() => import("@/pages/logistica/CurvaAbcPage"));
+const RecebimentoPage = React.lazy(() => import("@/pages/logistica/RecebimentoPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -218,7 +222,11 @@ const App = () => (
 
                   {/* Logística */}
                   <Route path="/logistica" element={<LogisticaDashboard />} />
-                  <Route path="/logistica/*" element={<LogisticaDashboard />} />
+                  <Route path="/logistica/transferencia" element={<TransferenciaPage />} />
+                  <Route path="/logistica/inventario" element={<InventarioPage />} />
+                  <Route path="/logistica/curva-abc" element={<CurvaAbcPage />} />
+                  <Route path="/logistica/recebimento" element={<RecebimentoPage />} />
+                  <Route path="/logistica/divergencias" element={<DivergenciasListPage />} />
 
                   {/* Settings */}
                   <Route path="/configuracoes" element={<ProfileSettingsPage />} />
